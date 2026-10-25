@@ -32,7 +32,7 @@ Self-hosters create **their own** Crisp plugin and use a development or producti
 | `message:send` | Visitor (customer) sent a message → re-evaluate (with the quiet window) |
 | `message:received` | Operator sent a message → context ("known bug", "fixed for you") |
 | `session:set_state` | `state` = `resolved` → evaluate immediately; back to `unresolved`/`pending` → reopened |
-| `session:request:initiated` | Conversation started → create the thread |
+| `session:request:initiated` | Conversation started (not seen in Phase 0; do not depend on it. Create the thread on the first `message:send`) |
 
 File messages have `type: "file"` with `content: { name, url, type }`.
 
@@ -55,11 +55,12 @@ File messages have `type: "file"` with `content: { name, url, type }`.
 - Plugin states seen: "private / deactivated" is fine for development with a development token; "Public" needs Crisp review; production hook and token need "Ask a production token" (a launch-phase task).
 
 - [x] **`session:set_state` fires** with `{ website_id, session_id, state }` (seen: `resolved`). Resolving also emits a `message:received` with `type: "event"` and content `{namespace: "state:resolved"}`. **The pipeline must ignore non-content message types** (`event`, etc.) and only treat `text`/`file`/`picture`-like types as conversation content.
-- [x] **Operator-side file/image/audio sending is disabled on the free plan** (greyed out in the inbox). Whether *visitors* can attach files in the widget on the free plan is unverified.
+- [x] **Visitors CAN send files and images on the free plan** (operator-side attachments are disabled). A visitor file arrives as `message:send` with `type: "file"` and `content: { name, url, type }` (e.g. `image/png`), `from: "user"`.
+- [x] **File URLs are public, unsigned and cached for years** (`https://storage.crisp.chat/users/upload-1/session/…`; unauthenticated `HEAD` returned 200 with `content-type`/`content-length`, `cache-control: public, max-age=315360000`). Anyone with the link can open it, but the path is unguessable. Consequences: **SSRF allowlist = `storage.crisp.chat`**; no need to re-fetch for fresh URLs; the "link to the Crisp file" fallback works for ticket readers but means that link is effectively public, so say so in the privacy docs.
+- [x] **Visitor events captured:** `message:send` (text and file; `from: "user"`; includes `fingerprint`, `session_id`, `website_id`, `origin: "chat"`). A visitor message into a resolved conversation emits **`session:set_state` with `state: "unresolved"`** (our reopen trigger). **Event order is not guaranteed** (`set_state` arrived between the two `message:send` events), so the worker must always re-fetch the conversation and never rely on hook order.
 
 ### Still open (verify when convenient; none blocks Phase 1)
-- [ ] **Visitor events** (`message:send`, `session:request:initiated`): not yet captured; the test messages so far were typed as the operator. To capture: send from the chat widget in a private window.
-- [ ] **File/image messages from visitors:** shape (`type: file`, `content: { name, url, type }` per docs) and whether `content.url` is public, signed or expiring. The design already copes with both (re-fetch the conversation for a fresh URL; fall back to a link). Test on a paid trial or with a visitor upload if the free widget allows it.
+- [ ] `session:request:initiated`: not seen yet (the first visitor message produced `message:send` + `session:set_state`). Don't rely on it; treat the first `message:send` as the conversation start.
 - [ ] **Private notes:** shape and whether hooks fire (needs a note typed in the inbox).
 - [ ] How the plugin **settings page** identifies the website and user (signed parameters?), so a website can't be linked by someone who doesn't own it. Examine when building the settings page (Phase 2).
 - [ ] REST quotas for production tokens, and **Marketplace review requirements** (launch task).

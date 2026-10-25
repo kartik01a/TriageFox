@@ -87,7 +87,7 @@ Decisions agreed 2026-10-25: no transcript storage, Cloudflare in front, sealed 
 - **XSS:** React escaping; **never** `dangerouslySetInnerHTML` with chat or AI text; markdown rendered through a sanitiser.
 - **Validation:** zod on every input (API, forms, webhooks, AI output).
 - **SSRF guard for attachment downloads:**
-  - allowlist of Crisp file hosts
+  - allowlist of Crisp file hosts (`storage.crisp.chat`, confirmed in Phase 0)
   - DNS resolved and checked against private/link-local ranges (including `169.254.169.254`)
   - max 25 MB, 20 s timeout, no redirects to other hosts
 - **Webhooks:** HMAC signature + reject timestamps older than 5 minutes; dedupe.
