@@ -35,7 +35,7 @@ source_events (raw hooks, per connection)
 ### AI settings
 | Table | Key columns |
 |---|---|
-| `ai_settings` | org_id, provider (`openai`), api_key_encrypted (nullable; null = use platform key, hosted only), model_overrides jsonb |
+| `ai_settings` | org_id, provider (`openai`), api_key_encrypted (nullable; null = use platform key, hosted only), key_verified_at. **No model fields**: models are server config only |
 
 ### Connections
 | Table | Key columns |

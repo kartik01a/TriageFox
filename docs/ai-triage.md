@@ -6,10 +6,13 @@ The AI step is the product: if it misjudges what is a ticket, users lose trust. 
 
 - **OpenAI** ([decisions/0002-openai.md](decisions/0002-openai.md)).
 - Default: a small/cheap model. Escalate to a stronger model when the thread is long, has several images, or the small model's confidence is low.
-- Embeddings: `text-embedding-3-small` (1536 dims) for duplicate search.
-- Model names live in config — never hard-coded.
+  - Candidates (OpenAI pricing, Oct 2026, per 1M tokens input / cached / output): **`gpt-6-luna`** $0.10 / $0.01 / $0.50 as the default; **`gpt-6.1-sol`** $2.00 / $0.10 / $10.00 for escalation. Final choice is made by the evals in Phase 4. Check OpenAI's deprecation list first, since older `gpt-5-mini`/`gpt-5-nano` are marked deprecated.
+- Embeddings: `text-embedding-3-small` (1536 dims, $0.02 / 1M tokens) for duplicate search.
+- Model names live in server config, never hard-coded and **never chosen by customers** (bring-your-own-key replaces the key only).
+- Keep the system prompt + rubric as a stable prefix so OpenAI's prompt caching applies (cached input is ~90% cheaper).
+- Cost guardrails: at most **10 evaluations per conversation per month**, plus a monthly AI-spend ceiling per workspace that pauses processing and alerts us.
 - Behind an `AiProvider` interface so DeepSeek (text-only) or others can be plugged in later.
-- **Bring your own key:** each workspace can store its own OpenAI key (encrypted). Self-hosted installs must use their own key; hosted workspaces use ours unless they add one. `ai_runs.key_source` records which was used.
+- **Bring your own key:** each workspace can store its own OpenAI key (encrypted). Self-hosted installs must use their own key; hosted workspaces use ours unless they add one. The key only: models stay ours. `ai_runs.key_source` records which key was used.
 
 ## Inputs per evaluation
 

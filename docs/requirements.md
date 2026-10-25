@@ -69,7 +69,8 @@ Set by a fixed rubric, not gut feel ([ai-triage.md](ai-triage.md#priority-rubric
 - **Bring your own OpenAI key** covers only the AI key, nothing else:
   - **Self-hosted:** their install has no platform key, so they set `OPENAI_API_KEY` in their own `.env` (alongside their own database, Redis, Crisp plugin, Trello and Atlassian app settings). This is just configuration.
   - **Hosted (optional):** a workspace can paste its own OpenAI key in *Settings → AI*. AI usage is then billed to them by OpenAI, so we can offer a cheaper plan. Everything else (database, Redis, server) stays ours. Those costs are tiny per customer because we store only metadata and never store files.
-  - Whether hosted BYOK ships in v1 is decided in the pricing discussion. The code path is the same either way: use the workspace key if present, otherwise the platform key.
+  - **Key only, never the model.** Customers can't choose or change models. We pick the models (via evals) so triage quality stays consistent and a cheaper model can't break the app. When a key is saved, we make a test call **to the exact models we use**, and reject keys that lack access or have too low rate limits.
+  - BYOK plans are cheaper (see the pricing doc in `docs/private/`). The code path is the same either way: use the workspace key if present, otherwise the platform key.
 - On the hosted version we pay AI costs out of subscription revenue. The free tier is capped so AI cost stays small and predictable. Usage is tracked per workspace.
 
 ## 11. Connecting tools

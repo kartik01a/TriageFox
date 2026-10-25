@@ -1,6 +1,6 @@
 # Project Docs
 
-Documentation for an **open-source AI that turns customer chats into Trello and Jira tickets**. The MVP source is Crisp. This folder holds the plans, specs and decisions.
+Documentation for **TriageFox**, an **open-source AI that turns customer chats into Trello and Jira tickets**. The MVP source is Crisp. This folder holds the plans, specs and decisions.
 
 This folder **is pushed** with the code, except [`docs/private/`](private/), which is git-ignored and holds the business analysis, pricing and personal notes. The marketing plan lives in a separate, git-ignored `marketing/` folder at the repo root. Neither is backed up by git, so keep copies elsewhere.
 

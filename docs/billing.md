@@ -30,7 +30,9 @@ Verify signatures, and ignore repeat deliveries based on the provider's event id
 
 ## Limits & usage
 - `usage_counters` per org per period: tickets created, AI runs, AI cost.
-- Plan limits (tickets/month, automations, destinations) are checked in the worker before a ticket is created. Limit reached → pause, email, and a dashboard banner.
+- Plans are measured in **conversations analysed per month** (the AI cost driver) and the number of **connected Crisp websites**. Every plan includes every feature.
+- Checked in the worker before each evaluation: at 80% → warning email; at 100% → new conversations wait until the next period (or an upgrade), with a dashboard banner. **No surprise overage charges.**
+- Plan types: monthly and yearly, each with and without the customer's own OpenAI key (cheaper; the key only, never the model).
 - Workspaces using **their own OpenAI key** cost us almost nothing in AI. Plans can reflect that.
 - Only the `owner` role can manage billing.
 

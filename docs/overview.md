@@ -1,5 +1,7 @@
 # Overview
 
+**Product name: TriageFox** (triagefox.com).
+
 ## Problem
 
 Small teams talk to customers through live-chat tools like **Crisp**. Customers report things like "this form isn't working", "the UI is broken on mobile", or "please add CSV export". Someone then has to read every chat, decide whether it needs engineering work, and create a Trello card or Jira issue by hand: copying details, guessing a priority, attaching screenshots. It's slow and inconsistent, and duplicate reports pile up.
