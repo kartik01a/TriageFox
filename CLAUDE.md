@@ -60,7 +60,7 @@ The full design is already decided and documented. **Your job is to implement it
 - The repo is **private** until launch-ready, then made public (see the public-flip checklist in `docs/roadmap.md` Phase 10). Write everything as if it will be public: no secrets, no private notes in pushed files.
 - `docs/` is pushed; **`docs/private/` (business, pricing strategy) and `marketing/` are git-ignored**. Never move content from them into pushed files.
 - Secrets: gitleaks pre-commit hook from Phase 1. Never commit `.env`, keys or real customer data.
-- **You may commit** in this project without asking. Use a branch per phase (`phase-0-spike`, `phase-1-foundation`, …). **Don't push or merge to `main`**: the owner reviews, merges and pushes.
+- **Commit and push straight to `main`** (the owner is the only developer, so no branches or PRs; authorised 2026-10-25). Commit after each meaningful piece of work and push. Before every push, check nothing secret is staged (`.env` is git-ignored; never print or commit secret values). The repo stays **private** until launch.
 - Commit messages: imperative summary line + short body.
 
 ## Docs upkeep
