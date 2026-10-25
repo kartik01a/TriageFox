@@ -43,3 +43,4 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 
 - 2026-10-25: MVP plan v1 agreed (Featurebase source). Repo initialised.
 - 2026-10-25: **Plan v2** agreed ([plans/2026-10-25-mvp-plan-v2-crisp.md](plans/2026-10-25-mvp-plan-v2-crisp.md)): Crisp replaces Featurebase, open source (AGPL) + hosted model, one-server hosting, global billing through a merchant of record. Next: pricing discussion, then Phase 0 (API spike).
+- 2026-10-25: Planning complete (ADRs 0001–0011, pricing, security, UI, own support). `CLAUDE.md` added for implementation. Repo private until launch-ready. **Next: Phase 0 (API spike).**

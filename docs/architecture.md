@@ -17,6 +17,8 @@
 | Billing | Merchant of record (Dodo Payments / Lemon Squeezy) behind a `billing` package; hosted mode only |
 | Dates | chrono-node |
 | Observability | pino logs, Sentry (free tier), bull-board (admin only) |
+| Email | Mailpit locally (catches all mail); Resend (free tier) in production, needs the domain |
+| Tests | Vitest (+ msw), Playwright, AI eval runner |
 | Hosting | One server running Docker Compose: web, worker, Postgres, Redis, Caddy (HTTPS) |
 
 Rationale: [decisions/0001](decisions/0001-typescript-stack.md), [0007](decisions/0007-hosting-single-vps.md).

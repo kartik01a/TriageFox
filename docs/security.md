@@ -123,6 +123,7 @@ Decisions agreed 2026-10-25: no transcript storage, Cloudflare in front, sealed 
 - GitHub Actions pinned by commit SHA; minimal `permissions`; no production secrets in GitHub Actions. Deploys run over SSH with a dedicated deploy key.
 - Branch protection on `main` (CI must pass).
 - `SECURITY.md` with a private reporting address (`security@triagefox.com`).
+- **The repo is private until launch-ready.** GitHub's free CodeQL and secret scanning may not cover private repos, so **gitleaks (pre-commit + CI) is the guard from day one**. Before flipping to public: run gitleaks over the **entire git history** (deleted secrets stay in history), then turn on CodeQL, secret scanning and push protection.
 
 ## 11. Logging, monitoring & audit
 - pino with redaction (`authorization`, `token`, `apiKey`, `secret`, `password`, `cookie`). **Chat content never logged.**

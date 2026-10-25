@@ -16,7 +16,16 @@ Each phase ends with something you can check before moving on.
 | 7 | **Dashboard** | App UI per [ui-ux.md](ui-ux.md): onboarding wizard, integrations page, overview, activity log, review queue, dry run, connections, settings (incl. own-key entry) | A new user sets up without help |
 | 8 | **Self-host package** | Production `docker-compose.yml` + Caddy, setup script (generates master key), `APP_MODE`, self-host guide (create your own Crisp plugin / Trello key / Atlassian app), README with demo GIF | A fresh VM runs it by following the guide |
 | 9 | **Billing + admin (hosted)** | MoR (Dodo) checkout, portal, webhooks; trial; plan limits + usage metering; **plans / trial / platform settings in DB + admin routes + simple admin UI** ([0009](decisions/0009-config-in-db-admin-routes.md)); **own-support admin inbox + email/Slack alerts** ([own-support.md](own-support.md)); billing page with Monthly/Yearly toggle | Limits enforced; changing trial days or a price via admin takes effect without a deploy |
-| 10 | **Hardening + launch** | Rate limiting, backoff, revoked-token handling, alerts, **full animated landing + pricing page** ([ui-ux.md](ui-ux.md)), privacy policy/terms, `SECURITY.md`, submit to the Crisp Marketplace | Revoking Trello mid-run → clean pause, no lost events; landing scores ≥ 90 in Lighthouse; plugin submitted |
+| 10 | **Hardening + launch** | Rate limiting, backoff, revoked-token handling, alerts, **full animated landing + pricing page** ([ui-ux.md](ui-ux.md)), privacy policy/terms, `SECURITY.md`, submit to the Crisp Marketplace, **flip the repo public** (checklist below) | Revoking Trello mid-run → clean pause, no lost events; landing scores ≥ 90 in Lighthouse; plugin submitted |
+
+### Making the repo public (end of Phase 10)
+The repo stays **private** while building, so the first public version is complete and working.
+- [ ] triagefox.com bought; hosted version deployed and working end to end
+- [ ] `gitleaks detect` over the **full git history** shows nothing (rotate any secret ever committed, even if later deleted)
+- [ ] No private material in pushed files (`docs/private/` and `marketing/` are git-ignored; check `docs/` reads well for the public)
+- [ ] README (demo GIF, self-host guide, hosted link), `LICENSE` (AGPL-3.0), `SECURITY.md`, `CONTRIBUTING.md` + CLA, issue templates
+- [ ] Turn on CodeQL, secret scanning + push protection, Dependabot alerts, branch protection
+- [ ] Then flip to public and start launch week (marketing/launch-checklist.md)
 
 ## Integrations roadmap
 
