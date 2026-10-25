@@ -1,0 +1,176 @@
+import "server-only";
+import { and, eq, gt, schema } from "@triagefox/db";
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError } from "better-auth/api";
+import { nextCookies } from "better-auth/next-js";
+import { organization, twoFactor } from "better-auth/plugins";
+import { recordAudit } from "./audit";
+import { db } from "./db";
+import { env } from "./env";
+import { logger } from "./logger";
+import { emailLayout, sendMail } from "./mailer";
+
+const e = env();
+const isProd = e.NODE_ENV === "production";
+
+/** Platform setting `signupEnabled` (ADR 0009). Defaults to open when the row is missing. */
+async function signupsOpen() {
+  const [row] = await db()
+    .select()
+    .from(schema.platformSettings)
+    .where(eq(schema.platformSettings.key, "signupEnabled"));
+  return row ? row.value !== false : true;
+}
+
+async function hasPendingInvitation(email: string) {
+  const [row] = await db()
+    .select({ id: schema.invitation.id })
+    .from(schema.invitation)
+    .where(
+      and(
+        eq(schema.invitation.email, email.toLowerCase()),
+        eq(schema.invitation.status, "pending"),
+        gt(schema.invitation.expiresAt, new Date()),
+      ),
+    )
+    .limit(1);
+  return !!row;
+}
+
+export const auth = betterAuth({
+  baseURL: e.APP_URL,
+  secret: e.BETTER_AUTH_SECRET,
+  database: drizzleAdapter(db(), { provider: "pg", schema }),
+  appName: "TriageFox",
+
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 10,
+    maxPasswordLength: 128,
+    requireEmailVerification: true,
+    sendResetPassword: async ({ user, url }) => {
+      const { html, text } = emailLayout({
+        heading: "Reset your password",
+        body: "We received a request to reset your TriageFox password. This link is valid for one hour.",
+        cta: { label: "Choose a new password", url },
+      });
+      await sendMail({ to: user.email, subject: "Reset your TriageFox password", html, text });
+    },
+  },
+
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      const { html, text } = emailLayout({
+        heading: "Confirm your email",
+        body: `Hi ${user.name || "there"}, confirm your email address to finish creating your TriageFox account.`,
+        cta: { label: "Confirm email", url },
+      });
+      await sendMail({ to: user.email, subject: "Confirm your TriageFox email", html, text });
+    },
+  },
+
+  databaseHooks: {
+    session: {
+      create: {
+        // Start every session in the user's first workspace so /app has something to show.
+        before: async (session) => {
+          const [m] = await db()
+            .select({ orgId: schema.member.organizationId })
+            .from(schema.member)
+            .where(eq(schema.member.userId, session.userId))
+            .limit(1);
+          return { data: { ...session, activeOrganizationId: m?.orgId ?? null } };
+        },
+      },
+    },
+    user: {
+      create: {
+        before: async (user) => {
+          if (!(await signupsOpen()) && !(await hasPendingInvitation(user.email))) {
+            throw new APIError("FORBIDDEN", { message: "Sign-ups are currently closed." });
+          }
+          return { data: { ...user, email: user.email.toLowerCase() } };
+        },
+      },
+    },
+  },
+
+  session: {
+    expiresIn: 60 * 60 * 24 * 14,
+    updateAge: 60 * 60 * 24,
+    cookieCache: { enabled: true, maxAge: 5 * 60 },
+  },
+
+  // Brute-force protection on top of Cloudflare's rules (docs/security.md §5).
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 60,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 5 },
+      "/sign-up/email": { window: 60, max: 5 },
+      "/forget-password": { window: 60, max: 3 },
+      "/send-verification-email": { window: 60, max: 3 },
+    },
+  },
+
+  advanced: {
+    useSecureCookies: isProd,
+    defaultCookieAttributes: { httpOnly: true, sameSite: "lax", secure: isProd },
+  },
+
+  plugins: [
+    organization({
+      invitationExpiresIn: 60 * 60 * 24 * 7,
+      organizationHooks: {
+        afterCreateOrganization: async ({ organization, user }) => {
+          await recordAudit({
+            orgId: organization.id,
+            actorUserId: user.id,
+            action: "workspace.created",
+            target: organization.id,
+          });
+        },
+        afterCreateInvitation: async ({ invitation, inviter }) => {
+          await recordAudit({
+            orgId: invitation.organizationId,
+            actorUserId: inviter.id,
+            action: "member.invited",
+            target: invitation.id,
+            metadata: { role: invitation.role },
+          });
+        },
+        afterAcceptInvitation: async ({ invitation, user }) => {
+          await recordAudit({
+            orgId: invitation.organizationId,
+            actorUserId: user.id,
+            action: "invitation.accepted",
+            target: invitation.id,
+          });
+        },
+      },
+      sendInvitationEmail: async (data) => {
+        const url = `${e.APP_URL}/accept-invitation/${data.id}`;
+        const { html, text } = emailLayout({
+          heading: `Join ${data.organization.name} on TriageFox`,
+          body: `${data.inviter.user.name} invited you to the ${data.organization.name} workspace as ${data.role}. This invitation expires in 7 days.`,
+          cta: { label: "Accept invitation", url },
+        });
+        await sendMail({
+          to: data.email,
+          subject: `${data.inviter.user.name} invited you to ${data.organization.name} on TriageFox`,
+          html,
+          text,
+        });
+        logger.info({ invitationId: data.id }, "invitation email sent");
+      },
+    }),
+    twoFactor({ issuer: "TriageFox" }),
+    nextCookies(), // keep last
+  ],
+});
+
+export type Session = typeof auth.$Infer.Session;

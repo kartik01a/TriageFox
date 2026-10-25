@@ -40,3 +40,6 @@ marketing/
 spikes/.tokens.json
 spikes/node_modules/
 spikes/captured/
+
+*.tsbuildinfo
+next-env.d.ts
