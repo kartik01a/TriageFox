@@ -16,17 +16,35 @@ Self-hosted installs (`APP_MODE=selfhost`) have no billing and no plan limits.
 | Base (US cards & wallets) | 4% + $0.40 |
 | International cards | +1.5% |
 | Subscriptions | +0.5% |
-| PayPal | +3% |
-| Refund / dispute | $1 / $30 |
-| Payout under $1,000 | $5 (free at $1,000+) |
+| PayPal / BNPL | +3% (off at launch) |
+| India domestic (INR, e.g. UPI) | 4% + $0.15 |
+| Refund / dispute (chargeback) | $1 / $30 |
+| Payout under $1,000 | $5 (free at $1,000+; Dodo's page is inconsistent, so confirm) |
+| USD → INR payout conversion | "standard FX rates" (spread not published; assume ~1–2%, confirm) |
 
-Effective for us: **≈ 6% + $0.40**. That's 10.4% on a $9 monthly plan and 6.4% on a $90 yearly plan.
+Effective for us: **≈ 6% + $0.40** per international subscription payment, **plus ~1–2% FX** when converting payouts to INR. That's ~10–12% on a $9 monthly plan and ~7–8% on a $90 yearly plan.
+
+**Card network fees (Visa/Mastercard/Amex interchange):** with a merchant of record we never get a separate card-network bill. Dodo is the seller and pays the card networks out of its fee; the +1.5% international surcharge is its pass-through for cross-border card costs. Dodo's pricing page doesn't spell this out, and doesn't mention Amex, so **confirm both with Dodo before launch**. Our cost model already includes the international and subscription surcharges.
+
+**Adaptive currency** (showing local prices) costs us 0%, but the customer pays a 2–4% FX fee. **Off at launch**: prices in USD.
 
 ### Keeping fees down
 1. **Yearly-first pricing page:** the toggle defaults to *Yearly (2 months free)*. One payment a year means one $0.40 fee instead of twelve.
 2. **PayPal off at launch** (+3%). Turn it on only if customers ask for it.
 3. **Let payouts reach $1,000** before withdrawing (avoids the $5 fee) once cash flow allows.
-4. **Keep refunds and chargebacks low**: no-card trial, clear limits, easy cancel. A high refund rate can also get a seller account suspended.
+4. **Avoid chargebacks** ($30 each, and a high rate can get the seller account suspended): no-card trial, clear limits, easy cancel, annual renewal reminders (see the refund policy).
+
+## Refund policy
+**No refunds as standard.** The 14-day free trial is the "try before you buy".
+- **Cancel anytime:** cancelling stops the next renewal; access continues until the end of the paid period. No partial or pro-rated refunds.
+- **Exceptions** (handled case by case from the Dodo dashboard):
+  - duplicate or mistaken charges
+  - a serious outage on our side that made the service unusable for an extended period
+  - where the law requires it (e.g. EU/UK consumer rules, if an individual rather than a business buys)
+- **Discretion rule:** if a customer is clearly upset and about to dispute, refunding (cost $1) beats a chargeback ($30 + the money is returned anyway + account risk).
+- **Annual renewals:** email a reminder **7 days before** each yearly renewal. "I forgot it renews" is the most common reason for chargebacks on yearly plans.
+- **Shown in:** Terms of Service, the pricing FAQ, and a short line at checkout ("Cancel anytime. Payments are non-refundable.").
+- **Dodo is legally the seller**, so its buyer terms apply too. In Phase 9, check that Dodo allows a no-refund policy and match our Terms to its terms.
 
 ### Payment methods at launch
 | Method | Status | Why |
