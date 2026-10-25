@@ -1,7 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "./auth";
+import { getAuth } from "./auth";
 import { requireSession } from "./session";
 
 export type Role = "owner" | "admin" | "member";
@@ -13,12 +13,12 @@ export type Role = "owner" | "admin" | "member";
 export async function requireWorkspace() {
   const session = await requireSession();
   const h = await headers();
-  const orgs = await auth.api.listOrganizations({ headers: h });
+  const orgs = await getAuth().api.listOrganizations({ headers: h });
   if (orgs.length === 0) redirect("/app/onboarding");
   const activeId = session.session.activeOrganizationId;
   const org = orgs.find((o) => o.id === activeId) ?? orgs[0];
   if (!org) redirect("/app/onboarding");
-  const full = await auth.api.getFullOrganization({
+  const full = await getAuth().api.getFullOrganization({
     headers: h,
     query: { organizationId: org.id },
   });

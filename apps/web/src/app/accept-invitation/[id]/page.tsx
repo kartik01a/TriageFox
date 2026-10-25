@@ -4,7 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Wordmark } from "@/components/fox-logo";
 import { Card } from "@/components/ui/card";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { getSession } from "@/lib/session";
 import { AcceptButtons } from "./accept-buttons";
 
@@ -23,8 +23,8 @@ export default async function AcceptInvitationPage({
   }
 
   // Throws or returns nothing when the invitation doesn't exist, expired, or is for another email.
-  const invitation = await auth.api
-    .getInvitation({ headers: await headers(), query: { id } })
+  const invitation = await getAuth()
+    .api.getInvitation({ headers: await headers(), query: { id } })
     .catch(() => null);
 
   return (

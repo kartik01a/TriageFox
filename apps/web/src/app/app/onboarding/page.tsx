@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { OnboardingForm } from "./onboarding-form";
 
 export const metadata: Metadata = { title: "Create your workspace" };
 
 export default async function OnboardingPage() {
-  const orgs = await auth.api.listOrganizations({ headers: await headers() });
+  const orgs = await getAuth().api.listOrganizations({ headers: await headers() });
   if (orgs.length > 0) redirect("/app");
   return (
     <div className="mx-auto max-w-md">

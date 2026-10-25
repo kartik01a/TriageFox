@@ -3,6 +3,10 @@ import { Geist_Mono, Inter } from "next/font/google";
 import { CrispWidget } from "@/components/crisp-widget";
 import "./globals.css";
 
+// Every page is rendered per request: the nonce-based CSP (src/proxy.ts) needs a fresh nonce in the
+// HTML, which static pages cannot have. It also means `next build` never needs runtime secrets.
+export const dynamic = "force-dynamic";
+
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
