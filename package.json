@@ -19,7 +19,7 @@
     "db:generate": "pnpm --filter @triagefox/db generate",
     "db:migrate": "pnpm --filter @triagefox/db migrate",
     "db:seed": "pnpm --filter @triagefox/db seed",
-    "keys:generate": "node scripts/generate-keys.mjs",
+    "keys:generate": "pnpm --filter @triagefox/crypto keys",
     "secret-scan": "node scripts/secret-scan.mjs",
     "prepare": "git config core.hooksPath .githooks || true"
   },
