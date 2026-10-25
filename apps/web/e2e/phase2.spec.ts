@@ -298,8 +298,9 @@ test("Jira (live): choose a project, see type and priority mappings, save", asyn
     ).toBeVisible();
 
     const [row] = await connectionsFor(orgId, "jira");
+    if (!row) throw new Error("the Jira connection was not found");
     const d = (
-      row?.metadata as {
+      row.metadata as {
         defaults?: {
           projectKey: string;
           setupOk: boolean;
@@ -363,8 +364,9 @@ test("Crisp (live): link a real website from inside the Crisp page, once only", 
   await expect(popup).toHaveURL(/\/app\/connections\/[0-9a-f-]{36}\?connected=crisp/);
   await expect(popup.getByText(/Connected/).first()).toBeVisible();
   const [row] = await connectionsFor(orgId, "crisp");
-  expect((row?.metadata as { websiteId: string }).websiteId).toBe(websiteId);
-  expect(row?.credentialsSealed).toBeNull(); // nothing secret is stored for Crisp
+  if (!row) throw new Error("the Crisp connection was not found");
+  expect((row.metadata as { websiteId: string }).websiteId).toBe(websiteId);
+  expect(row.credentialsSealed).toBeNull(); // nothing secret is stored for Crisp
   await popup.close();
 
   // The ticket is single-use.

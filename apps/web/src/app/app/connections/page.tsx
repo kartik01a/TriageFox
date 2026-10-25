@@ -22,7 +22,7 @@ const ERRORS: Record<string, string> = {
   forbidden: "Only workspace owners and admins can connect tools.",
 };
 
-function describe(c: ConnectionView) {
+function connectionLabel(c: ConnectionView) {
   const m = c.metadata as Record<string, string | undefined>;
   if (c.provider === "trello") return m.username ? `@${m.username}` : "Trello account";
   if (c.provider === "jira") return m.siteName ?? "Jira site";
@@ -138,7 +138,7 @@ export default async function ConnectionsPage({
                 <Card key={c.id} className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-medium">{describe(c)}</p>
+                      <p className="truncate font-medium">{connectionLabel(c)}</p>
                       <p className="text-sm text-muted-foreground">{targetSummary(c)}</p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -167,7 +167,7 @@ export default async function ConnectionsPage({
                       {c.statusDetail}
                     </p>
                   )}
-                  {canManage && <ConnectionActions id={c.id} label={describe(c)} />}
+                  {canManage && <ConnectionActions id={c.id} label={connectionLabel(c)} />}
                 </Card>
               ))
             )}
