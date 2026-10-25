@@ -16,7 +16,9 @@
     "@triagefox/db": "workspace:*",
     "@triagefox/shared": "workspace:*",
     "bullmq": "^6.4.2",
-    "ioredis": "^6.0.0"
+    "ioredis": "^6.0.0",
+    "@triagefox/connectors": "workspace:*",
+    "@triagefox/rpc": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

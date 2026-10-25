@@ -1,10 +1,12 @@
 import * as Sentry from "@sentry/node";
 import { createDb } from "@triagefox/db";
+import { startRpcServer } from "@triagefox/rpc/server";
 import { createLogger } from "@triagefox/shared";
 import { Queue, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { loadConfig, verifyKeyring } from "./config";
 import { JOBS, QUEUES } from "./queues";
+import { createHandlers } from "./rpc/handlers";
 
 const log = createLogger("worker");
 const config = loadConfig();
@@ -46,6 +48,14 @@ const worker = new Worker(
 worker.on("failed", (job, err) => log.error({ jobId: job?.id, err: err.message }, "job failed"));
 worker.on("error", (err) => log.error({ err: err.message }, "worker error"));
 
+// Requests from the web app that need decrypted credentials (docs/security.md §3).
+const rpc = startRpcServer({
+  connection,
+  log,
+  handlers: createHandlers({ db, config, keyring: config.keyring, redis: connection, log }),
+});
+rpc.on("error", (err) => log.error({ err: err.message }, "rpc server error"));
+
 // Self-check: prove the queue round-trips before declaring ready.
 await systemQueue.add(JOBS.ping, {}, { removeOnComplete: true, removeOnFail: 20 });
 log.info({ mode: config.APP_MODE }, "worker ready");
@@ -53,6 +63,7 @@ log.info({ mode: config.APP_MODE }, "worker ready");
 async function shutdown(signal: string) {
   log.info({ signal }, "shutting down");
   await worker.close();
+  await rpc.close();
   await systemQueue.close();
   await connection.quit();
   await db.$client.end();

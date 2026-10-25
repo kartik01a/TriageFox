@@ -14,6 +14,13 @@ const base = {
   REDIS_URL: z.string().min(1),
 };
 
+const ai = {
+  /** Server-side model choice. Customers can bring their own key but never pick models. */
+  AI_MODEL_DEFAULT: z.string().default("gpt-6-luna"),
+  AI_MODEL_ESCALATION: z.string().default("gpt-6.1-sol"),
+  AI_MODEL_EMBEDDING: z.string().default("text-embedding-3-small"),
+};
+
 const cryptoPublic = {
   /** JSON object: key version -> base64 public key. The web app only ever has public keys. */
   CRYPTO_PUBLIC_KEYS: z.string().min(2),
@@ -23,6 +30,10 @@ const cryptoPublic = {
 export const webEnvSchema = z.object({
   ...base,
   ...cryptoPublic,
+  ...ai,
+  /** Public identifiers only. Secrets for these providers live in the worker (docs/security.md §3). */
+  TRELLO_API_KEY: z.string().optional(),
+  ATLASSIAN_CLIENT_ID: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().min(32),
   SMTP_HOST: z.string().default("localhost"),
   SMTP_PORT: z.coerce.number().default(1025),
@@ -39,6 +50,14 @@ export const webEnvSchema = z.object({
 export const workerEnvSchema = z.object({
   ...base,
   ...cryptoPublic,
+  ...ai,
+  TRELLO_API_KEY: z.string().optional(),
+  ATLASSIAN_CLIENT_ID: z.string().optional(),
+  ATLASSIAN_CLIENT_SECRET: z.string().optional(),
+  /** Crisp plugin: token identifier + key (Marketplace → Tokens) and the plugin's own UUID. */
+  CRISP_PLUGIN_ID: z.string().optional(),
+  CRISP_PLUGIN_KEY: z.string().optional(),
+  CRISP_PLUGIN_UUID: z.string().optional(),
   /** JSON object: key version -> base64 private key. Worker ONLY. Never set on the web app. */
   CRYPTO_PRIVATE_KEYS: z.string().min(2),
   SENTRY_DSN: z.string().optional(),
