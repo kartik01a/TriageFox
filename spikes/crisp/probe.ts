@@ -16,6 +16,7 @@ const get = async (label: string, path: string) => {
 };
 
 const w = await get("website", `/website/${site}`);
+if (w.status !== 200) { console.error("Stopping:", JSON.stringify(w.body)); process.exit(1); }
 capture("crisp-website", w.body);
 
 // reconcile candidate: recent conversations (page 1)

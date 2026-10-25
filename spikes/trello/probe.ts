@@ -13,6 +13,13 @@ console.log("boards:", boards.status);
 const boardId = process.env.TRELLO_BOARD_ID;
 if (!boardId) { console.log("\nSet TRELLO_BOARD_ID (a test board) and rerun."); process.exit(0); }
 
+// safety: never write to a board unless it is clearly a test board
+const board = (await api(`/boards/${boardId}`, { fields: "name,closed" })).body as any;
+console.log(`board: "${board.name}" closed=${board.closed}`);
+if (board.closed || !/test|triagefox/i.test(board.name)) {
+  console.error('Refusing to write: the board must be open and its name must contain "test" or "triagefox".');
+  process.exit(1);
+}
 const lists = await api(`/boards/${boardId}/lists`, { fields: "name" });
 (lists.body as any[]).forEach((l) => console.log(`  list ${l.id}  ${l.name}`));
 const listId = process.env.TRELLO_LIST_ID;

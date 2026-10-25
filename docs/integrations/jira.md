@@ -31,8 +31,12 @@
 - 404 → `broken`, do not recreate.
 - 400 on create → surface Jira's field errors in the activity log.
 
-## Phase 0 checks
-- [ ] 3LO flow + token refresh on a free Jira Cloud site.
-- [ ] Markdown → ADF converter choice (library vs small in-house builder for our limited template).
-- [ ] Attachment size limits.
-- [ ] `updated` field reliable for "human edited?" check.
+## Phase 0 findings (2026-10-25, verified on a free Jira Cloud site)
+- [x] **3LO flow works**, including refresh. Refresh tokens **rotate**: every refresh returns a new refresh token, and we must **save the latest one every time** (store atomically; two workers refreshing at once could lose it → serialise refreshes per connection). Access token lifetime: 3600 s.
+- [x] **Scopes must be added in the developer console first** (Permissions → Jira API → configure), otherwise the consent page fails with "app has requested Jira API scopes that have not been added". Used: `read:jira-work`, `write:jira-work`, `read:jira-user`, `offline_access`. Check if `read:jira-user` can be dropped to request less.
+- [x] **createmeta:** `GET /rest/api/3/issue/createmeta/{project}/issuetypes` and `…/issuetypes/{id}` work. Required fields in the test project: `issuetype, project, reporter, summary`. Issue types: Epic, Subtask, Task, Story, Feature, Bug. Priorities: 1 Highest … 5 Lowest.
+- [x] **`priority` is NOT on the create screen** of this (team-managed) project, though `duedate`, `labels`, `description`, `attachment` are. **Setting priority in a second call (`PUT /issue/{key}`) worked (204).** Design: create the issue, then set priority by edit; if that fails, add the priority as a label and log it.
+- [x] **ADF description works** (heading, paragraph, ordered list).
+- [x] **Attachments:** 1, 10 and **11 MB** all succeeded, so the limit is above 10 MB on this site. Use Jira's reported limit (`GET /rest/api/3/attachment/meta`) at setup, with 10 MB as the safe default.
+- [x] **`updated` changes when a comment is added**, so it can't distinguish human description edits from our own comments. Use the issue **changelog** (`GET /issue/{key}/changelog`, look for `description` field changes by someone other than our app) instead.
+- [ ] Markdown → ADF converter choice (library vs small in-house builder for our limited template). Decide in Phase 5.

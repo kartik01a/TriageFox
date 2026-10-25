@@ -7,7 +7,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { capture, need } from "../lib.js";
 
 const secret = need("CRISP_HOOK_SECRET");
-let n = 0;
+let n = 0; // counter
 
 createServer((req, res) => {
   if (req.method !== "POST" || req.url !== "/crisp") { res.writeHead(404).end(); return; }

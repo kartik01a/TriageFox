@@ -52,7 +52,7 @@ The full design is already decided and documented. **Your job is to implement it
 - UI: **Tailwind + shadcn/ui + Motion**, Lucide icons; polished for customers, plain for `/admin`.
 - Tests: **Vitest** (unit/integration, msw for HTTP), **Playwright** (E2E), AI eval runner in `packages/ai/evals/`.
 - Email: **Mailpit** locally (Docker Compose), **Resend** in production (needs the domain).
-- Local dev: `docker compose` for Postgres, Redis and Mailpit. For webhooks to localhost, use a Cloudflare quick tunnel: `cloudflared tunnel --url http://localhost:3000`.
+- Local dev: `docker compose` for Postgres, Redis and Mailpit. For webhooks to localhost, use ngrok with a free static domain: `ngrok http --url=<your-domain> 3000` (Cloudflare quick tunnels change URL on every start).
 - Config: `.env` (git-ignored, the owner fills in values) + a committed `.env.example` listing every variable with comments. **Never ask the owner to paste secrets into chat**; tell them which variable to set. In production, the worker private key goes **only** to the worker container.
 - Code style: small modules, clear names, comments only where the "why" isn't obvious. Match existing patterns once they exist.
 
