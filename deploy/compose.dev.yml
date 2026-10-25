@@ -1,0 +1,40 @@
+# Local development infrastructure. Ports are offset to avoid clashing with other local services.
+name: triagefox-dev
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: triagefox # owner / migrator
+      POSTGRES_PASSWORD: triagefox_dev_owner
+      POSTGRES_DB: triagefox
+      APP_DB_PASSWORD: triagefox_dev_app # password of the restricted runtime role
+    ports: ["127.0.0.1:54320:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U triagefox -d triagefox"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "triagefox_dev_redis", "--appendonly", "yes"]
+    ports: ["127.0.0.1:63790:6379"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "triagefox_dev_redis", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:1025:1025" # SMTP
+      - "127.0.0.1:8025:8025" # web UI: http://localhost:8025
+
+volumes:
+  pgdata:
+  redisdata:

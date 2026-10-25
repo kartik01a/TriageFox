@@ -1,0 +1,8 @@
+#!/bin/sh
+# Blocks secrets from being committed (docs/security.md §10). Enabled by `pnpm install` (prepare script).
+node scripts/secret-scan.mjs --staged || exit 1
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --no-banner || exit 1
+else
+  echo "tip: install gitleaks for deeper scanning (brew install gitleaks)"
+fi

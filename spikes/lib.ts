@@ -27,6 +27,10 @@ export async function http(url: string, init: RequestInit = {}) {
   const res = await fetch(url, init);
   const text = await res.text();
   let body: unknown = text;
-  try { body = JSON.parse(text); } catch { /* not json */ }
+  try {
+    body = JSON.parse(text);
+  } catch {
+    /* not json */
+  }
   return { status: res.status, headers: res.headers, body };
 }

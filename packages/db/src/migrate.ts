@@ -1,0 +1,17 @@
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+import postgres from "postgres";
+
+const url = process.env.DATABASE_MIGRATION_URL;
+if (!url) {
+  console.error("DATABASE_MIGRATION_URL is not set (owner connection, see .env.example).");
+  process.exit(1);
+}
+const client = postgres(url, { max: 1, onnotice: () => {} });
+await migrate(drizzle(client), {
+  migrationsFolder: join(dirname(fileURLToPath(import.meta.url)), "..", "drizzle"),
+});
+await client.end();
+console.log("migrations applied");
