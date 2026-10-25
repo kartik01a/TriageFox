@@ -19,6 +19,7 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 | [integrations/featurebase.md](integrations/featurebase.md) | Source (planned): Featurebase |
 | [integrations/adding-a-connector.md](integrations/adding-a-connector.md) | How to add a new source or destination |
 | [billing.md](billing.md) | Merchant of record, fees, payment methods, trial, limits, admin-managed plans (hosted only) |
+| [development.md](development.md) | How to run, test and extend the codebase locally |
 | [security.md](security.md) | **Full security plan**: threats, encryption, data minimisation, 2FA, infra, incident runbook, phase checklist, public Security page copy |
 | [edge-cases.md](edge-cases.md) | What can go wrong and how each case is handled |
 | [testing.md](testing.md) | Test strategy, scenarios, acceptance criteria |
@@ -44,3 +45,5 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 - 2026-10-25: MVP plan v1 agreed (Featurebase source). Repo initialised.
 - 2026-10-25: **Plan v2** agreed ([plans/2026-10-25-mvp-plan-v2-crisp.md](plans/2026-10-25-mvp-plan-v2-crisp.md)): Crisp replaces Featurebase, open source (AGPL) + hosted model, one-server hosting, global billing through a merchant of record. Next: pricing discussion, then Phase 0 (API spike).
 - 2026-10-25: Planning complete (ADRs 0001–0011, pricing, security, UI, own support). `CLAUDE.md` added for implementation. Repo private until launch-ready. **Next: Phase 0 (API spike).**
+- 2026-10-25: **Phase 0 (API spike) done**: findings recorded in `docs/integrations/*.md`.
+- 2026-10-26: **Phase 1 (Foundation) done**: monorepo, dev infra, database + row-level security, sealed-box crypto, auth + workspaces + invitations, landing v0 with waitlist and Crisp support widget, worker skeleton, CI. See [development.md](development.md). **Next: Phase 2 (Connections).**

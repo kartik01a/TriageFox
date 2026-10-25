@@ -34,7 +34,7 @@ Decisions agreed 2026-10-25: no transcript storage, Cloudflare in front, sealed 
 | DDoS / brute force | Cloudflare (WAF, rate limits), app-level rate limits |
 
 ## 3. Encryption & the secret boundary
-- **Sealed-box envelope encryption** (libsodium):
+- **Sealed-box encryption** (libsodium `crypto_box_seal`: a fresh ephemeral key pair per value, so every secret is effectively under its own key; implemented in `packages/crypto`):
   - Each secret is encrypted with a random per-record key.
   - That key is sealed to the **worker's public key**.
   - The **web app only has the public key**: it can store new secrets (OAuth callbacks, pasted keys) but **can never read them back**.
@@ -45,6 +45,8 @@ Decisions agreed 2026-10-25: no transcript storage, Cloudflare in front, sealed 
 - **Calls that need a decrypted secret** (listing Trello boards or Jira projects in the setup wizard, creating tickets) run **inside the worker**. The web app asks the worker over the internal Docker network (never exposed publicly).
 - **Encrypted at rest too:** `threads.rolling_summary` and `ai_runs.raw_output` (they contain derived customer text).
 - Passwords: hashed by Better Auth (scrypt). TLS everywhere (Cloudflare ↔ origin with Full (strict) mode).
+
+**Implemented in Phase 1** (verified by tests): seal/open round trip, public-only keyring cannot open (also enforced by the type system), ciphertext moved to another org/record/purpose is rejected, tampering gives a generic error, key rotation keeps old values readable, worker refuses to start on a mismatched key pair. Row-level security is verified as the restricted database role (cross-workspace reads, writes and updates blocked; no workspace set means no rows). Security headers + per-request nonce CSP, Cloudflare-only client IP in production, pino redaction, and a secret-scanning pre-commit hook + CI job are in place.
 
 ## 4. Store as little as possible
 - **No chat transcripts are stored.** We fetch from Crisp, analyse in memory, and keep only IDs, the ticket we created, a short encrypted summary and the AI decision. Debugging re-fetches from Crisp.

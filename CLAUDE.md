@@ -23,13 +23,10 @@ The full design is already decided and documented. **Your job is to implement it
 | Why things are the way they are | `docs/decisions/` (ADRs 0001–0011) |
 
 ## Current status
-- Planning is complete. **Next: Phase 0, the API spike.** No app code exists yet.
-- **Phase 0 rules:**
-  - Throwaway scripts only, in `spikes/<crisp|trello|jira|openai>/`.
-  - Answer every open-question checkbox in `docs/integrations/*.md` and in `docs/security.md` §15 Phase 0. Write the findings into those docs.
-  - Save real (anonymised) payloads as fixtures under `spikes/fixtures/` (they move to `packages/connectors/*/__fixtures__/` in Phase 1).
-  - **Don't start the monorepo until Phase 0 findings are written up and the owner has seen them.** If a finding breaks a decision (e.g. Crisp can't be tested on a free plan → fall back to Chatwoot), stop and ask.
-- Work **one phase at a time**, in order. A phase is done only when its "Done when" (roadmap), its tests, and its security checklist items are all complete.
+- **Phase 0 (API spike) and Phase 1 (Foundation) are done.** Findings are in `docs/integrations/*.md`; how to run everything is in `docs/development.md`. **Next: Phase 2 (Connections):** Crisp plugin install + link website, Trello authorize + board/list picker, Jira OAuth + project/types + required-field check, OpenAI key entry (write-only, validated against our models).
+- Work **one phase at a time**, in order. A phase is done only when its "Done when" (roadmap), its tests, and its security checklist items (`docs/security.md` §15) are all complete. Before starting a phase: summarise what you'll build. After: what was built, how it was tested, what's left, anything the owner must do.
+- Phase 0 lessons that shape later phases (details in the integration docs): Crisp timestamps are ms and hooks can arrive out of order (always re-fetch); Crisp file URLs are public on `storage.crisp.chat`; Jira priority is set in a second call and refresh tokens rotate; "human edited?" uses Jira changelog / Trello actions, not `updated`/`dateLastActivity`; Trello attachment limit 10 MB.
+- Phase 1 conventions: tenant tables get RLS in their migration and are queried via `withOrg()`; the web app never holds private keys; every page is dynamic (CSP nonce); auth is created lazily; new env vars go in `.env.example` + `packages/shared/src/env.ts`.
 
 ## Non-negotiables
 - **Security comes first** (`docs/security.md`):
