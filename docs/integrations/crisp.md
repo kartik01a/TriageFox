@@ -54,15 +54,16 @@ File messages have `type: "file"` with `content: { name, url, type }`.
 - [x] **Deep link** format used: `https://app.crisp.chat/website/{website_id}/inbox/{session_id}/` (to click-verify).
 - Plugin states seen: "private / deactivated" is fine for development with a development token; "Public" needs Crisp review; production hook and token need "Ask a production token" (a launch-phase task).
 
-### Still open (Phase 0 continues)
-- [ ] Visitor-side events: `message:send`, `session:request:initiated`, `session:set_state` (resolved/unresolved): not yet captured (confirm the plugin's event subscriptions include them).
-- [ ] How **private notes** appear (message type `note`?) and whether hooks fire for them.
-- [ ] **File/image messages**: whether a free workspace can send them, and whether `content.url`s are public or signed/expiring.
-- [ ] How the plugin **settings page** identifies the website and user (signed parameters?) so a website can't be linked by someone who doesn't own it.
-- [ ] REST quotas for development vs production tokens (a daily dev quota exists; resettable on the Marketplace dashboard).
-- [ ] Marketplace submission/review requirements.
-- [ ] Crisp **identity verification** (server-signed user email) and whether it works on the free plan.
-- [ ] How many Crisp websites a free account can have (need `TriageFox Dev` + `TriageFox Support`).
+- [x] **`session:set_state` fires** with `{ website_id, session_id, state }` (seen: `resolved`). Resolving also emits a `message:received` with `type: "event"` and content `{namespace: "state:resolved"}`. **The pipeline must ignore non-content message types** (`event`, etc.) and only treat `text`/`file`/`picture`-like types as conversation content.
+- [x] **Operator-side file/image/audio sending is disabled on the free plan** (greyed out in the inbox). Whether *visitors* can attach files in the widget on the free plan is unverified.
+
+### Still open (verify when convenient; none blocks Phase 1)
+- [ ] **Visitor events** (`message:send`, `session:request:initiated`): not yet captured; the test messages so far were typed as the operator. To capture: send from the chat widget in a private window.
+- [ ] **File/image messages from visitors:** shape (`type: file`, `content: { name, url, type }` per docs) and whether `content.url` is public, signed or expiring. The design already copes with both (re-fetch the conversation for a fresh URL; fall back to a link). Test on a paid trial or with a visitor upload if the free widget allows it.
+- [ ] **Private notes:** shape and whether hooks fire (needs a note typed in the inbox).
+- [ ] How the plugin **settings page** identifies the website and user (signed parameters?), so a website can't be linked by someone who doesn't own it. Examine when building the settings page (Phase 2).
+- [ ] REST quotas for production tokens, and **Marketplace review requirements** (launch task).
+- [ ] Crisp **identity verification** on the free plan, and how many websites a free account can have (Phase 7 / Phase 9, for own support).
 
 Save real payload samples as fixtures in `packages/connectors/crisp/__fixtures__/`.
 
