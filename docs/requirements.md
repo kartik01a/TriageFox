@@ -66,7 +66,10 @@ Set by a fixed rubric, not gut feel ([ai-triage.md](ai-triage.md#priority-rubric
 
 ## 10. AI provider & cost
 - **OpenAI** ([decisions/0002](decisions/0002-openai.md)). Chosen for image input (screenshots), strict JSON output and embeddings.
-- **Bring your own OpenAI key** is a v1 feature. Self-hosters must use their own key, and hosted users may.
+- **Bring your own OpenAI key** covers only the AI key, nothing else:
+  - **Self-hosted:** their install has no platform key, so they set `OPENAI_API_KEY` in their own `.env` (alongside their own database, Redis, Crisp plugin, Trello and Atlassian app settings). This is just configuration.
+  - **Hosted (optional):** a workspace can paste its own OpenAI key in *Settings → AI*. AI usage is then billed to them by OpenAI, so we can offer a cheaper plan. Everything else (database, Redis, server) stays ours. Those costs are tiny per customer because we store only metadata and never store files.
+  - Whether hosted BYOK ships in v1 is decided in the pricing discussion. The code path is the same either way: use the workspace key if present, otherwise the platform key.
 - On the hosted version we pay AI costs out of subscription revenue. The free tier is capped so AI cost stays small and predictable. Usage is tracked per workspace.
 
 ## 11. Connecting tools
