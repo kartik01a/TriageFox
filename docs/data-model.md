@@ -29,7 +29,7 @@ source_events (raw hooks, per connection)
 ### Billing (hosted mode)
 | Table | Key columns |
 |---|---|
-| `subscriptions` | org_id, provider (`dodo` \| `lemonsqueezy`), provider_customer_id, provider_subscription_id, plan_id, plan_version, interval (`monthly` \| `yearly`), status (`trialing` \| `active` \| `past_due` \| `canceled`), trial_ends_at, current_period_end |
+| `subscriptions` | org_id, provider (`dodo` \| `lemonsqueezy`), provider_customer_id, provider_subscription_id, plan_id, plan_version, interval (`monthly` \| `yearly`), status (`trialing` \| `active` \| `past_due` \| `canceled` \| `comped`), trial_ends_at, current_period_end |
 | `usage_counters` | org_id, period_start, conversations_analysed, tickets_created, ai_runs, ai_cost_usd, trial_ai_cost_usd |
 
 ### Platform configuration (hosted mode, edited via admin routes; see [decisions/0009](decisions/0009-config-in-db-admin-routes.md))
@@ -39,7 +39,20 @@ source_events (raw hooks, per connection)
 | `platform_settings` | key (PK), value jsonb, updated_by, updated_at. Keys: `trial` `{ days, conversationCap, cardRequired, unlimitedWithOwnKey }`, `budgets` `{ trialAiUsdMonthly, platformAiUsdMonthly }`, `signupEnabled` |
 | `admin_audit_log` | id, admin_email, action, target, before jsonb, after jsonb, created_at |
 
+| `comp_grants` | id, org_id, plan_id, starts_at, ends_at (null = indefinite), reason, granted_by, revoked_at |
+| `invite_codes` | id, code_hash (**hashed, never stored plain**), email, plan_id, comp_months, expires_at, redeemed_by_org, redeemed_at, created_by |
+
+`platform_settings` also holds `reminders` `{ monthlyDaysBefore: 3, yearlyDaysBefore: 7 }`.
+
 Seed data inserts the launch plans and settings, so a fresh install works immediately.
+
+### Security
+| Table | Key columns |
+|---|---|
+| `audit_log` | id, org_id, actor_user_id, action, target, metadata jsonb, ip, created_at |
+| `secrets` metadata on each encrypted column | key_version, sealed blob (sealed box containing the value + `org_id` + `connection_id`) |
+
+**Not stored anywhere:** chat transcripts, attachments, card details.
 
 ### AI settings
 | Table | Key columns |
@@ -81,12 +94,12 @@ Seed data inserts the launch plans and settings, so a fresh install works immedi
 ### Ingestion & triage
 | Table | Key columns |
 |---|---|
-| `source_events` | id, connection_id, dedupe_key **UNIQUE**, topic, payload jsonb, status (`received` \| `processed` \| `ignored` \| `failed`), received_at |
-| `threads` | id, automation_id, source_type (`conversation`), source_id (**UNIQUE per automation**; Crisp `session_id`), state (`open` \| `resolved`), last_processed_message_id, rolling_summary, updated_at |
+| `source_events` | id, connection_id, dedupe_key **UNIQUE**, topic, meta jsonb (**IDs only**: website_id, session_id, event, fingerprint, timestamp; no message content), status (`received` \| `processed` \| `ignored` \| `failed`), received_at |
+| `threads` | id, automation_id, source_type (`conversation`), source_id (**UNIQUE per automation**; Crisp `session_id`), state (`open` \| `resolved`), last_processed_message_id, rolling_summary (**encrypted**), updated_at |
 | `issues` | id, automation_id, origin_thread_id, title, body_md, type, priority (1–5), due_date, due_date_quote, confidence, embedding vector(1536), report_count, status (`active` \| `pending_review` \| `dismissed`), created_at |
 | `issue_reports` | issue_id, thread_id, customer_ref, reported_at |
 | `destination_tickets` | id, issue_id, automation_destination_id, external_id, external_key, url, last_pushed_at, last_remote_updated_at, status (`ok` \| `failed` \| `broken`), **UNIQUE (issue_id, automation_destination_id)** |
-| `ai_runs` | id, thread_id, model, key_source (`platform` \| `byok`), input_tokens, output_tokens, cost_usd, decision jsonb, raw_output jsonb, created_at |
+| `ai_runs` | id, thread_id, model, key_source (`platform` \| `byok`), input_tokens, output_tokens, cost_usd, decision jsonb, raw_output (**encrypted**, cleared after 30 days), created_at |
 | `activity_log` | id, org_id, automation_id, kind, message, refs jsonb, created_at |
 
 **`dedupe_key`:** each connector computes it. Crisp hooks have no event id, so we use `sha256(website_id | event | data.fingerprint ?? data.session_id | timestamp)`.
@@ -102,4 +115,5 @@ Seed data inserts the launch plans and settings, so a fresh install works immedi
 ## Retention
 
 - `source_events`: 30 days (at least 7 days while a connection is paused, so events can be replayed).
-- `ai_runs.raw_output`: 90 days (for debugging), then the payload is cleared and the counters kept.
+- `ai_runs.raw_output`: 30 days (encrypted), then cleared; counters kept.
+- Full retention and deletion rules: [security.md](security.md#4-store-as-little-as-possible).

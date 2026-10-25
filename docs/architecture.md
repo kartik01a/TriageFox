@@ -142,6 +142,8 @@ Plans, trial and platform settings live in the DB, not in code ([decisions/0009]
 | `GET /api/admin/workspaces` | Search workspaces; plan, usage, trial status |
 | `POST /api/admin/workspaces/:id/extend-trial` · `/pause` · `/resume` | Support actions |
 | `GET /api/admin/usage` | AI spend this month (platform, trials, by workspace) |
+| `POST /api/admin/workspaces/:id/comp` · `DELETE …/comp` | Give or revoke a complimentary plan (N months or indefinite, with a reason) |
+| `POST /api/admin/invite-codes` · `GET /api/admin/invite-codes` | Create single-use, email-bound, 7-day invite codes (stored hashed; shown once at creation) |
 
 Access: signed-in user whose email is in `PLATFORM_ADMIN_EMAILS`, with 2FA. Every write goes to `admin_audit_log`. Input is validated with zod; a plan can't be made public without MoR price IDs.
 

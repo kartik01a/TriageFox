@@ -19,7 +19,7 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 | [integrations/featurebase.md](integrations/featurebase.md) | Source (planned): Featurebase |
 | [integrations/adding-a-connector.md](integrations/adding-a-connector.md) | How to add a new source or destination |
 | [billing.md](billing.md) | Merchant of record, fees, payment methods, trial, limits, admin-managed plans (hosted only) |
-| [security.md](security.md) | Credentials, Crisp linking, PII, logging |
+| [security.md](security.md) | **Full security plan**: threats, encryption, data minimisation, 2FA, infra, incident runbook, phase checklist, public Security page copy |
 | [edge-cases.md](edge-cases.md) | What can go wrong and how each case is handled |
 | [testing.md](testing.md) | Test strategy, scenarios, acceptance criteria |
 | [roadmap.md](roadmap.md) | Build phases, **integrations roadmap**, future updates |
