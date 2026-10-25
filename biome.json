@@ -16,7 +16,8 @@
       "!pnpm-lock.yaml",
       "!docs",
       "!marketing",
-      "!**/next-env.d.ts"
+      "!**/next-env.d.ts",
+      "!**/.turbo"
     ]
   },
   "formatter": {
@@ -41,5 +42,10 @@
     "parser": {
       "tailwindDirectives": true
     }
+  },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
   }
 }
