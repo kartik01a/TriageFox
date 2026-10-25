@@ -82,13 +82,15 @@ Sealed credential shapes (opened only by the worker, binding = org id + connecti
 
 `defaults` are the per-connection chosen targets (set in Phase 2). In Phase 7 the setup wizard copies them into `automation_destinations.config`, which can then override per automation.
 
-### Automations
+### Automations (table built in Phase 3; setup UI in Phase 7)
 | Table | Key columns |
 |---|---|
-| `automations` | id, org_id, source_connection_id, name, enabled, settings jsonb |
-| `automation_destinations` | id, automation_id, connection_id, config jsonb |
+| `automations` | id, org_id, source_connection_id (FK → connections, **ON DELETE CASCADE**), name, enabled (default false), settings jsonb. **RLS.** |
+| `automation_destinations` | id, automation_id, connection_id, config jsonb (Phase 5) |
 
-`automations.settings`:
+Deleting a source connection deletes its automations and, through them, their threads and events. Phase 7 puts a clear warning in front of that.
+
+`automations.settings` (defaults in `defaultAutomationSettings`):
 ```json
 {
   "includeSourceLink": false,
@@ -107,13 +109,15 @@ Sealed credential shapes (opened only by the worker, binding = org id + connecti
 ### Ingestion & triage
 | Table | Key columns |
 |---|---|
-| `source_events` | id, connection_id, dedupe_key **UNIQUE**, topic, meta jsonb (**IDs only**: website_id, session_id, event, fingerprint, timestamp; no message content), status (`received` \| `processed` \| `ignored` \| `failed`), received_at |
-| `threads` | id, automation_id, source_type (`conversation`), source_id (**UNIQUE per automation**; Crisp `session_id`), state (`open` \| `resolved`), last_processed_message_id, rolling_summary (**encrypted**), updated_at |
+| `source_events` (Phase 3) | id, org_id, connection_id (FK, cascade), dedupe_key **UNIQUE**, topic, meta jsonb (**IDs only**: websiteId, sessionId, event, fingerprint, state, messageType, from, timestamp; no message content), status (`received` \| `ignored`, check constraint), received_at. **RLS.** |
+| `threads` (Phase 3) | id, org_id, automation_id (FK, cascade), source_type (`conversation`), source_id (Crisp `session_id`), state (`open` \| `resolved`), last_event_at, **last_processed_message_id** (a message fingerprint: our position, never the text), last_evaluated_state, last_evaluated_at, source_updated_at (the conversation's own `updated_at` at our last fetch; reconcile compares against it), evaluation_count, last_error, rolling_summary (**encrypted**, Phase 4), created_at, updated_at. **UNIQUE (automation_id, source_type, source_id).** **RLS.** |
 | `issues` | id, automation_id, origin_thread_id, title, body_md, type, priority (1–5), due_date, due_date_quote, confidence, embedding vector(1536), report_count, status (`active` \| `pending_review` \| `dismissed`), created_at |
 | `issue_reports` | issue_id, thread_id, customer_ref, reported_at |
 | `destination_tickets` | id, issue_id, automation_destination_id, external_id, external_key, url, last_pushed_at, last_remote_updated_at, status (`ok` \| `failed` \| `broken`), **UNIQUE (issue_id, automation_destination_id)** |
 | `ai_runs` | id, thread_id, model, key_source (`platform` \| `byok`), input_tokens, output_tokens, cost_usd, decision jsonb, raw_output (**encrypted**, cleared after 30 days), created_at |
 | `activity_log` | id, org_id, automation_id, kind, message, refs jsonb, created_at |
+
+**Routing functions** (migration 0005, `SECURITY DEFINER`, executable only by the runtime role, identifiers only): a hook knows just the Crisp website id and the runtime role cannot read across workspaces, so `crisp_routes(website_id)` returns `(org_id, connection_id, automation_id, quiet_window_sec)` for active connections with enabled automations, `crisp_reconcile_targets()` lists the same for every website, and `purge_old_source_events(days)` applies retention.
 
 **`dedupe_key`:** each connector computes it. Crisp hooks have no event id, so we use `sha256(website_id | event | data.fingerprint ?? data.session_id | timestamp)`.
 
@@ -127,6 +131,6 @@ Sealed credential shapes (opened only by the worker, binding = org id + connecti
 
 ## Retention
 
-- `source_events`: 30 days (at least 7 days while a connection is paused, so events can be replayed).
+- `source_events`: 30 days, enforced by the daily `maintenance.cleanup` job (`purge_old_source_events`).
 - `ai_runs.raw_output`: 30 days (encrypted), then cleared; counters kept.
 - Full retention and deletion rules: [security.md](security.md#4-store-as-little-as-possible).

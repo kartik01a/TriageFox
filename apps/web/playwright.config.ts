@@ -5,6 +5,10 @@ import { defineConfig, devices } from "@playwright/test";
 // Tests read the same root .env as the app (live provider checks run only when credentials exist).
 const rootEnv = join(import.meta.dirname, "..", "..", ".env");
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
+// The hook route needs a signing secret. A real .env wins; otherwise tests use their own (they sign their own hooks).
+process.env.CRISP_HOOK_SECRET ||= "e2e-hook-signing-secret-0123456789";
+// Let the live reconcile test see conversations that are hours old.
+process.env.RECONCILE_LOOKBACK_MIN ||= "100000";
 
 export default defineConfig({
   testDir: "./e2e",

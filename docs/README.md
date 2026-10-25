@@ -49,3 +49,4 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 - 2026-10-25: **Phase 0 (API spike) done**: findings recorded in `docs/integrations/*.md`.
 - 2026-10-26: **Phase 1 (Foundation) done**: monorepo, dev infra, database + row-level security, sealed-box crypto, auth + workspaces + invitations, landing v0 with waitlist and Crisp support widget, worker skeleton, CI. See [development.md](development.md). **Next: Phase 2 (Connections).**
 - 2026-10-26: **Phase 2 (Connections) done**: Crisp, Trello and Jira connections, pickers, OpenAI key entry, worker request channel; verified live against the real providers. **Next: Phase 3 (Ingest + queue).**
+- 2026-10-26: **Phase 3 (Ingest + queue) done**: signed Crisp hook route, IDs-only event store, debounced per-conversation evaluation with locking, reconcile, SSRF-safe file downloads; verified live against real Crisp conversations. **Next: Phase 4 (AI triage).**

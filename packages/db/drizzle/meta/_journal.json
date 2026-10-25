@@ -29,6 +29,20 @@
       "when": 1792955290557,
       "tag": "0003_connections_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792956864664,
+      "tag": "0004_pipeline",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792956865004,
+      "tag": "0005_pipeline_rls_and_routing",
+      "breakpoints": true
     }
   ]
 }

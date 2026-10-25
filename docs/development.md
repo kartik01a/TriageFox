@@ -40,6 +40,11 @@ New migration: edit `packages/db/src/schema/*`, then `pnpm db:generate`, review 
 ## Connections need the worker
 Anything that needs a customer's token runs in the worker, so `pnpm dev` (web + worker) is required for the Connections pages. Provider setup (Trello key, Atlassian app, Crisp plugin): [setup/providers.md](setup/providers.md).
 
+## Pipeline notes
+- `CRISP_HOOK_SECRET` (web) must equal the signing secret in the Crisp plugin; the worker needs `CRISP_PLUGIN_ID/KEY/UUID`. `RECONCILE_LOOKBACK_MIN` (worker, default 180) widens or narrows what the reconcile job re-checks.
+- To try the hook path by hand with the dev Crisp website: run `pnpm dev`, point the Crisp development web hook at your ngrok domain (`/api/webhooks/crisp`), create a linked Crisp connection and an enabled automation (the UI for automations arrives in Phase 7; tests create rows directly), then chat from the Crisp chat page.
+- Jobs: BullMQ queue `pipeline` (`thread.evaluate`, `crisp.reconcile`, `maintenance.cleanup`). Tests use their own random queue names so they never collide with a running worker.
+
 ## Tests
 - Unit/integration: Vitest per package (db tests need `pnpm infra:up`).
 - Browser: Playwright in `apps/web/e2e` (reads emails from Mailpit). The test setup starts the worker itself (set `E2E_NO_WORKER=1` to use your own).

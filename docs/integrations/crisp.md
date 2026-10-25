@@ -32,7 +32,12 @@ Auth: HTTP Basic with `identifier:key` plus header `X-Crisp-Tier: plugin`.
 
 Self-hosters create **their own** Crisp plugin and use a development or production token. The self-host guide covers this.
 
-## Plugin hooks (webhooks)
+## Plugin hooks (webhooks): as built in Phase 3
+- Endpoint: `POST /api/webhooks/crisp`. In the Marketplace, set the **Development Web Hook** URL to `<public URL>/api/webhooks/crisp` (for local work your ngrok domain; earlier spike URLs ended in `/crisp` and must be changed) and set the same signing secret as `CRISP_HOOK_SECRET` in `.env` (read by the **web app**).
+- Subscribe to: `message:send`, `message:received`, `session:set_state`.
+- Details of verification, routing, debounce, reconcile: [../architecture.md](../architecture.md) "As built in Phase 3".
+
+## Plugin hooks (webhooks): design notes
 
 - **One endpoint**: `POST /api/webhooks/crisp`. Each payload has `website_id`, `event`, `data`, `timestamp`; we route by `website_id`.
 - **Signature (plugin hooks only):** headers `X-Crisp-Request-Timestamp` and `X-Crisp-Signature`. Compute `HMAC-SHA256(secret, "[" + timestamp + ";" + rawBody + "]")` (the brackets and semicolon are literal) and compare it with the signature. Reject if they don't match.

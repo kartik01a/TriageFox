@@ -1,6 +1,7 @@
 import { type FetchLike, ProviderError } from "@triagefox/connectors";
 import { openSecret, type PrivateKeyring, sealSecret } from "@triagefox/crypto";
 import { and, type Db, eq, schema, withOrg } from "@triagefox/db";
+import { LockBusyError, withLock as pipelineLock } from "@triagefox/pipeline";
 import { RpcError } from "@triagefox/rpc";
 import type { Redis } from "ioredis";
 import type { loadConfig } from "../config";
@@ -119,31 +120,18 @@ export async function failWith(
   throw err;
 }
 
-/** Run `fn` while holding a Redis lock (serialises token refreshes for one connection). */
+/** Serialises work per key (e.g. one Jira token refresh at a time). Busy for too long → a retryable error. */
 export async function withLock<T>(
   redis: Redis,
   key: string,
   fn: () => Promise<T>,
   waitMs = 15_000,
 ): Promise<T> {
-  const token = Math.random().toString(36).slice(2);
-  const deadline = Date.now() + waitMs;
-  while (true) {
-    const ok = await redis.set(`lock:${key}`, token, "PX", 20_000, "NX");
-    if (ok) break;
-    if (Date.now() > deadline)
-      throw new RpcError("unavailable", "Another refresh is in progress. Please try again.");
-    await new Promise((r) => setTimeout(r, 100));
-  }
   try {
-    return await fn();
-  } finally {
-    // Release only our own lock.
-    await redis.eval(
-      `if redis.call("get",KEYS[1])==ARGV[1] then return redis.call("del",KEYS[1]) end return 0`,
-      1,
-      `lock:${key}`,
-      token,
-    );
+    return await pipelineLock(redis, key, fn, { waitMs });
+  } catch (err) {
+    if (err instanceof LockBusyError)
+      throw new RpcError("unavailable", "Another refresh is in progress. Please try again.");
+    throw err;
   }
 }

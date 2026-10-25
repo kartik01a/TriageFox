@@ -33,6 +33,8 @@ The repo stays **private** while building, so the first public version is comple
 
 - Phase 2: done (2026-10-26). Crisp linking (iframe widget + one-time ticket), Trello and Jira OAuth with board/project pickers and required-field checks, OpenAI key entry, disconnect/revoke/health check, web↔worker channel. Scope note: chosen targets are stored per connection (`metadata.defaults`); the wizard copies them into automations in Phase 7. Owner tasks: [setup/providers.md](setup/providers.md).
 
+- Phase 3: done (2026-10-26). Signed hook route, IDs-only event store, threads, debounced evaluation, per-thread lock, full conversation fetch, reconcile, cleanup, SSRF guard. The AI step is a single seam (`triage` in `apps/worker/src/pipeline/deps.ts`) filled in Phase 4. Scope note: `automations` rows are created by tests/scripts until the Phase 7 wizard; the hook URL in the Crisp Marketplace must be switched to `/api/webhooks/crisp`.
+
 ## Integrations roadmap
 
 We add integrations **one at a time** after the MVP. Each new integration widens the market. Order is chosen by: free to test → user base → gap (no strong built-in AI ticketing) → a marketplace that brings users. The checklist is in [integrations/adding-a-connector.md](integrations/adding-a-connector.md).

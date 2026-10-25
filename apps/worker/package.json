@@ -18,7 +18,8 @@
     "bullmq": "^6.4.2",
     "ioredis": "^6.0.0",
     "@triagefox/connectors": "workspace:*",
-    "@triagefox/rpc": "workspace:*"
+    "@triagefox/rpc": "workspace:*",
+    "@triagefox/pipeline": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

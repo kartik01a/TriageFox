@@ -39,3 +39,12 @@
 | Several automations use one Crisp website | Each automation gets its own thread rows |
 | Spam or abusive messages | `no_action` |
 | Self-host install missing a required env var | Startup check fails fast with a clear message naming the variable |
+| Hook arrives for a website nobody linked, or a revoked connection / disabled automation | Acknowledged with 200, nothing stored |
+| Hook redelivered by Crisp (up to 3 attempts) | Same `dedupe_key`: second and third are no-ops |
+| Redis down when a hook arrives | Event record is rolled back and the hook answers 500, so Crisp's retry is processed (not dropped as a duplicate) |
+| Customer writes while the conversation is being analysed | The run notices the newer `last_event_at` and reschedules itself after the quiet window |
+| Hook lands in the last instant of a running evaluation | Recovered by the reconcile job within ~10 min |
+| Conversation deleted in Crisp | `last_error` on the thread, not retried |
+| Conversation has only operator messages | Thread created, marked processed, never sent to the AI |
+| Crisp stops allowing access (plugin uninstalled) | Connection `revoked`, job not retried; reconcile does the same for its website |
+| Customer-supplied file URL points inside our network | Refused by the SSRF guard before any connection is made |

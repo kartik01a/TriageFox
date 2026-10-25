@@ -34,6 +34,8 @@ export const webEnvSchema = z.object({
   /** Public identifiers only. Secrets for these providers live in the worker (docs/security.md §3). */
   TRELLO_API_KEY: z.string().optional(),
   ATLASSIAN_CLIENT_ID: z.string().optional(),
+  /** Crisp plugin hook signing secret: lets the hook route verify that a delivery really came from Crisp. */
+  CRISP_HOOK_SECRET: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().min(32),
   SMTP_HOST: z.string().default("localhost"),
   SMTP_PORT: z.coerce.number().default(1025),
@@ -58,6 +60,8 @@ export const workerEnvSchema = z.object({
   CRISP_PLUGIN_ID: z.string().optional(),
   CRISP_PLUGIN_KEY: z.string().optional(),
   CRISP_PLUGIN_UUID: z.string().optional(),
+  /** How far back the reconcile job looks for conversations whose hook may have been dropped. */
+  RECONCILE_LOOKBACK_MIN: z.coerce.number().int().positive().default(180),
   /** JSON object: key version -> base64 private key. Worker ONLY. Never set on the web app. */
   CRYPTO_PRIVATE_KEYS: z.string().min(2),
   SENTRY_DSN: z.string().optional(),

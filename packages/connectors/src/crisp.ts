@@ -41,6 +41,60 @@ export class CrispPluginClient {
     return token;
   }
 
+  /** One page (20 conversations) of recently active conversations. Empty page = no more. */
+  async listConversations(websiteId: string, page: number): Promise<CrispConversationRef[]> {
+    const res = await this.get<{
+      data?: { session_id: string; updated_at?: number; state?: string }[];
+    }>(`/website/${encodeURIComponent(websiteId)}/conversations/${page}`);
+    return (res.data ?? []).map((c) => ({
+      sessionId: c.session_id,
+      updatedAt: c.updated_at ?? 0,
+      state: c.state === "resolved" ? "resolved" : "open",
+    }));
+  }
+
+  /** The full conversation: details plus every message page, oldest first. Held in memory only. */
+  async fetchConversation(websiteId: string, sessionId: string): Promise<CrispConversation> {
+    const site = encodeURIComponent(websiteId);
+    const session = encodeURIComponent(sessionId);
+    const conv = await this.get<{
+      data: { state?: string; updated_at?: number; meta?: { nickname?: string; email?: string } };
+    }>(`/website/${site}/conversation/${session}`);
+
+    const byFingerprint = new Map<string, CrispMessage>();
+    let before: number | undefined;
+    for (let page = 0; page < MAX_MESSAGE_PAGES && byFingerprint.size < MAX_MESSAGES; page++) {
+      const q = before ? `?timestamp_before=${before}` : "";
+      const res = await this.get<{ data?: RawMessage[] }>(
+        `/website/${site}/conversation/${session}/messages${q}`,
+      );
+      const raw = res.data ?? [];
+      if (raw.length === 0) break;
+      for (const r of raw) {
+        const m = normalizeCrispMessage(r);
+        if (m) byFingerprint.set(m.fingerprint, m);
+      }
+      const oldest = Math.min(...raw.map((r) => r.timestamp ?? Number.POSITIVE_INFINITY));
+      if (!Number.isFinite(oldest) || oldest === before) break; // no progress: stop instead of looping
+      before = oldest;
+    }
+
+    const messages = [...byFingerprint.values()].sort(
+      (a, b) => a.timestamp - b.timestamp || a.fingerprint.localeCompare(b.fingerprint),
+    );
+    return {
+      sessionId,
+      websiteId,
+      state: conv.data?.state === "resolved" ? "resolved" : "open",
+      updatedAt: conv.data?.updated_at ?? 0,
+      customer: {
+        nickname: conv.data?.meta?.nickname || undefined,
+        email: conv.data?.meta?.email || undefined,
+      },
+      messages,
+    };
+  }
+
   async getWebsiteName(websiteId: string): Promise<string | undefined> {
     const res = await this.get<{ data: { name?: string; domain?: string } }>(
       `/website/${encodeURIComponent(websiteId)}`,
@@ -63,6 +117,77 @@ export class CrispPluginClient {
       throw err;
     }
   }
+}
+
+// ---- Conversations ------------------------------------------------------------------------------
+// Fetched on demand and held in memory only: transcripts are never stored (docs/security.md §4).
+
+export interface CrispMessage {
+  /** Unique within the conversation; our cursor for "what have we processed". */
+  fingerprint: string;
+  /** Milliseconds. */
+  timestamp: number;
+  role: "customer" | "operator" | "note";
+  kind: "text" | "file";
+  text?: string;
+  file?: { name: string; url: string; mime: string };
+}
+
+export interface CrispConversation {
+  sessionId: string;
+  websiteId: string;
+  state: "open" | "resolved";
+  /** Milliseconds. */
+  updatedAt: number;
+  customer: { nickname?: string; email?: string };
+  /** Oldest first. System events are dropped. */
+  messages: CrispMessage[];
+}
+
+export interface CrispConversationRef {
+  sessionId: string;
+  updatedAt: number;
+  state: "open" | "resolved";
+}
+
+interface RawMessage {
+  fingerprint?: number | string;
+  timestamp?: number;
+  type?: string;
+  from?: string;
+  content?: unknown;
+}
+
+const MESSAGE_FILE_TYPES = new Set(["file", "picture", "animation", "audio", "video"]);
+const MAX_MESSAGES = 2000;
+const MAX_MESSAGE_PAGES = 100;
+
+export function normalizeCrispMessage(m: RawMessage): CrispMessage | null {
+  if (m.fingerprint == null || typeof m.timestamp !== "number" || !m.type) return null;
+  const base = { fingerprint: String(m.fingerprint), timestamp: m.timestamp };
+  const role =
+    m.type === "note"
+      ? "note"
+      : m.from === "user"
+        ? "customer"
+        : m.from === "operator"
+          ? "operator"
+          : null;
+  if (!role) return null;
+  if (m.type === "text" || m.type === "note") {
+    return typeof m.content === "string" ? { ...base, role, kind: "text", text: m.content } : null;
+  }
+  if (MESSAGE_FILE_TYPES.has(m.type)) {
+    const c = m.content as { name?: string; url?: string; type?: string } | undefined;
+    if (!c || typeof c.url !== "string") return null;
+    return {
+      ...base,
+      role,
+      kind: "file",
+      file: { name: c.name ?? "file", url: c.url, mime: c.type ?? "application/octet-stream" },
+    };
+  }
+  return null; // events, carousels, pickers ...
 }
 
 export const CRISP_WEBSITE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

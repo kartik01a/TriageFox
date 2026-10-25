@@ -95,6 +95,20 @@ Crisp ──plugin hook──▶ POST /api/webhooks/crisp
    last message we haven't processed. Crisp can drop events after repeated delivery failures.
 ```
 
+### As built in Phase 3
+
+- **`packages/pipeline`** holds what both the web app and the worker need: queue names and payload schemas, `handleCrispHook` (record + schedule), `scheduleEvaluation` (debounce), `findCrispRoutes`, and `withLock`.
+- **Hook route** `POST /api/webhooks/crisp` (web): reject bodies over 256 KB → verify `X-Crisp-Signature` + `X-Crisp-Request-Timestamp` (HMAC, ±5 min, milliseconds) → parse → `handleCrispHook`. Every verification failure returns the same bare `401`. A signed hook we don't understand, or for an unlinked website, gets `200` (nothing to retry). Only real faults (database, Redis) return `500` so Crisp retries.
+- **`handleCrispHook`**: classify (visitor message / operator message / resolved / reopened / ignored) → look up routes → in **one transaction** insert the `source_events` row (unique `dedupe_key`: a duplicate stops here) and upsert/update the thread → schedule after commit. If scheduling fails the event row is deleted again, so Crisp's retry is not mistaken for a duplicate.
+  - Visitor message: creates the thread the first time, sets `last_event_at`, schedules after the quiet window.
+  - Operator message: stored as `ignored` (context only), schedules nothing.
+  - Resolved: schedules immediately (delay 0). Reopened: normal quiet window. State changes for conversations we don't follow do nothing.
+- **Debounce** (`scheduleEvaluation`): one BullMQ job per thread (`evaluate_<threadId>`). No job → create with the delay; job waiting out its delay → push it back (`changeDelay`) or run now (`promote`) for "resolved"; job already running → nothing.
+- **`thread.evaluate`** (worker): load thread/automation/connection (skip if inactive) → **Redis lock per thread** (renewed while held, 120 s ttl) → fetch the full conversation from Crisp (all message pages) → if nothing new since `last_processed_message_id` and state, record and stop → call the **triage seam** (Phase 4 plugs the AI in here) → save the position → if `last_event_at` is newer than the run's start, `moveToDelayed` itself by the quiet window so nothing is lost. Auth failure from Crisp marks the connection `revoked` (not retried); a vanished conversation records `last_error`; outages/rate limits retry with exponential backoff (5 attempts); a job that exhausts its retries leaves `last_error` on the thread.
+- **`crisp.reconcile`** (every 10 min): for each active Crisp connection with an enabled automation, list conversations newest first (≤10 pages, look-back `RECONCILE_LOOKBACK_MIN`, default 180), and for each whose `updated_at` is newer than the thread's `source_updated_at` (or has no thread) create the thread and schedule an evaluation **without** postponing one that is already waiting. Idempotent.
+- **`maintenance.cleanup`** (daily): deletes hook records past retention.
+- **Known small gap:** a hook that lands in the instant between a running evaluation's final check and its completion is not re-scheduled by the hook (the job is still "active"); the reconcile job picks it up within ~10 minutes.
+
 ### Why fetch the conversation instead of trusting the hook
 Hooks can arrive twice or out of order, and Crisp may drop some after repeated failures. Re-fetching the current conversation means every evaluation sees the real latest state. The hook becomes a simple "something changed" signal, and the reconcile job catches anything missed.
 

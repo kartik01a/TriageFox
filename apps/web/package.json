@@ -13,8 +13,12 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^11.9.0",
+    "@triagefox/ai": "workspace:*",
+    "@triagefox/connectors": "workspace:*",
     "@triagefox/crypto": "workspace:*",
     "@triagefox/db": "workspace:*",
+    "@triagefox/pipeline": "workspace:*",
+    "@triagefox/rpc": "workspace:*",
     "@triagefox/shared": "workspace:*",
     "better-auth": "^1.7.13",
     "class-variance-authority": "^0.7.1",
@@ -27,10 +31,7 @@
     "react-dom": "^19.3.1",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.7.0",
-    "zod": "^4.6.7",
-    "@triagefox/connectors": "workspace:*",
-    "@triagefox/rpc": "workspace:*",
-    "@triagefox/ai": "workspace:*"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
@@ -39,6 +40,8 @@
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "bullmq": "^6.4.2",
+    "ioredis": "^6.0.0",
     "postcss": "^8.5.31",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",

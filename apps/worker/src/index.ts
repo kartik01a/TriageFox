@@ -1,10 +1,13 @@
 import * as Sentry from "@sentry/node";
+import { CrispPluginClient } from "@triagefox/connectors";
 import { createDb } from "@triagefox/db";
+import { PIPELINE_QUEUE } from "@triagefox/pipeline";
 import { startRpcServer } from "@triagefox/rpc/server";
 import { createLogger } from "@triagefox/shared";
-import { Queue, Worker } from "bullmq";
+import { Queue, UnrecoverableError, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { loadConfig, verifyKeyring } from "./config";
+import { registerSchedulers, startPipelineWorker } from "./pipeline/worker";
 import { JOBS, QUEUES } from "./queues";
 import { createHandlers } from "./rpc/handlers";
 
@@ -56,6 +59,38 @@ const rpc = startRpcServer({
 });
 rpc.on("error", (err) => log.error({ err: err.message }, "rpc server error"));
 
+// Conversation pipeline: debounced evaluations, reconcile and cleanup (Phase 3).
+const pipelineQueue = new Queue(PIPELINE_QUEUE, { connection });
+const crisp = () => {
+  const {
+    CRISP_PLUGIN_ID: identifier,
+    CRISP_PLUGIN_KEY: key,
+    CRISP_PLUGIN_UUID: pluginId,
+  } = config;
+  if (!identifier || !key || !pluginId)
+    throw new UnrecoverableError("Crisp is not configured on this server");
+  return new CrispPluginClient({ identifier, key, pluginId });
+};
+const pipeline = startPipelineWorker(
+  {
+    db,
+    redis: connection,
+    queue: pipelineQueue,
+    crisp,
+    log,
+    // Phase 4 replaces this with the AI analysis. Until then an evaluation fetches the conversation and
+    // records how far we got. It never logs or stores message content.
+    triage: async ({ thread, conversation }) => {
+      log.info(
+        { threadId: thread.id, messages: conversation.messages.length, state: conversation.state },
+        "conversation evaluated",
+      );
+    },
+  },
+  { lookbackMs: config.RECONCILE_LOOKBACK_MIN * 60 * 1000 },
+);
+await registerSchedulers(pipelineQueue);
+
 // Self-check: prove the queue round-trips before declaring ready.
 await systemQueue.add(JOBS.ping, {}, { removeOnComplete: true, removeOnFail: 20 });
 log.info({ mode: config.APP_MODE }, "worker ready");
@@ -64,6 +99,8 @@ async function shutdown(signal: string) {
   log.info({ signal }, "shutting down");
   await worker.close();
   await rpc.close();
+  await pipeline.close();
+  await pipelineQueue.close();
   await systemQueue.close();
   await connection.quit();
   await db.$client.end();
