@@ -35,3 +35,8 @@ test-results/
 
 # Marketing plans, scripts and outreach — not pushed
 marketing/
+
+# Phase 0 spike artifacts
+spikes/.tokens.json
+spikes/node_modules/
+spikes/captured/

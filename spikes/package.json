@@ -1,0 +1,20 @@
+{
+  "name": "triagefox-spikes",
+  "private": true,
+  "type": "module",
+  "description": "Phase 0 throwaway API experiments. Not part of the product.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "openai": "tsx openai/check.ts",
+    "trello:url": "tsx trello/authorize-url.ts",
+    "trello": "tsx trello/probe.ts",
+    "jira": "tsx jira/probe.ts",
+    "crisp:hook": "tsx crisp/hook-server.ts",
+    "crisp": "tsx crisp/probe.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
