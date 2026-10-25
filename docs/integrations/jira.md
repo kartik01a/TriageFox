@@ -6,6 +6,13 @@
 - **Fallback:** site URL + email + API token for users who can't install OAuth apps.
 - Jira Server / Data Center: out of scope.
 
+## As built (Phase 2)
+- `GET /api/connections/jira/start` sets a one-time `state` cookie and redirects to Atlassian (`audience=api.atlassian.com`, scopes below, `prompt=consent`). The callback `GET /api/connections/jira/callback` compares `state` in constant time (single use), then stores the one-time **code** as a sealed `pending` connection and asks the worker (`jira.complete`) to exchange it: **the Atlassian client secret exists only in the worker**, and the web app never sees a token.
+- We use a confidential client with `state` (CSRF). PKCE is not used: it adds nothing for a server-side client with a secret, and Atlassian's 3LO documentation doesn't require it.
+- The worker stores `{ accessToken, refreshToken, expiresAt }` sealed, and `metadata.sites` (all accessible sites), `cloudId` (first site), `siteName`, `siteUrl`. Refresh happens in the worker under a Redis lock per connection, re-reading the stored tokens after taking the lock (rotating refresh tokens must never be used twice); refusal marks the connection `revoked`.
+- Pickers: site (when more than one) → project → issue types and priorities. `projectSetup` reads createmeta for every issue type; a type with **required fields we can't fill** (anything outside project, issuetype, summary, description, reporter, labels, duedate, priority, attachment, unless it has a default) is shown as unavailable and rejected on save with the field names. Suggested mappings: bug-like categories → Bug, feature/improvement → Story/Feature/Task; priorities by name (Highest…Lowest) or by position for custom schemes. Saved (after server-side re-validation) to `connections.metadata.defaults`: `cloudId, projectKey, projectName, issueTypeMap, priorityMap, setupOk`.
+- Disconnect deletes our tokens (Atlassian offers no simple revoke call; customers can also remove the app in their Atlassian account).
+
 ## Setup (wizard)
 1. Pick site (if several) → pick project.
 2. Fetch issue types → map our types (bug → Bug, feature → Story/Task, …).

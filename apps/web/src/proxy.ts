@@ -17,6 +17,8 @@ export function proxy(request: NextRequest) {
     frame: "https://game.crisp.chat",
   };
 
+  // Only the Crisp link page is shown inside Crisp's inbox (iframe widget); nothing else may be framed.
+  const framable = request.nextUrl.pathname === "/crisp/link";
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${crisp.script}${isDev ? " 'unsafe-eval'" : ""}`,
@@ -29,7 +31,7 @@ export function proxy(request: NextRequest) {
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-ancestors 'none'",
+    framable ? "frame-ancestors https://app.crisp.chat" : "frame-ancestors 'none'",
     isDev ? "" : "upgrade-insecure-requests",
   ]
     .filter(Boolean)

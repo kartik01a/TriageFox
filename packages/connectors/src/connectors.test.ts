@@ -224,3 +224,63 @@ describe("Crisp website token verification", () => {
     ).rejects.toBeInstanceOf(ProviderError);
   });
 });
+
+import { suggestIssueTypeMap, suggestPriorityMap, usableIssueTypes } from "./index";
+
+const t = (
+  id: string,
+  name: string,
+  extra: Partial<{ subtask: boolean; blocking: boolean }> = {},
+) => ({
+  id,
+  name,
+  subtask: !!extra.subtask,
+  blockingFields: extra.blocking ? [{ id: "customfield_1", name: "Team" }] : [],
+  hasPriority: false,
+  hasDueDate: false,
+});
+
+describe("Jira default mappings", () => {
+  it("maps bug-like categories to Bug and feature-like to Story, skipping unusable types", () => {
+    const types = [
+      t("1", "Epic"),
+      t("2", "Subtask", { subtask: true }),
+      t("3", "Task"),
+      t("4", "Story"),
+      t("5", "Bug"),
+      t("6", "Feature", { blocking: true }),
+    ];
+    const map = suggestIssueTypeMap(types);
+    expect(map.bug).toBe("5");
+    expect(map.security).toBe("5");
+    expect(map.feature).toBe("4");
+    expect(map.improvement).toBe("4");
+    expect(usableIssueTypes(types).map((x) => x.name)).toEqual(["Epic", "Task", "Story", "Bug"]);
+  });
+
+  it("returns nothing when no issue type is usable", () => {
+    expect(suggestIssueTypeMap([t("1", "Bug", { blocking: true })])).toEqual({});
+  });
+
+  it("maps priorities by name", () => {
+    const map = suggestPriorityMap([
+      { id: "1", name: "Highest" },
+      { id: "2", name: "High" },
+      { id: "3", name: "Medium" },
+      { id: "4", name: "Low" },
+      { id: "5", name: "Lowest" },
+    ]);
+    expect(map).toEqual({ 5: "1", 4: "2", 3: "3", 2: "4", 1: "5" });
+  });
+
+  it("falls back to position for custom priority schemes", () => {
+    const map = suggestPriorityMap([
+      { id: "a", name: "P0" },
+      { id: "b", name: "P1" },
+      { id: "c", name: "P2" },
+    ]);
+    expect(map[5]).toBe("a");
+    expect(map[1]).toBe("c");
+    expect(Object.keys(map)).toHaveLength(5);
+  });
+});

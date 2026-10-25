@@ -37,6 +37,10 @@ New migration: edit `packages/db/src/schema/*`, then `pnpm db:generate`, review 
 - In production, client IP for rate limiting comes only from `CF-Connecting-IP` (Cloudflare).
 - Crisp's widget skips headless/bot user agents; test it with a normal user-agent string.
 
+## Connections need the worker
+Anything that needs a customer's token runs in the worker, so `pnpm dev` (web + worker) is required for the Connections pages. Provider setup (Trello key, Atlassian app, Crisp plugin): [setup/providers.md](setup/providers.md).
+
 ## Tests
 - Unit/integration: Vitest per package (db tests need `pnpm infra:up`).
-- Browser: Playwright in `apps/web/e2e` (reads emails from Mailpit).
+- Browser: Playwright in `apps/web/e2e` (reads emails from Mailpit). The test setup starts the worker itself (set `E2E_NO_WORKER=1` to use your own).
+- **Live checks**: when real credentials are in `.env` the e2e suite also runs against the real Crisp, Trello, Jira and OpenAI APIs and skips those tests otherwise (e.g. in CI). They clean up after themselves and never revoke your tokens. Jira's rotating refresh token is kept in `spikes/.tokens.json` (git-ignored); if it is ever lost, re-run `pnpm --filter triagefox-spikes jira` to authorize again.

@@ -2,7 +2,20 @@
 
 Why Crisp first: [decisions/0006](../decisions/0006-crisp-as-mvp-source.md).
 
-## How connecting works
+## How connecting works (as built in Phase 2)
+
+1. The user opens our plugin inside Crisp. Crisp shows our page `/crisp/link` in an **iframe widget** and appends `website_id`, `token` (a per-website secret) and `locale`.
+2. The page asks the worker (`crisp.verifyWebsite`) to compare that token with the one from Crisp's API (`GET /v1/plugins/subscription/{website_id}/{plugin_uuid}/settings`, constant-time compare). Forged or unknown tokens show "Open this page from inside your Crisp inbox". The route is rate limited per IP.
+3. A cross-site iframe has no session cookie, so linking continues in a normal tab: *Continue in TriageFox* posts to `/api/crisp/link-ticket`, which **re-verifies** the token (hidden form fields are never trusted) and stores a **single-use ticket** (random 256-bit value, only its hash stored, 15 minute expiry) in `crisp_link_tickets`.
+4. `/app/connections/crisp/link?ticket=…` requires a signed-in **owner/admin**, shows which website will be linked to which workspace, and on confirmation consumes the ticket and inserts the connection **in one transaction**. A website already linked elsewhere is refused by a database unique index (`connections_crisp_website_unique`).
+5. Only `{ websiteId, websiteName }` is stored; nothing secret. `connection.check` marks the link `revoked` when Crisp reports no subscription (plugin uninstalled).
+6. `/crisp/link` is the only page allowed to be framed (CSP `frame-ancestors https://app.crisp.chat`); every other page is `frame-ancestors 'none'`.
+
+Findings: the development token can read the subscription *settings* route (including the per-website token) for trusted websites; the *details* route returns `subscription_not_found` for them. The identity question from Phase 0 is answered by the iframe `token`.
+
+Marketplace steps for the owner: [../setup/providers.md](../setup/providers.md).
+
+## How connecting works (design notes)
 
 - We register **one Crisp Marketplace plugin** for the platform (free developer signup).
 - The user installs our plugin on their Crisp website (workspace). Crisp opens our **plugin settings page** (`/crisp/settings`), where the user signs in and links that Crisp website to their workspace.

@@ -23,12 +23,21 @@ importers:
       '@sentry/nextjs':
         specifier: ^11.9.0
         version: 11.9.0(next@16.4.3(@opentelemetry/api@1.10.0)(@playwright/test@1.64.1)(@types/node@26.6.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+      '@triagefox/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@triagefox/connectors':
+        specifier: workspace:*
+        version: link:../../packages/connectors
       '@triagefox/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto
       '@triagefox/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@triagefox/rpc':
+        specifier: workspace:*
+        version: link:../../packages/rpc
       '@triagefox/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -157,6 +166,9 @@ importers:
 
   packages/connectors:
     dependencies:
+      '@triagefox/shared':
+        specifier: workspace:*
+        version: link:../shared
       zod:
         specifier: ^4.6.7
         version: 4.6.7

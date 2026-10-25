@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
+import { PASSWORD, signUp } from "./helpers";
 import { waitForLink } from "./mail";
 
-const PASSWORD = "correct-horse-battery";
 const stamp = Date.now();
 // Each run uses its own client address so the waitlist rate limit never trips repeated runs.
 const clientIp = `10.${stamp % 250}.${(stamp >> 8) % 250}.${(stamp >> 4) % 250}`;
@@ -9,17 +9,6 @@ test.use({ extraHTTPHeaders: { "x-forwarded-for": clientIp } });
 const owner = { name: "Olivia Owner", email: `owner-${stamp}@example.test` };
 const teammate = { name: "Tim Teammate", email: `tim-${stamp}@example.test` };
 let realInvitationPath = "";
-
-async function signUp(page: Page, user: { name: string; email: string }, next?: string) {
-  await page.goto(next ? `/signup?next=${encodeURIComponent(next)}` : "/signup");
-  await page.getByLabel("Your name").fill(user.name);
-  await page.getByLabel("Work email").fill(user.email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible();
-  const link = await waitForLink(user.email, /http:\/\/localhost:3000\/api\/auth\/verify-email\S+/);
-  await page.goto(link);
-}
 
 test.describe.configure({ mode: "serial" });
 

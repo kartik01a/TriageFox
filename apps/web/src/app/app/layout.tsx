@@ -20,8 +20,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link href="/app" className="hover:text-foreground">
                 Overview
               </Link>
+              <Link href="/app/connections" className="hover:text-foreground">
+                Connections
+              </Link>
               <Link href="/app/members" className="hover:text-foreground">
                 Members
+              </Link>
+              <Link href="/app/settings/ai" className="hover:text-foreground">
+                AI key
               </Link>
             </nav>
           </div>

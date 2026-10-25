@@ -19,6 +19,7 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 | [integrations/featurebase.md](integrations/featurebase.md) | Source (planned): Featurebase |
 | [integrations/adding-a-connector.md](integrations/adding-a-connector.md) | How to add a new source or destination |
 | [billing.md](billing.md) | Merchant of record, fees, payment methods, trial, limits, admin-managed plans (hosted only) |
+| [setup/providers.md](setup/providers.md) | Registering the Trello, Atlassian and Crisp apps (owner / self-host checklist) |
 | [development.md](development.md) | How to run, test and extend the codebase locally |
 | [security.md](security.md) | **Full security plan**: threats, encryption, data minimisation, 2FA, infra, incident runbook, phase checklist, public Security page copy |
 | [edge-cases.md](edge-cases.md) | What can go wrong and how each case is handled |
@@ -47,3 +48,4 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 - 2026-10-25: Planning complete (ADRs 0001–0011, pricing, security, UI, own support). `CLAUDE.md` added for implementation. Repo private until launch-ready. **Next: Phase 0 (API spike).**
 - 2026-10-25: **Phase 0 (API spike) done**: findings recorded in `docs/integrations/*.md`.
 - 2026-10-26: **Phase 1 (Foundation) done**: monorepo, dev infra, database + row-level security, sealed-box crypto, auth + workspaces + invitations, landing v0 with waitlist and Crisp support widget, worker skeleton, CI. See [development.md](development.md). **Next: Phase 2 (Connections).**
+- 2026-10-26: **Phase 2 (Connections) done**: Crisp, Trello and Jira connections, pickers, OpenAI key entry, worker request channel; verified live against the real providers. **Next: Phase 3 (Ingest + queue).**

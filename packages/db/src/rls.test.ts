@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { createDb, type Db, withOrg } from "./client";
-import { auditLog } from "./schema/index";
+import { aiSettings, auditLog, connections } from "./schema/index";
 
 // Connects as the restricted runtime role: the same one the web app and worker use.
 const appUrl = process.env.DATABASE_URL;
@@ -61,5 +61,98 @@ describe("row-level security on tenant tables", () => {
 
   it("withOrg refuses an empty workspace id", async () => {
     await expect(withOrg(db, "", async () => 1)).rejects.toThrow(/orgId/);
+  });
+});
+
+describe("row-level security on connections and ai_settings", () => {
+  const siteId = `site-${randomUUID()}`;
+
+  afterAll(async () => {
+    await owner.$client.unsafe("delete from connections where org_id in ($1, $2)", [orgA, orgB]);
+    await owner.$client.unsafe("delete from ai_settings where org_id in ($1, $2)", [orgA, orgB]);
+  });
+
+  it("a workspace only sees and changes its own connections", async () => {
+    await withOrg(db, orgA, (tx) =>
+      tx.insert(connections).values({
+        orgId: orgA,
+        provider: "trello",
+        authType: "token",
+        metadata: { username: "a" },
+      }),
+    );
+    await withOrg(db, orgB, (tx) =>
+      tx.insert(connections).values({
+        orgId: orgB,
+        provider: "trello",
+        authType: "token",
+        metadata: { username: "b" },
+      }),
+    );
+    const seenByA = await withOrg(db, orgA, (tx) => tx.select().from(connections));
+    expect(seenByA.map((c) => c.metadata.username)).toEqual(["a"]);
+    expect(await db.select().from(connections)).toHaveLength(0); // no workspace set: nothing
+    await expect(
+      withOrg(db, orgA, (tx) =>
+        tx.insert(connections).values({ orgId: orgB, provider: "trello", authType: "token" }),
+      ),
+    ).rejects.toThrow();
+    const deleted = await withOrg(db, orgA, (tx) => tx.delete(connections).returning());
+    expect(deleted.every((c) => c.orgId === orgA)).toBe(true);
+    expect(await withOrg(db, orgB, (tx) => tx.select().from(connections))).toHaveLength(1);
+  });
+
+  it("a Crisp website can be linked to only one workspace, even across workspaces", async () => {
+    await withOrg(db, orgA, (tx) =>
+      tx.insert(connections).values({
+        orgId: orgA,
+        provider: "crisp",
+        authType: "plugin_install",
+        metadata: { websiteId: siteId },
+      }),
+    );
+    const err = await withOrg(db, orgB, (tx) =>
+      tx.insert(connections).values({
+        orgId: orgB,
+        provider: "crisp",
+        authType: "plugin_install",
+        metadata: { websiteId: siteId },
+      }),
+    ).catch((e: unknown) => e);
+    // 23505 = unique_violation: the code the link action turns into "already linked to another workspace".
+    expect((err as { cause?: { code?: string } }).cause?.code).toBe("23505");
+  });
+
+  it("rejects unknown providers and statuses", async () => {
+    await expect(
+      withOrg(db, orgA, (tx) =>
+        tx
+          .insert(connections)
+          .values({ orgId: orgA, provider: "slack" as never, authType: "token" }),
+      ),
+    ).rejects.toThrow();
+    await expect(
+      withOrg(db, orgA, (tx) =>
+        tx
+          .insert(connections)
+          .values({ orgId: orgA, provider: "trello", authType: "token", status: "weird" as never }),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("AI key rows are isolated per workspace", async () => {
+    await withOrg(db, orgA, (tx) =>
+      tx.insert(aiSettings).values({ orgId: orgA, keySealed: "v1:a", keyHint: "sk-…aaaa" }),
+    );
+    await withOrg(db, orgB, (tx) =>
+      tx.insert(aiSettings).values({ orgId: orgB, keySealed: "v1:b", keyHint: "sk-…bbbb" }),
+    );
+    expect(
+      (await withOrg(db, orgA, (tx) => tx.select().from(aiSettings))).map((r) => r.keyHint),
+    ).toEqual(["sk-…aaaa"]);
+    expect(await db.select().from(aiSettings)).toHaveLength(0);
+    await expect(
+      withOrg(db, orgA, (tx) => tx.insert(aiSettings).values({ orgId: orgB, keySealed: "v1:x" })),
+    ).rejects.toThrow();
   });
 });

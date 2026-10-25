@@ -66,15 +66,21 @@ Seed data inserts the launch plans and settings, so a fresh install works immedi
 |---|---|
 | `ai_settings` | org_id, provider (`openai`), api_key_encrypted (nullable; null = use platform key, hosted only), key_verified_at. **No model fields**: models are server config only |
 
-### Connections
+### Connections (built in Phase 2)
 | Table | Key columns |
 |---|---|
-| `connections` | id, org_id, provider (`crisp` \| `trello` \| `jira`), auth_type (`plugin_install` \| `oauth` \| `token` \| `api_key`), credentials_encrypted (bytea, nullable), metadata jsonb, status (`active` \| `error` \| `revoked`), last_verified_at |
+| `connections` | id (uuid), org_id, provider (`crisp` \| `trello` \| `jira`, check constraint), auth_type (`plugin_install` \| `oauth` \| `token`), **credentials_sealed** (text, sealed box `v1:…`, null for Crisp; write-only for the web app), metadata jsonb, status (`pending` \| `active` \| `error` \| `revoked`, check constraint), status_detail, last_verified_at, created_by, created_at, updated_at. **RLS on org_id.** |
+| `ai_settings` | org_id (PK), provider, key_sealed, key_hint (`sk-…1234`), key_verified_at, updated_by, updated_at. **RLS.** No model fields. |
+| `crisp_link_tickets` | id, ticket_hash (UNIQUE, sha256), website_id, website_name, expires_at (15 min), used_at, created_at. Not tenant data (no workspace yet); only accessed by server code. |
+
+Sealed credential shapes (opened only by the worker, binding = org id + connection id + `connection.credentials`): Trello `{ token }`; Jira pending `{ code }`, active `{ accessToken, refreshToken, expiresAt }`; Crisp none. The OpenAI key is sealed with binding org id + org id + `ai.key`.
 
 `metadata` by provider:
-- Crisp: `{ websiteId, websiteName }`. No customer secret is stored: our plugin token can access every website that installed the plugin. **UNIQUE (provider, websiteId)** so a Crisp website can only be linked to one workspace.
-- Jira: `{ cloudId, siteUrl }`
-- Trello: `{ memberId, username }`
+- Crisp: `{ websiteId, websiteName }`. **Unique index** `connections_crisp_website_unique` on `metadata->>'websiteId'` where provider = crisp: a website links to one workspace across all workspaces.
+- Trello: `{ memberId, username, fullName, defaults?: { boardId, boardName, listId, listName } }`
+- Jira: `{ sites: [{id,name,url}], cloudId, siteName, siteUrl, defaults?: { cloudId, projectKey, projectName, issueTypeMap, priorityMap, setupOk } }`
+
+`defaults` are the per-connection chosen targets (set in Phase 2). In Phase 7 the setup wizard copies them into `automation_destinations.config`, which can then override per automation.
 
 ### Automations
 | Table | Key columns |

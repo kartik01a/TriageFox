@@ -6,6 +6,13 @@
 - Store token encrypted. Users never create their own API keys.
 - Review Trello's API terms / Power-Up rules for commercial use before launch.
 
+## As built (Phase 2)
+- `GET /api/connections/trello/start` (owner/admin) sets a one-time httpOnly cookie and redirects to Trello's authorize URL (`scope=read,write`, `expiration=never`, `response_type=token`, `callback_method=fragment`, `return_url=APP_URL/app/connections/trello/callback`).
+- The token comes back in the URL **fragment**. The callback page reads it once, removes it from the address bar and history, and POSTs it to `/api/connections/trello`, which requires: same origin, signed-in owner/admin, and the one-time cookie from `/start`. The token is sealed immediately with the worker's public key and stored as a `pending` connection; the worker (`trello.verify`) opens it, calls Trello, and activates the connection (or deletes it if Trello rejects the token).
+- Board and list pickers use `trello.listBoards` / `trello.listLists` through the worker; only **open** boards are offered. The chosen board/list are re-checked against Trello on save and stored as `connections.metadata.defaults` (`boardId, boardName, listId, listName`).
+- Disconnect: the worker revokes the token at Trello (`DELETE /1/tokens/{token}`, best effort) and deletes our copy. A 401 later marks the connection `revoked` ("Reconnect needed").
+- To verify manually (not automated): the real Trello consent screen and the *Allowed origins* requirement for `return_url`.
+
 ## Setup (wizard)
 1. List the user's boards → pick a board.
 2. List lists on the board → pick the target list (e.g. "Inbox" / "Triage").

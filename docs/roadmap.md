@@ -31,6 +31,8 @@ The repo stays **private** while building, so the first public version is comple
 - Phase 0: done (2026-10-25).
 - Phase 1: done (2026-10-26). Scope notes: the schema created so far covers tenancy/auth (Better Auth), `platform_settings` (seeded `signupEnabled`), `audit_log` (RLS) and `waitlist_signups`. Tables for plans, subscriptions, connections, automations, threads, issues and the rest are created in the phase that first uses them (each with RLS where tenant-scoped). 2FA UI, step-up re-auth and "Require 2FA" stay in Phase 7 as planned (the 2FA plugin and schema are already enabled).
 
+- Phase 2: done (2026-10-26). Crisp linking (iframe widget + one-time ticket), Trello and Jira OAuth with board/project pickers and required-field checks, OpenAI key entry, disconnect/revoke/health check, web↔worker channel. Scope note: chosen targets are stored per connection (`metadata.defaults`); the wizard copies them into automations in Phase 7. Owner tasks: [setup/providers.md](setup/providers.md).
+
 ## Integrations roadmap
 
 We add integrations **one at a time** after the MVP. Each new integration widens the market. Order is chosen by: free to test → user base → gap (no strong built-in AI ticketing) → a marketplace that brings users. The checklist is in [integrations/adding-a-connector.md](integrations/adding-a-connector.md).

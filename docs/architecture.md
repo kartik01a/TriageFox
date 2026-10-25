@@ -129,6 +129,14 @@ Hooks can arrive twice or out of order, and Crisp may drop some after repeated f
 - Delivery is one job per destination. If Trello succeeds and Jira fails, only Jira is retried, and the dashboard shows status for each destination.
 - No double-creates: before creating, check for an existing `destination_tickets` row for (issue, destination).
 
+## Web ↔ worker request channel (Phase 2)
+
+The web app never holds decrypted credentials. When it needs something only a customer's token can provide (listing Trello boards, Jira projects, verifying a connection, token refresh, revoking on disconnect, verifying a Crisp website token), it sends a typed request through BullMQ (`packages/rpc`, queue `rpc`) and waits for the answer. No extra network port is opened; Redis is internal and password protected.
+- Every method has a zod **input** and **output** schema (`packages/rpc/src/protocol.ts`). The worker parses results through the output schema, **stripping unknown fields**, so a token can never leak back to the web app by accident.
+- Job data contains ids only. Secrets (a pasted Trello token, the Jira one-time code) are **sealed with the public key before they are stored**, and the worker opens them from the database.
+- The worker re-checks the workspace on every call: a connection is loaded inside `withOrg(orgId)`, so another workspace's id is simply "not found".
+- Errors are typed (`auth_expired`, `not_found`, `rate_limited`, `unavailable`, `invalid`, `not_configured`, `forbidden`, `internal`) with customer-safe messages; unexpected errors are logged in the worker and hidden from the caller.
+
 ## Connector interfaces
 
 Details in [integrations/adding-a-connector.md](integrations/adding-a-connector.md). Sources and destinations implement shared `SourceConnector` / `DestinationConnector` interfaces, so new tools plug in without touching the pipeline.
