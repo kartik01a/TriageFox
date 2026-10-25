@@ -1,5 +1,5 @@
 # 0004 — Per-provider auth method
-- **Status:** Accepted
+- **Status:** Accepted (Featurebase item superseded by [0006](0006-crisp-as-mvp-source.md): Crisp connects by plugin install)
 - **Date:** 2026-10-25
 
 ## Context

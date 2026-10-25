@@ -9,10 +9,11 @@ The AI step is the product: if it misjudges what is a ticket, users lose trust. 
 - Embeddings: `text-embedding-3-small` (1536 dims) for duplicate search.
 - Model names live in config — never hard-coded.
 - Behind an `AiProvider` interface so DeepSeek (text-only) or others can be plugged in later.
+- **Bring your own key:** each workspace can store its own OpenAI key (encrypted). Self-hosted installs must use their own key; hosted workspaces use ours unless they add one. `ai_runs.key_source` records which was used.
 
 ## Inputs per evaluation
 
-1. Transcript — customer messages, **admin replies**, **internal notes** (labelled by role), with timestamps. Long threads: `rolling_summary` + latest messages.
+1. Transcript: customer messages, **operator replies** and **private notes** (labelled by role), with timestamps. Long threads: `rolling_summary` + latest messages.
 2. Images — customer screenshots (capped, e.g. max 4, downscaled).
 3. Issues already linked to this thread (id, title, summary, priority, due date).
 4. Duplicate candidates — top-5 similar open issues (id, title, summary).
@@ -113,7 +114,7 @@ Browser / OS / device / page
 ---
 Type: Bug · Priority: 4 (High) — <priorityReason>
 Reported by 3 customers            ← or names if includeCustomerNames
-Source: <Featurebase link>         ← only if includeSourceLink
+Source: <Crisp conversation link>  ← only if includeSourceLink
 Created by <product name>
 ```
 

@@ -1,32 +1,36 @@
 # Requirements & Product Decisions
 
-Agreed 2026-10-25. Each item records the decision and the reason.
+Agreed 2026-10-25 (revised the same day: Featurebase replaced by Crisp, open-core model, global launch). Each item gives the decision and the reason.
 
 ## 1. Platform type
-- Multi-tenant **SaaS**: anyone can sign up, create a workspace, invite teammates.
-- Users enter credentials for their tools; these are **stored encrypted** (see [security.md](security.md)).
-- **Billing required** before an automation can be enabled (see [billing.md](billing.md)).
+- **Open source + hosted SaaS** ([decisions/0005](decisions/0005-open-core-agpl.md)).
+  - **Hosted:** multi-tenant. Anyone can sign up, create a workspace, invite teammates.
+  - **Self-hosted:** the same code via Docker Compose. Billing switched off, own AI key required.
+- Credentials are **stored encrypted** (see [security.md](security.md)).
+- The hosted version needs a paid plan (or free tier) before an automation can be enabled ([billing.md](billing.md)).
+- **Global launch**, priced in USD.
 
-## 2. Sources watched
-- **Both** Featurebase Messenger conversations **and** feedback-board posts. Each can be toggled per automation.
+## 2. Sources
+- **MVP: Crisp** conversations ([decisions/0006](decisions/0006-crisp-as-mvp-source.md)). Free to develop against, a large small-business user base, and a marketplace that brings users.
+- Later, one at a time: Chatwoot → tawk.to → Featurebase → Freshdesk → Intercom → Zendesk → others ([roadmap.md](roadmap.md#integrations-roadmap)). More integrations means more potential customers.
 
-## 3. When a ticket is created / updated
+## 3. When a ticket is created or updated
 - **Don't** create a ticket for openers with no actual problem ("Hi, I'm X and I have a problem").
 - **Do** create one as soon as an actionable problem is described.
-- A short **quiet window** (~3 min, configurable) batches rapid consecutive messages into a single AI evaluation. Closing the conversation triggers evaluation immediately.
-- We store the link **conversation ↔ ticket(s)**. Later messages that add detail **update the same ticket**.
-- One conversation can produce **multiple tickets** if the customer raises separate problems.
-- Updates are posted as **comments**; the description is only rewritten if no human has edited the ticket since our last write (never clobber developer edits).
-- If support resolves the issue in chat after a ticket exists → comment "Possibly resolved in chat". Never auto-delete tickets.
+- A short **quiet window** (~3 min, configurable) groups rapid messages into one AI evaluation. When the conversation is marked **resolved** in Crisp, it's evaluated immediately.
+- We store the link between **conversation and ticket(s)**. Later messages that add detail **update the same ticket**.
+- One conversation can produce **several tickets** if the customer raises separate problems.
+- Updates are posted as **comments**. The description is only rewritten if no person has edited the ticket since our last write, so we never overwrite a developer's edits.
+- If support resolves the issue in chat after a ticket exists, we comment "Possibly resolved in chat". Tickets are never deleted automatically.
 
 ## 4. What counts as a ticket
-**Ticket** = needs a code/config/deployment change:
+**Ticket** = needs a code, config or deployment change:
 bug · UI/UX issue · feature request · improvement · performance · infra/deployment · security · data bug.
 
 **Not a ticket** = can be handled in chat:
-how-to / "how do I open X" · account or billing questions · greetings / thanks · spam · problems already solved in the conversation.
+how-to questions ("how do I open X") · account or billing questions · greetings and thanks · spam · problems already solved in the conversation.
 
-Uncertain cases (confidence below threshold) go to the **Review queue** with one-click "Create ticket". Full rules in [ai-triage.md](ai-triage.md).
+Uncertain cases (confidence below the threshold) go to the **Review queue** with a one-click "Create ticket" button. Full rules in [ai-triage.md](ai-triage.md).
 
 ## 5. Priority
 Five levels, **5 = highest**, each with a name and colour:
@@ -39,46 +43,52 @@ Five levels, **5 = highest**, each with a name and colour:
 | 2 | Low | lime | Low |
 | 1 | Lowest | green | Lowest |
 
-Assigned by a fixed rubric, not gut feel ([ai-triage.md](ai-triage.md#priority-rubric)).
+Set by a fixed rubric, not gut feel ([ai-triage.md](ai-triage.md#priority-rubric)).
 
 ## 6. Multiple destinations
-- One automation = one source + N destinations. **Every destination receives the same ticket.**
+- One automation = one source + any number of destinations. **Every destination gets the same ticket.**
 - If only one destination is connected, only that one is used.
 - Routing rules are future work.
 
 ## 7. Dates
-- Created date: native in Trello/Jira.
-- **Due date only if the customer explicitly stated one** ("needs to be fixed by Friday"). No mention → no due date (avoids teams having to delete fake dates).
-- AI returns the exact quote; our code converts it to a date using the message timestamp + workspace timezone.
-- Vague urgency ("ASAP", "soon") → no due date (may raise priority).
+- Created date: comes from Trello or Jira itself.
+- **Due date only if the customer explicitly stated one** ("needs to be fixed by Friday"). No mention means no due date, so teams never have to delete made-up dates.
+- The AI returns the exact quote, and our code turns it into a date using the message time and the workspace timezone.
+- Vague urgency ("ASAP", "soon") gives no due date (but may raise priority).
 
 ## 8. Two-way sync
 - **Not in v1.** Listed in [roadmap.md](roadmap.md#future-updates). We still store ticket links so it's easy to add.
 
 ## 9. Automation settings & duplicates
-- **Include Featurebase link** in ticket — toggle, **default off** (some teams don't want ticket readers to see the chat). Useful to verify AI output.
-- **Include customer names** in ticket — toggle, **default off** (then "Reported by N customers").
-- **Duplicates always merged**: a matching existing ticket gets a comment with the new report, report count +1, and any new attachments.
+- **Include conversation link** (a link to the Crisp conversation) in the ticket. Toggle, **off by default**, because some teams don't want ticket readers to see the chat. Useful for checking the AI's work.
+- **Include customer names** in the ticket. Toggle, **off by default**; when off, tickets say "Reported by N customers".
+- **Duplicates are always merged**: the matching existing ticket gets a comment with the new report, the report count goes up by 1, and new attachments are added.
 
 ## 10. AI provider & cost
-- **OpenAI** (user has OpenAI + DeepSeek keys; no Anthropic key). Chosen for vision (screenshots), strict JSON structured outputs, and embeddings. See [decisions/0002-openai.md](decisions/0002-openai.md).
-- The **platform** pays AI costs; customers pay a subscription. Usage is metered per workspace.
+- **OpenAI** ([decisions/0002](decisions/0002-openai.md)). Chosen for image input (screenshots), strict JSON output and embeddings.
+- **Bring your own OpenAI key** is a v1 feature. Self-hosters must use their own key, and hosted users may.
+- On the hosted version we pay AI costs out of subscription revenue. The free tier is capped so AI cost stays small and predictable. Usage is tracked per workspace.
 
 ## 11. Connecting tools
-- Use whatever each tool supports best: Featurebase = API key; Trello = "Connect Trello" authorize flow; Jira Cloud = OAuth 2.0 (3LO) with API-token fallback. See [decisions/0004-per-provider-auth.md](decisions/0004-per-provider-auth.md).
+- **Crisp:** the user installs our Crisp Marketplace plugin on their Crisp website. No API key to paste.
+- **Trello:** a "Connect Trello" button using Trello's authorize flow.
+- **Jira Cloud:** OAuth 2.0 (3LO), with an API token as fallback.
+- See [decisions/0004](decisions/0004-per-provider-auth.md).
 
-## 12. Tech stack
-- Not language-locked; best tool wins. Chosen: **TypeScript** monorepo, Next.js, Postgres + pgvector, BullMQ + Redis. See [decisions/0001-typescript-stack.md](decisions/0001-typescript-stack.md).
+## 12. Tech stack & hosting
+- **TypeScript** monorepo, Next.js, Postgres + pgvector, BullMQ + Redis ([decisions/0001](decisions/0001-typescript-stack.md)).
+- Hosting: **one cheap server running Docker Compose**: Oracle Cloud Always Free or a ~₹450/month VPS ([decisions/0007](decisions/0007-hosting-single-vps.md)). The same Compose file is the self-host package.
 
 ## 13. Attachments
-- **Always** included — no setting. Screenshots are critical for developers.
-- Files are streamed from Featurebase and uploaded **directly** into Trello/Jira (no storage on our side → no extra cost). Only if a file is too large or upload fails do we fall back to linking Featurebase's own file URL.
+- **Always** included, with no setting, because screenshots are critical for developers.
+- Files are streamed from Crisp and uploaded **directly** into Trello or Jira. We store nothing, so there's no extra cost. Only if a file is too large or the upload fails do we link Crisp's own file URL instead.
 
-## 14. Timeline
-- No deadline. Build in phases, verify each integration end-to-end, then release.
+## 14. Timeline & budget
+- No deadline. Build in phases, check each integration end to end, then release.
+- Running cost target: **≤ ₹1,000/month** (server, domain, testing AI usage).
 
 ## Working assumptions (override if wrong)
 - Tickets are written in **English**; non-English originals are quoted.
-- Admin replies and internal notes are included as AI context.
-- No backfill on enable; a **dry run on the last 10 conversations** is offered instead.
-- Pay before enabling; browsing and connecting are free. Trial policy TBD with pricing.
+- Operator replies and private notes are given to the AI as context.
+- No backfill on enable. A **dry run on the last 10 conversations** is offered instead.
+- Pricing and free-tier limits will be decided in a separate pricing discussion.

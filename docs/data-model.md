@@ -1,19 +1,20 @@
 # Data Model
 
-Postgres + pgvector, managed with Drizzle migrations. All tenant data is scoped by `org_id`; every query must filter by it.
+Postgres + pgvector, managed with Drizzle migrations. All tenant data is scoped by `org_id`, and every query must filter by it.
 
 ## Entity overview
 
 ```
 organizations ─┬─ memberships ── users
-               ├─ subscriptions
+               ├─ subscriptions            (hosted only)
+               ├─ ai_settings              (bring-your-own key)
                ├─ connections ─────────────┐
                └─ automations ─┬─ automation_destinations ── connections
                                ├─ threads ─┬─ issues ─┬─ destination_tickets
                                │           │          └─ issue_reports
                                │           └─ ai_runs
                                └─ activity_log
-source_events (raw webhooks, per connection)
+source_events (raw hooks, per connection)
 ```
 
 ## Tables
@@ -25,16 +26,26 @@ source_events (raw webhooks, per connection)
 | `users` | id, email, name (managed by Better Auth) |
 | `memberships` | org_id, user_id, role (`owner` \| `admin` \| `member`) |
 
-### Billing
+### Billing (hosted mode)
 | Table | Key columns |
 |---|---|
-| `subscriptions` | org_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_end |
+| `subscriptions` | org_id, provider (`dodo` \| `lemonsqueezy`), provider_customer_id, provider_subscription_id, plan, status, current_period_end |
 | `usage_counters` | org_id, period_start, tickets_created, ai_runs, ai_cost_usd |
+
+### AI settings
+| Table | Key columns |
+|---|---|
+| `ai_settings` | org_id, provider (`openai`), api_key_encrypted (nullable; null = use platform key, hosted only), model_overrides jsonb |
 
 ### Connections
 | Table | Key columns |
 |---|---|
-| `connections` | id, org_id, provider (`featurebase` \| `trello` \| `jira`), auth_type (`api_key` \| `oauth` \| `token`), credentials_encrypted (bytea), metadata jsonb (e.g. Jira cloud_id, site URL; Featurebase webhook id + signing secret ref), status (`active` \| `error` \| `revoked`), last_verified_at |
+| `connections` | id, org_id, provider (`crisp` \| `trello` \| `jira`), auth_type (`plugin_install` \| `oauth` \| `token` \| `api_key`), credentials_encrypted (bytea, nullable), metadata jsonb, status (`active` \| `error` \| `revoked`), last_verified_at |
+
+`metadata` by provider:
+- Crisp: `{ websiteId, websiteName }`. No customer secret is stored: our plugin token can access every website that installed the plugin. **UNIQUE (provider, websiteId)** so a Crisp website can only be linked to one workspace.
+- Jira: `{ cloudId, siteUrl }`
+- Trello: `{ memberId, username }`
 
 ### Automations
 | Table | Key columns |
@@ -47,7 +58,6 @@ source_events (raw webhooks, per connection)
 {
   "includeSourceLink": false,
   "includeCustomerNames": false,
-  "sources": { "conversations": true, "posts": true },
   "minConfidence": 0.7,
   "quietWindowSec": 180,
   "timezone": "UTC",
@@ -57,27 +67,30 @@ source_events (raw webhooks, per connection)
 
 `automation_destinations.config`:
 - Trello: `{ boardId, listId, labelIds: { types: {...}, priorities: {...} } }`
-- Jira: `{ cloudId, projectKey, issueTypeMap: { bug, feature, ... }, priorityMap: { "5": id, ... }, extraLabels: ["featurebase"] }`
+- Jira: `{ projectKey, issueTypeMap: { bug, feature, ... }, priorityMap: { "5": id, ... }, extraLabels: ["from-chat"] }`
 
 ### Ingestion & triage
 | Table | Key columns |
 |---|---|
-| `source_events` | id, connection_id, provider_event_id **UNIQUE**, topic, payload jsonb, status (`received` \| `processed` \| `ignored` \| `failed`), received_at |
-| `threads` | id, automation_id, source_type (`conversation` \| `post`), source_id (**UNIQUE per automation**), state (`open` \| `closed`), last_processed_message_id, rolling_summary, updated_at |
+| `source_events` | id, connection_id, dedupe_key **UNIQUE**, topic, payload jsonb, status (`received` \| `processed` \| `ignored` \| `failed`), received_at |
+| `threads` | id, automation_id, source_type (`conversation`), source_id (**UNIQUE per automation**; Crisp `session_id`), state (`open` \| `resolved`), last_processed_message_id, rolling_summary, updated_at |
 | `issues` | id, automation_id, origin_thread_id, title, body_md, type, priority (1–5), due_date, due_date_quote, confidence, embedding vector(1536), report_count, status (`active` \| `pending_review` \| `dismissed`), created_at |
 | `issue_reports` | issue_id, thread_id, customer_ref, reported_at |
-| `destination_tickets` | id, issue_id, automation_destination_id, external_id, external_key, url, last_pushed_at, last_remote_updated_at, status (`ok` \| `failed` \| `broken`) — **UNIQUE (issue_id, automation_destination_id)** |
-| `ai_runs` | id, thread_id, model, input_tokens, output_tokens, cost_usd, decision jsonb, raw_output jsonb, created_at |
+| `destination_tickets` | id, issue_id, automation_destination_id, external_id, external_key, url, last_pushed_at, last_remote_updated_at, status (`ok` \| `failed` \| `broken`), **UNIQUE (issue_id, automation_destination_id)** |
+| `ai_runs` | id, thread_id, model, key_source (`platform` \| `byok`), input_tokens, output_tokens, cost_usd, decision jsonb, raw_output jsonb, created_at |
 | `activity_log` | id, org_id, automation_id, kind, message, refs jsonb, created_at |
 
-## Constraints that enforce correctness
+**`dedupe_key`:** each connector computes it. Crisp hooks have no event id, so we use `sha256(website_id | event | data.fingerprint ?? data.session_id | timestamp)`.
 
-- `source_events.provider_event_id` UNIQUE → duplicate webhooks are no-ops.
+## Constraints that keep things correct
+
+- `source_events.dedupe_key` UNIQUE → duplicate hooks do nothing.
 - `threads (automation_id, source_type, source_id)` UNIQUE → one thread per conversation per automation.
 - `destination_tickets (issue_id, automation_destination_id)` UNIQUE → a ticket can never be created twice in the same destination.
-- HNSW index on `issues.embedding` filtered by `automation_id` and `status = 'active'`.
+- `connections (provider, metadata->>'websiteId')` UNIQUE for Crisp.
+- HNSW index on `issues.embedding`, filtered by `automation_id` and `status = 'active'`.
 
 ## Retention
 
-- `source_events`: 30 days (7 days minimum while a connection is paused, for replay).
-- `ai_runs.raw_output`: 90 days (debugging), then null the payload, keep the counters.
+- `source_events`: 30 days (at least 7 days while a connection is paused, so events can be replayed).
+- `ai_runs.raw_output`: 90 days (for debugging), then the payload is cleared and the counters kept.

@@ -21,7 +21,7 @@
 | type | issue type (mapped) + label |
 | priority | `priority` (mapped id) |
 | due_date | `duedate` |
-| extra | labels: `featurebase`, type |
+| extra | labels: `from-chat`, type |
 | attachments | `POST /rest/api/3/issue/{key}/attachments` with header `X-Atlassian-Token: no-check` |
 | updates / duplicates | comments (ADF) |
 

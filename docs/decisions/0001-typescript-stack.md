@@ -1,5 +1,5 @@
 # 0001 — TypeScript monorepo stack
-- **Status:** Accepted
+- **Status:** Accepted (hosting choice superseded by [0007](0007-hosting-single-vps.md))
 - **Date:** 2026-10-25
 
 ## Context

@@ -2,38 +2,69 @@
 
 ## MVP build phases
 
-Each phase ends with something you can verify before moving on.
+Each phase ends with something you can check before moving on.
 
 | # | Phase | Work | Done when |
 |---|---|---|---|
-| 0 | **API spike** | Confirm Featurebase webhook create-via-API, payloads, thread fetch, attachment auth; Trello authorize; Jira 3LO + createmeta. Open questions in [integrations/](integrations/). | Notes + real payload fixtures saved |
-| 1 | **Foundation** | Monorepo, DB schema + migrations, Better Auth + orgs/invites, crypto package, CI, Sentry | Sign up, create workspace, invite member |
-| 2 | **Connections** | Featurebase (verify key + register webhook), Trello (authorize + board/list picker), Jira (OAuth + project/types + required-field check) | All 3 connect; bad key = clear error; secrets never reach browser |
-| 3 | **Ingest + queue** | Webhook route, signature check, idempotent event store, threads, debounce, per-thread lock, thread fetch | Same webhook ×3 → 1 evaluation; 5 rapid messages → 1 evaluation |
-| 4 | **AI triage** | Schema, prompt + rubric, rules, vision, date resolver, eval harness + golden set | Eval targets met |
-| 5 | **Ticket creation** | Trello + Jira destinations, labels, priority mapping, markdown→ADF, attachments, fan-out, idempotency | Real chat → Trello card **and** Jira issue, complete |
-| 6 | **Updates + duplicates** | Linked updates/comments, human-edit check, embeddings, duplicate merge, toggles | Follow-up updates ticket; 2nd customer → comment |
-| 7 | **Dashboard** | Setup wizard, settings, activity log, review queue, dry run, connection health | New user sets up without help |
-| 8 | **Billing** | Stripe products, Checkout, Portal, webhooks, gating, usage limits | Can't enable without paying; cancel pauses |
-| 9 | **Hardening** | Rate limiting, backoff, revoked-token handling, alerts, landing page, docs, privacy policy | Revoking Trello mid-run → clean pause, no lost events |
+| 0 | **API spike** | Crisp: free plugin dev token, plugin hooks on a free workspace, REST routes, file URLs, settings-page linking. Trello authorize flow. Jira 3LO + createmeta. Open questions in [integrations/](integrations/). | Notes + real payload samples saved. Crisp confirmed free to test (otherwise switch to Chatwoot) |
+| 1 | **Foundation** | Monorepo, Docker Compose dev environment, DB schema + migrations, Better Auth + workspaces/invites, crypto package, CI, Sentry, AGPL `LICENSE` | Sign up, create a workspace, invite a member |
+| 2 | **Connections** | Crisp (plugin install + link website), Trello (authorize + board/list picker), Jira (OAuth + project/types + required-field check), OpenAI key entry | All 3 connect; bad setup gives a clear error; secrets never reach the browser |
+| 3 | **Ingest + queue** | Crisp hook route, signature check, dedupe event store, threads, debounce, per-thread lock, conversation fetch, reconcile job | Same hook ×3 → 1 evaluation; 5 quick messages → 1 evaluation; a dropped hook is recovered |
+| 4 | **AI triage** | Schema, prompt + rubric, ticket rules, image input, date resolver, bring-your-own key, eval runner + labelled set | Eval targets met |
+| 5 | **Ticket creation** | Trello + Jira destinations, labels, priority mapping, markdown→ADF, attachments, fan-out, no double-creates | A real Crisp chat → a complete Trello card **and** Jira issue |
+| 6 | **Updates + duplicates** | Linked updates/comments, human-edit check, embeddings, duplicate merging, toggles | A follow-up updates the ticket; a 2nd customer adds a comment |
+| 7 | **Dashboard** | Setup wizard, settings, activity log, review queue, dry run, connection health | A new user sets up without help |
+| 8 | **Self-host package** | Production `docker-compose.yml` + Caddy, setup script (generates master key), `APP_MODE`, self-host guide (create your own Crisp plugin / Trello key / Atlassian app), README with demo GIF | A fresh VM runs it by following the guide |
+| 9 | **Billing (hosted)** | MoR (Dodo / Lemon Squeezy) checkout, portal, webhooks, free tier, plan limits, usage metering | Limits are enforced; cancelling drops to the free tier |
+| 10 | **Hardening + launch** | Rate limiting, backoff, revoked-token handling, alerts, landing page, privacy policy/terms, `SECURITY.md`, submit to the Crisp Marketplace | Revoking Trello mid-run → clean pause, no lost events; plugin submitted |
 
-## Future updates
+## Integrations roadmap
+
+We add integrations **one at a time** after the MVP. Each new integration widens the market. Order is chosen by: free to test → user base → gap (no strong built-in AI ticketing) → a marketplace that brings users. The checklist is in [integrations/adding-a-connector.md](integrations/adding-a-connector.md).
+
+### Sources (support / chat tools)
+| Order | Tool | Status | Why / notes |
+|---|---|---|---|
+| 1 | **Crisp** | **MVP** | Free dev token, SMB customers who pay for tools, Marketplace. Competitor plugin "Jira Boss AI" shows demand |
+| 2 | **Chatwoot** | Next | Open source, free to self-host and test; only a manual Linear integration exists; matches our self-host audience |
+| 3 | **tawk.to** | Planned | Free and very widely installed; signed webhooks include full transcripts; REST API in private beta |
+| 4 | **Featurebase** | Planned | Chat → ticket isn't direct, Trello isn't native. Needs a paid plan for API access, so ask for a partner workspace ([integrations/featurebase.md](integrations/featurebase.md)) |
+| 5 | **Freshdesk** | Planned | Free plan with API; has a native Jira app, so we compete on AI quality and Trello support |
+| 6 | **Intercom** | Planned | Large; native Jira app is mostly manual; free developer workspace |
+| 7 | **Zendesk** | Planned | Large; enterprise-heavy; native Jira integration exists |
+| — | Help Scout, Zoho Desk, LiveChat, Front, HubSpot inbox, email inbox, Slack channel, Typeform / Google Forms, GitHub Discussions | Ideas | Assess when the list above is done |
+
+### Destinations (issue trackers)
+| Order | Tool | Status |
+|---|---|---|
+| 1 | **Trello** | **MVP** |
+| 1 | **Jira Cloud** | **MVP** |
+| 2 | Linear | Next (popular with startups, good API, OAuth) |
+| 3 | GitHub Issues | Planned (GitHub App; great for open-source/dev audience) |
+| 4 | ClickUp | Planned |
+| 5 | Asana | Planned |
+| 6 | Notion (databases) | Planned |
+| 7 | GitLab | Planned |
+| — | Monday, Azure DevOps, Shortcut, Jira Data Center | Ideas |
+
+### Notifications
+Slack and Discord alerts (e.g. for P5 Critical tickets) and an email digest. Planned after the first extra source.
+
+## Future updates (product features)
 
 Not in v1. Add new ideas here.
 
-- **Two-way sync** — ticket marked done → update Featurebase post status and/or notify the customer.
-- **Routing rules** — e.g. bugs → Jira, features → Trello; filters by type/priority.
-- **More destinations** — Linear, GitHub Issues, ClickUp, Asana, Notion, GitLab, Monday, Azure DevOps, Shortcut.
-- **More sources** — Intercom, Crisp, Canny, Zendesk, email inbox, Slack channel, Typeform / Google Forms, GitHub Discussions.
-- **Notifications** — Slack / Discord alert for P5 (Critical) tickets; email digest.
-- **Priority auto-bump** from upvotes or duplicate report count.
-- **Custom AI instructions** per workspace ("our checkout is critical", glossary of product areas).
-- **Bring your own AI key**; DeepSeek as a cheaper text-only option.
-- **Jira Server / Data Center** support.
-- **Analytics** — top bugs, volume by type, time-to-ticket.
-- **Backfill** historical conversations on enable.
+- **Two-way sync**: ticket marked done → update the conversation / notify the customer.
+- **Routing rules**: e.g. bugs → Jira, features → Trello; filters by type or priority.
+- **Automatic priority bump** based on the duplicate report count.
+- **Custom AI instructions** per workspace ("our checkout is critical", a glossary of product areas).
+- **Other AI providers** (DeepSeek for text-only, Anthropic) through the provider interface.
+- **Analytics**: top bugs, volume by type, time to ticket.
+- **Backfill** of historical conversations when an automation is enabled.
 - **Duplicate search across the whole destination backlog**, not just tickets we created.
+- Optional Trello Power-Up (a badge showing the source conversation) for a listing in the Power-Up directory.
 
-## Business track
+## Business & launch track
 
-- Market & competitor analysis; decide open-source vs SaaS vs open-core; pricing. → future doc `docs/private/<date>-business-analysis.md` (not pushed).
+- Business analysis and pricing: `docs/private/` (not pushed).
+- Marketing plan, YouTube scripts, launch posts, outreach: `marketing/` (not pushed).

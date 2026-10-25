@@ -1,43 +1,24 @@
-# Featurebase (Source)
+# Featurebase (Source, planned, not MVP)
 
-## Auth
-- **API key** from the customer's Featurebase dashboard, pasted into our Connections page.
-- On save: verify with a cheap authenticated call, then encrypt and store.
+> Was the original MVP source. Replaced by Crisp on 2026-10-25 ([decisions/0006](../decisions/0006-crisp-as-mvp-source.md)), because API and webhook access appears to need a paid Featurebase plan (around $59/seat/month), which is too expensive for testing. Revisit when we can get a partner or developer workspace.
 
-## Webhooks
-- **One webhook per Featurebase connection**, shared by all automations that use the connection. Featurebase limits organizations to **10 webhooks by default**, so never create one per automation.
-- Endpoint: `POST /api/webhooks/featurebase/:connectionId`.
-- Verify the signature with the webhook's signing secret (stored encrypted). Reject on failure.
-- Pin the API version (newer endpoints are versioned, e.g. `2026-01-01.nova`).
+## Why it's still worth adding later
+- Featurebase's native Jira, Linear and ClickUp integrations push **feedback posts**. Turning a **chat** into a ticket takes manual steps (chat → post → push).
+- **Trello** is only possible through Zapier.
+- Its Messenger chats are exactly the input our pipeline handles.
 
-### Topics we subscribe to
-| Topic | Use |
-|---|---|
-| `conversation.user.created` | New conversation → start thread |
-| `conversation.user.replied` | Customer added info → re-evaluate (debounced) |
-| `conversation.admin.replied` | Context (e.g. "known bug", "fixed for you") |
-| `conversation.admin.noted` | Internal note context |
-| `conversation.admin.closed` | Evaluate immediately |
-| `conversation.admin.opened` | Reopened → re-evaluate |
-| `post.created` | New feedback post → evaluate |
-| comment events on posts | Extra detail → update |
+## Notes from research
+- Auth: API key from the Featurebase dashboard.
+- One webhook per connection (Featurebase allows **10 webhooks per organization** by default).
+- Conversation topics: `conversation.user.created`, `conversation.user.replied`, `conversation.admin.replied`, `conversation.admin.noted`, `conversation.admin.closed`, `conversation.admin.opened`. Posts: `post.created`, comment events.
+- API is versioned by date (e.g. `2026-01-01.nova`); pin the version.
 
-## Data we fetch
-- Full conversation messages (role, body, timestamp, attachments).
-- Post title, content, category/tags, author, comments.
-- Attachments: stream download → upload to destination.
-
-## Open questions (Phase 0 spike)
-- [ ] Can webhooks be **created** via the API (docs show list / update / delete / rotate-secret)? If not, show the user our URL to paste manually + secret field.
-- [ ] Exact payload shape for each topic; is a stable event id included for dedupe?
-- [ ] Endpoint to fetch a conversation's full message list (pagination?).
-- [ ] Are attachment URLs public, signed, or authenticated?
-- [ ] Deep-link URL format for a conversation / post (for `includeSourceLink`).
-- [ ] Rate limits.
-- [ ] Customer identity fields available (name, email, company) and timezone if any.
-
-Save real payload samples as fixtures in `packages/connectors/featurebase/__fixtures__/`.
+## Before building
+- [ ] Ask Featurebase for a free partner/developer workspace (pitch: a Trello integration they don't have).
+- [ ] Confirm which plan includes API and webhooks.
+- [ ] Payload shapes, event id for dedupe, conversation fetch endpoint, attachment auth.
 
 ## References
 - https://docs.featurebase.app/rest-api/webhooks
 - https://docs.featurebase.app/guides/webhooks/topics
+- https://help.featurebase.app/articles/7224730-jira-integration

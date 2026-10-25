@@ -32,3 +32,6 @@ test-results/
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Marketing plans, scripts and outreach — not pushed
+marketing/

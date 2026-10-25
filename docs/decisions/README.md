@@ -1,13 +1,17 @@
 # Architecture Decision Records
 
-One file per significant decision: `NNNN-short-name.md`. Accepted ADRs are not edited — write a new one that supersedes it.
+One file per significant decision: `NNNN-short-name.md`. Don't edit an accepted ADR's decision; write a new one that supersedes it, and update the old one's status line.
 
 | # | Decision | Status |
 |---|---|---|
-| [0001](0001-typescript-stack.md) | TypeScript monorepo stack | Accepted |
+| [0001](0001-typescript-stack.md) | TypeScript monorepo stack | Accepted (hosting → 0007) |
 | [0002](0002-openai.md) | OpenAI as AI provider | Accepted |
-| [0003](0003-stripe.md) | Stripe for billing | Accepted (revisit before launch) |
-| [0004](0004-per-provider-auth.md) | Per-provider auth method | Accepted |
+| [0003](0003-stripe.md) | Stripe for billing | Superseded by 0008 |
+| [0004](0004-per-provider-auth.md) | Per-provider auth method | Accepted (Featurebase → 0006) |
+| [0005](0005-open-core-agpl.md) | Open source (AGPL) + paid hosted version | Accepted |
+| [0006](0006-crisp-as-mvp-source.md) | Crisp as MVP source, replacing Featurebase | Accepted |
+| [0007](0007-hosting-single-vps.md) | One server with Docker Compose | Accepted |
+| [0008](0008-billing-merchant-of-record.md) | Global billing through a merchant of record | Accepted |
 
 ## Template
 
@@ -17,14 +21,14 @@ One file per significant decision: `NNNN-short-name.md`. Accepted ADRs are not e
 - **Date:** YYYY-MM-DD
 
 ## Context
-What problem or force requires a decision.
+What problem or constraint calls for a decision.
 
 ## Decision
 What we chose.
 
 ## Alternatives considered
-Option — why not.
+Each option, and why we didn't pick it.
 
 ## Consequences
-What this makes easier / harder; follow-ups.
+What this makes easier or harder; follow-ups.
 ```

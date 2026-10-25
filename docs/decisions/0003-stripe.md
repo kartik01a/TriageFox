@@ -1,5 +1,5 @@
 # 0003 — Stripe for billing
-- **Status:** Accepted (revisit before public launch)
+- **Status:** Superseded by [0008](0008-billing-merchant-of-record.md)
 - **Date:** 2026-10-25
 
 ## Context
