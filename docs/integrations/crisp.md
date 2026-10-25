@@ -59,9 +59,9 @@ File messages have `type: "file"` with `content: { name, url, type }`.
 - [x] **File URLs are public, unsigned and cached for years** (`https://storage.crisp.chat/users/upload-1/session/…`; unauthenticated `HEAD` returned 200 with `content-type`/`content-length`, `cache-control: public, max-age=315360000`). Anyone with the link can open it, but the path is unguessable. Consequences: **SSRF allowlist = `storage.crisp.chat`**; no need to re-fetch for fresh URLs; the "link to the Crisp file" fallback works for ticket readers but means that link is effectively public, so say so in the privacy docs.
 - [x] **Visitor events captured:** `message:send` (text and file; `from: "user"`; includes `fingerprint`, `session_id`, `website_id`, `origin: "chat"`). A visitor message into a resolved conversation emits **`session:set_state` with `state: "unresolved"`** (our reopen trigger). **Event order is not guaranteed** (`set_state` arrived between the two `message:send` events), so the worker must always re-fetch the conversation and never rely on hook order.
 
-### Still open (verify when convenient; none blocks Phase 1)
-- [ ] `session:request:initiated`: not seen yet (the first visitor message produced `message:send` + `session:set_state`). Don't rely on it; treat the first `message:send` as the conversation start.
-- [ ] **Private notes:** shape and whether hooks fire (needs a note typed in the inbox).
+### Still open (none blocks Phase 1)
+- [ ] `session:request:initiated`: not seen yet (the first visitor message produced `message:send` + `session:set_state`). Don't rely on it; treat the first `message:send` as the conversation start. (Needs a brand-new visitor session to test; low priority.)
+- [x] **Private notes are locked on the free Crisp plan** (the Note tab prompts to upgrade), so they can't be tested for free and **free-plan customers can't create them**. The AI input treats notes as optional context: handle `type: "note"` messages if they ever appear (to verify on a paid trial before launch), and never depend on them.
 - [ ] How the plugin **settings page** identifies the website and user (signed parameters?), so a website can't be linked by someone who doesn't own it. Examine when building the settings page (Phase 2).
 - [ ] REST quotas for production tokens, and **Marketplace review requirements** (launch task).
 - [ ] Crisp **identity verification** on the free plan, and how many websites a free account can have (Phase 7 / Phase 9, for own support).
