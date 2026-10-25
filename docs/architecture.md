@@ -40,11 +40,14 @@ The amount of setup in the self-hosted column is the main reason teams pay for t
 ```
 apps/
   web/                    Next.js
+    app/(marketing)/                  landing, pricing, integrations, SEO guide pages, legal
     app/(auth)/                       sign in / sign up
     app/(dashboard)/automations/      list, setup wizard, detail, settings, activity
     app/(dashboard)/review/           review queue
     app/(dashboard)/connections/      connect / disconnect / health
     app/(dashboard)/billing/          plan, payment portal (hosted only)
+    app/admin/                        simple platform-admin UI (plans, trial & platform settings, workspaces, AI spend)
+    app/api/admin/                    platform-admin routes (2FA + email allowlist, audit-logged)
     app/api/webhooks/crisp/route.ts   single plugin-hook endpoint, routed by website_id
     app/api/webhooks/billing/route.ts
     app/api/oauth/{trello,jira}/callback/route.ts
@@ -127,6 +130,24 @@ Hooks can arrive twice or out of order, and Crisp may drop some after repeated f
 ## Connector interfaces
 
 Details in [integrations/adding-a-connector.md](integrations/adding-a-connector.md). Sources and destinations implement shared `SourceConnector` / `DestinationConnector` interfaces, so new tools plug in without touching the pipeline.
+
+## Admin routes (hosted)
+
+Plans, trial and platform settings live in the DB, not in code ([decisions/0009](decisions/0009-config-in-db-admin-routes.md)).
+
+| Route | Purpose |
+|---|---|
+| `GET/PUT /api/admin/settings` | Trial (days, conversation cap, card required, unlimited with own key), AI budgets, sign-ups on/off |
+| `GET/POST /api/admin/plans` · `PATCH /api/admin/plans/:id` | List / create a plan / new version (prices, limits, MoR price IDs, visibility, badge, order). Archive instead of delete |
+| `GET /api/admin/workspaces` | Search workspaces; plan, usage, trial status |
+| `POST /api/admin/workspaces/:id/extend-trial` · `/pause` · `/resume` | Support actions |
+| `GET /api/admin/usage` | AI spend this month (platform, trials, by workspace) |
+
+Access: signed-in user whose email is in `PLATFORM_ADMIN_EMAILS`, with 2FA. Every write goes to `admin_audit_log`. Input is validated with zod; a plan can't be made public without MoR price IDs.
+
+## UI
+
+Product, landing and dashboard design: [ui-ux.md](ui-ux.md).
 
 ## Dashboard pages
 

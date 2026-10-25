@@ -12,6 +12,7 @@ One file per significant decision: `NNNN-short-name.md`. Don't edit an accepted 
 | [0006](0006-crisp-as-mvp-source.md) | Crisp as MVP source, replacing Featurebase | Accepted |
 | [0007](0007-hosting-single-vps.md) | One server with Docker Compose | Accepted |
 | [0008](0008-billing-merchant-of-record.md) | Global billing through a merchant of record | Accepted |
+| [0009](0009-config-in-db-admin-routes.md) | Plans, trial and platform settings in the DB, managed via admin routes | Accepted |
 
 ## Template
 

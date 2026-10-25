@@ -7,16 +7,16 @@ Each phase ends with something you can check before moving on.
 | # | Phase | Work | Done when |
 |---|---|---|---|
 | 0 | **API spike** | Crisp: free plugin dev token, plugin hooks on a free workspace, REST routes, file URLs, settings-page linking. Trello authorize flow. Jira 3LO + createmeta. Open questions in [integrations/](integrations/). | Notes + real payload samples saved. Crisp confirmed free to test (otherwise switch to Chatwoot) |
-| 1 | **Foundation** | Monorepo, Docker Compose dev environment, DB schema + migrations, Better Auth + workspaces/invites, crypto package, CI, Sentry, AGPL `LICENSE` | Sign up, create a workspace, invite a member |
+| 1 | **Foundation** | Monorepo, Docker Compose dev environment, DB schema + migrations, Better Auth + workspaces/invites, crypto package, CI, Sentry, AGPL `LICENSE`, design system setup (Tailwind + shadcn/ui + Motion, brand tokens), **landing v0 with waitlist** ([ui-ux.md](ui-ux.md)) | Sign up, create a workspace, invite a member; waitlist page live |
 | 2 | **Connections** | Crisp (plugin install + link website), Trello (authorize + board/list picker), Jira (OAuth + project/types + required-field check), OpenAI key entry | All 3 connect; bad setup gives a clear error; secrets never reach the browser |
 | 3 | **Ingest + queue** | Crisp hook route, signature check, dedupe event store, threads, debounce, per-thread lock, conversation fetch, reconcile job | Same hook ×3 → 1 evaluation; 5 quick messages → 1 evaluation; a dropped hook is recovered |
 | 4 | **AI triage** | Schema, prompt + rubric, ticket rules, image input, date resolver, bring-your-own key, eval runner + labelled set | Eval targets met |
 | 5 | **Ticket creation** | Trello + Jira destinations, labels, priority mapping, markdown→ADF, attachments, fan-out, no double-creates | A real Crisp chat → a complete Trello card **and** Jira issue |
 | 6 | **Updates + duplicates** | Linked updates/comments, human-edit check, embeddings, duplicate merging, toggles | A follow-up updates the ticket; a 2nd customer adds a comment |
-| 7 | **Dashboard** | Setup wizard, settings, activity log, review queue, dry run, connection health | A new user sets up without help |
+| 7 | **Dashboard** | App UI per [ui-ux.md](ui-ux.md): onboarding wizard, integrations page, overview, activity log, review queue, dry run, connections, settings (incl. own-key entry) | A new user sets up without help |
 | 8 | **Self-host package** | Production `docker-compose.yml` + Caddy, setup script (generates master key), `APP_MODE`, self-host guide (create your own Crisp plugin / Trello key / Atlassian app), README with demo GIF | A fresh VM runs it by following the guide |
-| 9 | **Billing (hosted)** | MoR (Dodo / Lemon Squeezy) checkout, portal, webhooks, free tier, plan limits, usage metering | Limits are enforced; cancelling drops to the free tier |
-| 10 | **Hardening + launch** | Rate limiting, backoff, revoked-token handling, alerts, landing page, privacy policy/terms, `SECURITY.md`, submit to the Crisp Marketplace | Revoking Trello mid-run → clean pause, no lost events; plugin submitted |
+| 9 | **Billing + admin (hosted)** | MoR (Dodo) checkout, portal, webhooks; trial; plan limits + usage metering; **plans / trial / platform settings in DB + admin routes + simple admin UI** ([0009](decisions/0009-config-in-db-admin-routes.md)); billing page with Monthly/Yearly toggle | Limits enforced; changing trial days or a price via admin takes effect without a deploy |
+| 10 | **Hardening + launch** | Rate limiting, backoff, revoked-token handling, alerts, **full animated landing + pricing page** ([ui-ux.md](ui-ux.md)), privacy policy/terms, `SECURITY.md`, submit to the Crisp Marketplace | Revoking Trello mid-run → clean pause, no lost events; landing scores ≥ 90 in Lighthouse; plugin submitted |
 
 ## Integrations roadmap
 

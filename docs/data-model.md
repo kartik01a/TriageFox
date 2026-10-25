@@ -29,8 +29,17 @@ source_events (raw hooks, per connection)
 ### Billing (hosted mode)
 | Table | Key columns |
 |---|---|
-| `subscriptions` | org_id, provider (`dodo` \| `lemonsqueezy`), provider_customer_id, provider_subscription_id, plan, status, current_period_end |
-| `usage_counters` | org_id, period_start, tickets_created, ai_runs, ai_cost_usd |
+| `subscriptions` | org_id, provider (`dodo` \| `lemonsqueezy`), provider_customer_id, provider_subscription_id, plan_id, plan_version, interval (`monthly` \| `yearly`), status (`trialing` \| `active` \| `past_due` \| `canceled`), trial_ends_at, current_period_end |
+| `usage_counters` | org_id, period_start, conversations_analysed, tickets_created, ai_runs, ai_cost_usd, trial_ai_cost_usd |
+
+### Platform configuration (hosted mode, edited via admin routes; see [decisions/0009](decisions/0009-config-in-db-admin-routes.md))
+| Table | Key columns |
+|---|---|
+| `plans` | id, slug, version, name, price_monthly_cents, price_yearly_cents, conversation_limit (null = unlimited), fair_use_cap, inbox_limit (null = unlimited), byok_required, support_level, provider_price_ids jsonb (`{ dodo: { monthly, yearly } }`), is_public, is_active, is_popular, sort_order, created_at. **UNIQUE (slug, version)** |
+| `platform_settings` | key (PK), value jsonb, updated_by, updated_at. Keys: `trial` `{ days, conversationCap, cardRequired, unlimitedWithOwnKey }`, `budgets` `{ trialAiUsdMonthly, platformAiUsdMonthly }`, `signupEnabled` |
+| `admin_audit_log` | id, admin_email, action, target, before jsonb, after jsonb, created_at |
+
+Seed data inserts the launch plans and settings, so a fresh install works immediately.
 
 ### AI settings
 | Table | Key columns |

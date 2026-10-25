@@ -22,6 +22,11 @@ We hold other companies' Trello and Jira tokens, access to their Crisp conversat
 - Verify every incoming signature: Crisp plugin hooks (`X-Crisp-Signature`, HMAC-SHA256) and billing provider webhooks. Reject invalid ones with 401.
 - Reject Crisp hooks whose timestamp is too old (replay protection).
 
+## Platform admin
+- `/api/admin/*` and `/admin` are only for signed-in users whose email is in `PLATFORM_ADMIN_EMAILS` **and** who have 2FA enabled. Everyone else gets 404 (not 403), so the routes aren't advertised.
+- Every write is logged in `admin_audit_log` (who, what, before/after).
+- Admins can't read customers' decrypted credentials or OpenAI keys through any route.
+
 ## Tenant isolation
 - Every table carries `org_id` (directly or through its parent), and every query filters by it. Integration tests try cross-workspace access.
 - Roles: owner (billing), admin (connections and automations), member (read + review queue).

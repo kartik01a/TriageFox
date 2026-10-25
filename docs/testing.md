@@ -47,6 +47,15 @@
 ## Billing (hosted)
 - MoR test mode: subscription created → limits raised; payment failed → grace period then downgrade; cancelled → free tier.
 - Non-owners cannot open billing.
+- Trial: no-card sign-up → 50-conversation cap enforced; adding own key lifts the cap during the trial; a second account can't start a new trial on an already-linked Crisp inbox; trial AI budget exhausted → new trials require own key.
+- Admin routes: non-admin and admin-without-2FA get 404; changing trial days, card-required or a plan price takes effect without a deploy and is audit-logged; existing subscribers keep their plan version; a plan without MoR price IDs can't be made public.
+- Pricing page renders plans from the DB; the Monthly/Yearly and own-key toggles show the right prices.
+
+## UI
+- Lighthouse ≥ 90 on landing and pricing (mobile); LCP < 2.5 s.
+- `prefers-reduced-motion` shows static versions of all animations.
+- Keyboard-only run through sign-up → onboarding → enable.
+- Empty, loading and error states render for each app page.
 
 ## End to end (Playwright)
 Sign up → create a workspace → install the Crisp plugin and link the website → connect Trello and Jira → configure the automation → enable → send a real Crisp chat from the test website → a Trello card and a Jira issue appear with labels, priority and attachments → the result shows in the activity log.

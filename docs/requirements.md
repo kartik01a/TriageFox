@@ -11,7 +11,8 @@ Agreed 2026-10-25 (revised the same day: Featurebase replaced by Crisp, open-cor
 - **Global launch**, priced in USD.
 
 ## 2. Sources
-- **MVP: Crisp** conversations ([decisions/0006](decisions/0006-crisp-as-mvp-source.md)). Free to develop against, a large small-business user base, and a marketplace that brings users.
+- **MVP: Crisp** conversations ([decisions/0006](decisions/0006-crisp-as-mvp-source.md)).
+- In the UI and on pricing, each connected source account (a Crisp website, later a Chatwoot inbox or tawk.to property) is called a **connected inbox**. Free to develop against, a large small-business user base, and a marketplace that brings users.
 - Later, one at a time: Chatwoot → tawk.to → Featurebase → Freshdesk → Intercom → Zendesk → others ([roadmap.md](roadmap.md#integrations-roadmap)). More integrations means more potential customers.
 
 ## 3. When a ticket is created or updated
