@@ -53,6 +53,8 @@ File messages have `type: "file"` with `content: { name, url, type }`.
 - [ ] Deep-link format for a conversation (for `includeSourceLink`), e.g. `https://app.crisp.chat/website/{website_id}/inbox/{session_id}/`.
 - [ ] REST quotas for development vs production tokens.
 - [ ] Marketplace submission and review requirements for publishing.
+- [ ] Crisp identity verification (server-signed user email) for in-app support chats, and whether it works on the free plan.
+- [ ] How many Crisp websites a free account can have (we need `TriageFox Dev` + `TriageFox Support`).
 
 Save real payload samples as fixtures in `packages/connectors/crisp/__fixtures__/`.
 

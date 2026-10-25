@@ -46,6 +46,13 @@ source_events (raw hooks, per connection)
 
 Seed data inserts the launch plans and settings, so a fresh install works immediately.
 
+### Own support (platform only, see [own-support.md](own-support.md))
+| Table | Key columns |
+|---|---|
+| `support_items` | id, thread_id, category (`bug` \| `feature` \| `billing` \| `refund_request` \| `account` \| `complaint` \| `question` \| `praise`), priority, title, summary, customer_email, identity_verified, matched_user_id, matched_org_id, status (`new` \| `in_progress` \| `done`), notes jsonb, testimonial_approved, crisp_url, created_at, updated_at |
+
+`connections.provider` also allows `internal_inbox` (platform automation only). `platform_settings` also holds `supportInbox` `{ capturedCategories, alertCategories, alertPriorityMin: 4, unansweredAfterHours: 4 }`.
+
 ### Security
 | Table | Key columns |
 |---|---|

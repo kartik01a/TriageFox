@@ -25,6 +25,7 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 | [roadmap.md](roadmap.md) | Build phases, **integrations roadmap**, future updates |
 | [plans/](plans/) | Dated implementation plans |
 | [ui-ux.md](ui-ux.md) | Landing page, pricing page, onboarding and app UI plan |
+| [own-support.md](own-support.md) | Our own support: Crisp widget, admin inbox, email + Slack alerts |
 | [decisions/](decisions/) | Architecture Decision Records (ADRs) |
 | [private/](private/) | **Not pushed.** Business analysis, pricing, personal notes |
 

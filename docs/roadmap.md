@@ -7,7 +7,7 @@ Each phase ends with something you can check before moving on.
 | # | Phase | Work | Done when |
 |---|---|---|---|
 | 0 | **API spike** | Crisp: free plugin dev token, plugin hooks on a free workspace, REST routes, file URLs, settings-page linking. Trello authorize flow. Jira 3LO + createmeta. Open questions in [integrations/](integrations/). | Notes + real payload samples saved. Crisp confirmed free to test (otherwise switch to Chatwoot) |
-| 1 | **Foundation** | Monorepo, Docker Compose dev environment, DB schema + migrations, Better Auth + workspaces/invites, crypto package, CI, Sentry, AGPL `LICENSE`, design system setup (Tailwind + shadcn/ui + Motion, brand tokens), **landing v0 with waitlist** ([ui-ux.md](ui-ux.md)) | Sign up, create a workspace, invite a member; waitlist page live |
+| 1 | **Foundation** | Monorepo, Docker Compose dev environment, DB schema + migrations, Better Auth + workspaces/invites, crypto package, CI, Sentry, AGPL `LICENSE`, design system setup (Tailwind + shadcn/ui + Motion, brand tokens), **landing v0 with waitlist + Crisp support widget** ([ui-ux.md](ui-ux.md), [own-support.md](own-support.md)) | Sign up, create a workspace, invite a member; waitlist page live |
 | 2 | **Connections** | Crisp (plugin install + link website), Trello (authorize + board/list picker), Jira (OAuth + project/types + required-field check), OpenAI key entry | All 3 connect; bad setup gives a clear error; secrets never reach the browser |
 | 3 | **Ingest + queue** | Crisp hook route, signature check, dedupe event store, threads, debounce, per-thread lock, conversation fetch, reconcile job | Same hook ×3 → 1 evaluation; 5 quick messages → 1 evaluation; a dropped hook is recovered |
 | 4 | **AI triage** | Schema, prompt + rubric, ticket rules, image input, date resolver, bring-your-own key, eval runner + labelled set | Eval targets met |
@@ -15,7 +15,7 @@ Each phase ends with something you can check before moving on.
 | 6 | **Updates + duplicates** | Linked updates/comments, human-edit check, embeddings, duplicate merging, toggles | A follow-up updates the ticket; a 2nd customer adds a comment |
 | 7 | **Dashboard** | App UI per [ui-ux.md](ui-ux.md): onboarding wizard, integrations page, overview, activity log, review queue, dry run, connections, settings (incl. own-key entry) | A new user sets up without help |
 | 8 | **Self-host package** | Production `docker-compose.yml` + Caddy, setup script (generates master key), `APP_MODE`, self-host guide (create your own Crisp plugin / Trello key / Atlassian app), README with demo GIF | A fresh VM runs it by following the guide |
-| 9 | **Billing + admin (hosted)** | MoR (Dodo) checkout, portal, webhooks; trial; plan limits + usage metering; **plans / trial / platform settings in DB + admin routes + simple admin UI** ([0009](decisions/0009-config-in-db-admin-routes.md)); billing page with Monthly/Yearly toggle | Limits enforced; changing trial days or a price via admin takes effect without a deploy |
+| 9 | **Billing + admin (hosted)** | MoR (Dodo) checkout, portal, webhooks; trial; plan limits + usage metering; **plans / trial / platform settings in DB + admin routes + simple admin UI** ([0009](decisions/0009-config-in-db-admin-routes.md)); **own-support admin inbox + email/Slack alerts** ([own-support.md](own-support.md)); billing page with Monthly/Yearly toggle | Limits enforced; changing trial days or a price via admin takes effect without a deploy |
 | 10 | **Hardening + launch** | Rate limiting, backoff, revoked-token handling, alerts, **full animated landing + pricing page** ([ui-ux.md](ui-ux.md)), privacy policy/terms, `SECURITY.md`, submit to the Crisp Marketplace | Revoking Trello mid-run → clean pause, no lost events; landing scores ≥ 90 in Lighthouse; plugin submitted |
 
 ## Integrations roadmap
@@ -63,6 +63,8 @@ Not in v1. Add new ideas here.
 - **Backfill** of historical conversations when an automation is enabled.
 - **Duplicate search across the whole destination backlog**, not just tickets we created.
 - Optional Trello Power-Up (a badge showing the source conversation) for a listing in the Power-Up directory.
+- **TriageFox Inbox for customers**: offer the internal inbox (built for our own support) as a destination for teams that don't use Jira or Trello.
+- **"Ask TriageFox"** docs-answering chat bot for our own support (or upgrade to Crisp Mini for its AI answers).
 
 ## Business & launch track
 

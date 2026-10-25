@@ -175,6 +175,9 @@ Plain shadcn tables and forms, no animation, no custom styling:
 - **Plans:** table + edit form (creates a new version), visibility, "most popular", order, MoR price IDs.
 - **Workspaces:** search, plan, usage, trial end, actions (extend trial, pause/resume).
 - **AI spend:** this month, by platform, trials and top workspaces.
+- **Inbox** (`/admin/inbox`): own-support items with category/priority/status filters, Verified badge, matched account details, Open in Crisp, notes; **Testimonials** tab ([own-support.md](own-support.md)).
+
+**In the customer app:** a **Help / Report a problem** button (bottom-left of the sidebar) opens the Crisp widget with the user's verified identity, workspace and current page attached. The landing page shows the Crisp widget bubble from Phase 1.
 
 ---
 

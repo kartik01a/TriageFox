@@ -91,7 +91,9 @@ Enforced with OpenAI strict structured outputs, then re-validated with zod.
     dueDateQuote: string | null,
     relevantAttachmentIds: string[],
     confidence: number,          // 0–1
-    reason: string               // why this action; shown in activity log
+    reason: string,              // why this action; shown in activity log
+    category?: "question" | "billing" | "refund_request" | "account" | "complaint"
+             | "praise" | "greeting" | "spam"   // for no_action; drives the admin inbox (own-support.md)
   }>
 }
 ```

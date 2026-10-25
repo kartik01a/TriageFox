@@ -130,13 +130,17 @@ Decisions agreed 2026-10-25: no transcript storage, Cloudflare in front, sealed 
 - **Audit logs:**
   - `audit_log` per workspace (connections added/removed, key replaced, members, settings, billing)
   - `admin_audit_log` for platform admins
-- **Alerts** (email/Telegram):
+- **Alerts** (email + Slack):
   - spike in failed logins
   - unusual number of decryptions
   - admin sign-in from a new location
   - many webhook signature failures
   - AI spend near the ceiling
   - uptime down
+
+### Own-support specifics
+- In-app support chats use **Crisp identity verification** (server-signed email). The admin inbox marks unsigned chats **Unverified**, and refund/account requests from them are never acted on without checking (anyone can type someone else's email into a public chat).
+- The Slack alert webhook URL is a platform secret (env / Vault).
 
 ## 12. Incident response (runbook)
 1. **Detect:** alert or report.
