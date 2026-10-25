@@ -26,7 +26,17 @@ Effective for us: **≈ 6% + $0.40** per international subscription payment, **p
 
 **Card network fees (Visa/Mastercard/Amex interchange):** with a merchant of record we never get a separate card-network bill. Dodo is the seller and pays the card networks out of its fee; the +1.5% international surcharge is its pass-through for cross-border card costs. Dodo's pricing page doesn't spell this out, and doesn't mention Amex, so **confirm both with Dodo before launch**. Our cost model already includes the international and subscription surcharges.
 
-**Adaptive currency** (showing local prices) costs us 0%, but the customer pays a 2–4% FX fee. **Off at launch**: prices in USD.
+## Currency (agreed 2026-10-25)
+| Visitor | What they see | What they pay in |
+|---|---|---|
+| **India** | Real rupee prices (round numbers, e.g. ₹699/month), + GST added at checkout | **INR**: UPI, RuPay and Indian cards (Dodo India domestic fee: 4% + $0.15) |
+| **Everyone else** | USD price + an approximate local hint, e.g. "$9/month (≈ ¥1,350)" | **USD** (cards, Apple Pay, Google Pay) |
+
+- The currency is chosen automatically from Cloudflare's free `CF-IPCountry` header; visitors can switch manually (USD ↔ INR).
+- Hint conversion rates come from a free daily source (e.g. Frankfurter / ECB rates), cached for 24 h, and labelled "approximate".
+- Rupee prices are stored per plan alongside USD (admin-editable, versioned like USD prices).
+- Dodo's **adaptive currency** (customer pays a 2–4% FX fee) stays **off**.
+- Phase 9 check: Dodo supports a fixed INR price per product/plan.
 
 ### Keeping fees down
 1. **Yearly-first pricing page:** the toggle defaults to *Yearly (2 months free)*. One payment a year means one $0.40 fee instead of twelve.

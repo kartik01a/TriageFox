@@ -124,7 +124,7 @@ Product · Docs · GitHub · Changelog · Privacy · Terms · Contact · "Made i
 - On the own-key tab, an info line: "You pay OpenAI directly: roughly $X per 1,000 conversations."
 - Plans, prices and badges come from the **DB** (admin-managed); nothing is hard-coded.
 - Below the cards: a full comparison table, a "Need more than 5,000? Contact us" row, and a pricing FAQ.
-- Prices shown in USD, "+ tax where applicable".
+- **Currency:** auto-detected from the visitor's country (Cloudflare header), with a small USD / ₹ switch. India sees real rupee prices (₹699…) + "GST extra"; others see USD with an approximate local hint in grey ("≈ ¥1,350"). "+ tax where applicable".
 
 ---
 

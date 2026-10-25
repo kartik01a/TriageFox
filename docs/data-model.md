@@ -35,7 +35,7 @@ source_events (raw hooks, per connection)
 ### Platform configuration (hosted mode, edited via admin routes; see [decisions/0009](decisions/0009-config-in-db-admin-routes.md))
 | Table | Key columns |
 |---|---|
-| `plans` | id, slug, version, name, price_monthly_cents, price_yearly_cents, conversation_limit (null = unlimited), fair_use_cap, inbox_limit (null = unlimited), byok_required, support_level, provider_price_ids jsonb (`{ dodo: { monthly, yearly } }`), is_public, is_active, is_popular, sort_order, created_at. **UNIQUE (slug, version)** |
+| `plans` | id, slug, version, name, prices jsonb (minor units per currency: `{ USD: { monthly: 900, yearly: 9000 }, INR: { monthly: 69900, yearly: 699000 } }`), conversation_limit (null = unlimited), fair_use_cap, inbox_limit (null = unlimited), byok_required, support_level, provider_price_ids jsonb (`{ dodo: { USD: { monthly, yearly }, INR: { monthly, yearly } } }`), is_public, is_active, is_popular, sort_order, created_at. **UNIQUE (slug, version)** |
 | `platform_settings` | key (PK), value jsonb, updated_by, updated_at. Keys: `trial` `{ days, conversationCap, cardRequired, unlimitedWithOwnKey }`, `budgets` `{ trialAiUsdMonthly, platformAiUsdMonthly }`, `signupEnabled` |
 | `admin_audit_log` | id, admin_email, action, target, before jsonb, after jsonb, created_at |
 

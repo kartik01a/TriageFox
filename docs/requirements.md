@@ -8,7 +8,7 @@ Agreed 2026-10-25 (revised the same day: Featurebase replaced by Crisp, open-cor
   - **Self-hosted:** the same code via Docker Compose. Billing switched off, own AI key required.
 - Credentials are **stored encrypted** (see [security.md](security.md)).
 - The hosted version needs a paid plan (or free tier) before an automation can be enabled ([billing.md](billing.md)).
-- **Global launch**, priced in USD.
+- **Global launch**, priced in USD; **real INR prices for India** (UPI); an approximate local-currency hint for everyone else ([billing.md](billing.md)).
 
 ## 2. Sources
 - **MVP: Crisp** conversations ([decisions/0006](decisions/0006-crisp-as-mvp-source.md)).
