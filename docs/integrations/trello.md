@@ -13,6 +13,12 @@
 - Disconnect: the worker revokes the token at Trello (`DELETE /1/tokens/{token}`, best effort) and deletes our copy. A 401 later marks the connection `revoked` ("Reconnect needed").
 - To verify manually (not automated): the real Trello consent screen and the *Allowed origins* requirement for `return_url`.
 
+## As built (Phase 5)
+- Delivery job `ticket.deliver` (one per issue x destination, worker). Labels are found by name on the board (case-insensitive) or created on first use: `P5 Critical` red, `P4 High` orange, `P3 Medium` yellow, `P2 Low` lime, `P1 Lowest` green, plus the type label; only the two a ticket needs are created, and their ids are remembered in `automation_destinations.config.labelIds`.
+- The card is created with a JSON body (descriptions can exceed URL length): name (250 chars), markdown description (16,000), `due` = the date at 12:00 UTC, and the two label ids.
+- Attachments: re-fetched from Crisp at delivery (the conversation is never stored), downloaded with `safeDownload` (host `storage.crisp.chat` only, 10 MB cap) and uploaded as multipart. Over 10 MB → added as a link attachment and noted in the activity log. Files from any other host are dropped, never linked.
+- Errors: 401 → connection `revoked`, ticket `failed`, no retry. 404 (list/board gone) → `broken`, never recreated. 429/5xx → retried with backoff (5 attempts), then `failed`. 400 → `failed` with a plain message.
+
 ## Setup (wizard)
 1. List the user's boards → pick a board.
 2. List lists on the board → pick the target list (e.g. "Inbox" / "Triage").

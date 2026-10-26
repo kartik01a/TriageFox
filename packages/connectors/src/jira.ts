@@ -179,6 +179,68 @@ export class JiraClient {
     });
   }
 
+  private send<T>(method: "POST" | "PUT", path: string, body: unknown) {
+    return requestJson<T>("jira", this.fetch, `${this.base}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${this.opts.accessToken}`,
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  createIssue(issue: {
+    projectKey: string;
+    issueTypeId: string;
+    summary: string;
+    description: unknown;
+    labels: string[];
+  }) {
+    return this.send<{ id: string; key: string }>("POST", "/issue", {
+      fields: {
+        project: { key: issue.projectKey },
+        issuetype: { id: issue.issueTypeId },
+        summary: issue.summary,
+        description: issue.description,
+        labels: issue.labels,
+      },
+    });
+  }
+
+  /** Priority is not on every create screen, so it is set by editing (verified in Phase 0). */
+  async editIssue(
+    key: string,
+    change: { fields?: Record<string, unknown>; update?: Record<string, unknown> },
+  ) {
+    await this.send("PUT", `/issue/${encodeURIComponent(key)}`, change);
+  }
+
+  addComment(key: string, adf: unknown) {
+    return this.send("POST", `/issue/${encodeURIComponent(key)}/comment`, { body: adf });
+  }
+
+  uploadAttachment(key: string, file: Blob, name: string) {
+    const form = new FormData();
+    form.append("file", file, name);
+    return requestJson(
+      "jira",
+      this.fetch,
+      `${this.base}/issue/${encodeURIComponent(key)}/attachments`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${this.opts.accessToken}`,
+          accept: "application/json",
+          "x-atlassian-token": "no-check",
+        },
+        body: form,
+      },
+      60_000,
+    );
+  }
+
   async listProjects(): Promise<JiraProject[]> {
     const out: JiraProject[] = [];
     for (let startAt = 0; startAt < 500; ) {

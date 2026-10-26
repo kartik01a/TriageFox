@@ -9,12 +9,21 @@ export const JOBS = {
   evaluate: "thread.evaluate",
   /** Re-check recently active conversations to recover from dropped hooks. Repeatable. */
   reconcile: "crisp.reconcile",
+  /** Create (or finish creating) one issue in one destination. One job per issue x destination. */
+  deliver: "ticket.deliver",
   /** Delete expired records. Repeatable. */
   cleanup: "maintenance.cleanup",
 } as const;
 
 export const evaluatePayload = z.object({ orgId: z.string().min(1), threadId: z.uuid() });
 export type EvaluatePayload = z.infer<typeof evaluatePayload>;
+
+export const deliverPayload = z.object({
+  orgId: z.string().min(1),
+  issueId: z.uuid(),
+  destinationId: z.uuid(),
+});
+export type DeliverPayload = z.infer<typeof deliverPayload>;
 
 export interface PipelineQueue {
   queue: Queue;

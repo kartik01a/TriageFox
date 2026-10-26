@@ -1,5 +1,5 @@
 import type { Queue } from "bullmq";
-import { type EvaluatePayload, JOBS } from "./queues";
+import { type DeliverPayload, type EvaluatePayload, JOBS } from "./queues";
 
 export const evaluateJobId = (threadId: string) => `evaluate_${threadId}`;
 
@@ -41,4 +41,22 @@ export async function scheduleEvaluation(
     return "rescheduled" as const;
   }
   return "already_pending" as const;
+}
+
+export const deliverJobId = (p: Pick<DeliverPayload, "issueId" | "destinationId">) =>
+  `deliver_${p.issueId}_${p.destinationId}`;
+
+/**
+ * One delivery job per issue x destination. The job id makes a repeated enqueue a no-op while the
+ * job exists; the unique destination_tickets row is what really prevents a second ticket.
+ * Failed jobs are kept (not removed) so a retry with the same id is not silently swallowed.
+ */
+export function scheduleDelivery(queue: Queue, target: DeliverPayload) {
+  return queue.add(JOBS.deliver, target, {
+    jobId: deliverJobId(target),
+    attempts: 5,
+    backoff: { type: "exponential", delay: 15_000 },
+    removeOnComplete: true,
+    removeOnFail: true,
+  });
 }

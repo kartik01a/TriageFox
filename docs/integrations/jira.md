@@ -46,4 +46,11 @@
 - [x] **ADF description works** (heading, paragraph, ordered list).
 - [x] **Attachments:** 1, 10 and **11 MB** all succeeded, so the limit is above 10 MB on this site. Use Jira's reported limit (`GET /rest/api/3/attachment/meta`) at setup, with 10 MB as the safe default.
 - [x] **`updated` changes when a comment is added**, so it can't distinguish human description edits from our own comments. Use the issue **changelog** (`GET /issue/{key}/changelog`, look for `description` field changes by someone other than our app) instead.
-- [ ] Markdown → ADF converter choice (library vs small in-house builder for our limited template). Decide in Phase 5.
+- [x] **Markdown → ADF: a small in-house converter** (`packages/connectors/src/adf.ts`). Our ticket template only needs headings, paragraphs, ordered/bullet lists, rules, bold, inline code and links. It builds text nodes only (customer/AI text can never become markup) and links only `http(s)` URLs, which a general library would not guarantee.
+
+## As built (Phase 5)
+- Delivery job `ticket.deliver` (worker): create the issue with project, mapped issue type, summary (250 chars), ADF description and labels `from-chat` + the ticket type. The access token comes from the same locked refresh used by the Phase 2 pickers.
+- **Priority and due date are set by editing** after creation (they are not on every create screen). If the priority edit is refused, a `priority-N` label is added and the activity log says so; a refused due date is skipped and logged.
+- Attachments: re-fetched from Crisp, `safeDownload` (10 MB, Crisp storage host only), `POST …/attachments` with `X-Atlassian-Token: no-check`. Too large → a comment with the link.
+- Issue type with no mapping → ticket `failed` with a clear message, Jira not called. 401 → connection `revoked`; 404 → `broken`; 429/5xx retried; 400 → `failed`.
+- The issue URL is `<site url>/browse/<KEY>`.

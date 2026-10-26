@@ -134,7 +134,14 @@ describe("worker AI step", () => {
   it("saves the run, seals the model output and logs plain-language activity", async () => {
     const f = fakeProvider([create]);
     const i = await input();
-    await createTriage({ db, config, keyring, log, providerFor: f.make })(i);
+    await createTriage({
+      enqueueDelivery: async () => {},
+      db,
+      config,
+      keyring,
+      log,
+      providerFor: f.make,
+    })(i);
 
     const [run] = await withOrg(db, orgId, (tx) =>
       tx.select().from(schema.aiRuns).where(eq(schema.aiRuns.threadId, i.thread.id)),
@@ -155,7 +162,7 @@ describe("worker AI step", () => {
     const rows = await withOrg(db, orgId, (tx) =>
       tx.select().from(schema.activityLog).where(eq(schema.activityLog.threadId, i.thread.id)),
     );
-    expect(rows.map((r) => r.kind)).toEqual(["ai_create"]);
+    expect(rows.map((r) => r.kind)).toEqual(["ai_create", "no_destination"]);
     expect(rows[0]?.message).not.toContain("Safari");
   });
 
@@ -179,7 +186,14 @@ describe("worker AI step", () => {
     );
     const f = fakeProvider([create]);
     const i = await input(otherOrg);
-    await createTriage({ db, config, keyring, log, providerFor: f.make })(i);
+    await createTriage({
+      enqueueDelivery: async () => {},
+      db,
+      config,
+      keyring,
+      log,
+      providerFor: f.make,
+    })(i);
     expect(f.keys).toEqual(["sk-own-key"]);
     const [run] = await withOrg(db, otherOrg, (tx) =>
       tx.select().from(schema.aiRuns).where(eq(schema.aiRuns.threadId, i.thread.id)),
@@ -196,7 +210,14 @@ describe("worker AI step", () => {
   it("stops after the monthly per-conversation limit", async () => {
     const f = fakeProvider([create]);
     const i = await input();
-    const run = createTriage({ db, config, keyring, log, providerFor: f.make });
+    const run = createTriage({
+      enqueueDelivery: async () => {},
+      db,
+      config,
+      keyring,
+      log,
+      providerFor: f.make,
+    });
     await run(i);
     await run(i);
     await run(i); // third is over the limit of 2
@@ -212,6 +233,7 @@ describe("worker AI step", () => {
     const i = await input();
     await expect(
       createTriage({
+        enqueueDelivery: async () => {},
         db,
         config: { ...config, OPENAI_API_KEY: undefined },
         keyring,
@@ -235,7 +257,14 @@ describe("worker AI step", () => {
       }),
     );
     await expect(
-      createTriage({ db, config, keyring, log, providerFor: f.make })(i),
+      createTriage({
+        enqueueDelivery: async () => {},
+        db,
+        config,
+        keyring,
+        log,
+        providerFor: f.make,
+      })(i),
     ).rejects.toBeInstanceOf(UnrecoverableError);
     expect(f.keys).toHaveLength(0);
   });
@@ -244,6 +273,7 @@ describe("worker AI step", () => {
     const i = await input();
     await expect(
       createTriage({
+        enqueueDelivery: async () => {},
         db,
         config,
         keyring,
@@ -258,6 +288,7 @@ describe("worker AI step", () => {
 
     const j = await input();
     const err = await createTriage({
+      enqueueDelivery: async () => {},
       db,
       config,
       keyring,
@@ -270,11 +301,112 @@ describe("worker AI step", () => {
 
   it("an empty answer still leaves an activity entry", async () => {
     const i = await input();
-    await createTriage({ db, config, keyring, log, providerFor: fakeProvider([]).make })(i);
+    await createTriage({
+      enqueueDelivery: async () => {},
+      db,
+      config,
+      keyring,
+      log,
+      providerFor: fakeProvider([]).make,
+    })(i);
     const rows = await withOrg(db, orgId, (tx) =>
       tx.select().from(schema.activityLog).where(eq(schema.activityLog.threadId, i.thread.id)),
     );
     expect(rows.map((r) => r.kind)).toEqual(["ai_no_action"]);
+  });
+});
+
+describe("creating issues from the AI's answer", () => {
+  async function withDestination(i: TriageInput) {
+    const [conn] = await withOrg(db, orgId, (tx) =>
+      tx
+        .insert(schema.connections)
+        .values({ orgId, provider: "trello", authType: "token", status: "active", metadata: {} })
+        .returning(),
+    );
+    const [dest] = await withOrg(db, orgId, (tx) =>
+      tx
+        .insert(schema.automationDestinations)
+        .values({
+          orgId,
+          automationId: i.automation.id,
+          connectionId: conn?.id ?? "",
+          config: { kind: "trello", boardId: "B", listId: "L" },
+        })
+        .returning(),
+    );
+    return dest?.id ?? "";
+  }
+  const issuesOf = (threadId: string) =>
+    withOrg(db, orgId, (tx) =>
+      tx.select().from(schema.issues).where(eq(schema.issues.originThreadId, threadId)),
+    );
+  const run = (queued: unknown[], answer: Parameters<typeof fakeProvider>[0]) =>
+    createTriage({
+      enqueueDelivery: async (p) => void queued.push(p),
+      db,
+      config,
+      keyring,
+      log,
+      providerFor: fakeProvider(answer).make,
+    });
+
+  it("saves the issue with a finished body and queues one delivery per destination", async () => {
+    const queued: unknown[] = [];
+    const i = await input();
+    const dest = await withDestination(i);
+    await run(queued, [create])(i);
+    const [issue] = await issuesOf(i.thread.id);
+    expect(issue).toMatchObject({ type: "bug", priority: 4, status: "active", reportCount: 1 });
+    expect(issue?.bodyMd).toContain("## Steps to reproduce");
+    expect(issue?.bodyMd).toContain("Reported by 1 customer");
+    expect(issue?.bodyMd).not.toContain("Source:"); // off by default
+    expect(queued).toEqual([{ orgId, issueId: issue?.id, destinationId: dest }]);
+  });
+
+  it("keeps low-confidence tickets for review and does not send them", async () => {
+    const queued: unknown[] = [];
+    const i = await input();
+    await withDestination(i);
+    await run(queued, [{ ...create, confidence: 0.4 }])(i);
+    const [issue] = await issuesOf(i.thread.id);
+    expect(issue?.status).toBe("pending_review");
+    expect(queued).toHaveLength(0);
+  });
+
+  it("says so when there is nowhere to send the ticket", async () => {
+    const queued: unknown[] = [];
+    const i = await input();
+    await run(queued, [create])(i);
+    expect(queued).toHaveLength(0);
+    const rows = await withOrg(db, orgId, (tx) =>
+      tx.select().from(schema.activityLog).where(eq(schema.activityLog.threadId, i.thread.id)),
+    );
+    expect(rows.map((r) => r.kind)).toContain("no_destination");
+  });
+
+  it("shows the AI the tickets already made from this conversation", async () => {
+    const i = await input();
+    await run([], [create])(i);
+    const seen: string[] = [];
+    await createTriage({
+      enqueueDelivery: async () => {},
+      db,
+      config,
+      keyring,
+      log,
+      providerFor: () => ({
+        async complete(req) {
+          seen.push(req.text);
+          return {
+            json: { actions: [] },
+            usage: { inputTokens: 10, cachedInputTokens: 0, outputTokens: 5, reasoningTokens: 0 },
+            finishReason: "stop",
+          };
+        },
+      }),
+    })(i);
+    expect(seen[0]).toContain("Checkout fails on Safari");
   });
 });
 

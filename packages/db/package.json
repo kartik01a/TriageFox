@@ -14,7 +14,8 @@
     "test": "vitest run",
     "generate": "drizzle-kit generate",
     "migrate": "tsx --env-file=../../.env src/migrate.ts",
-    "seed": "tsx --env-file=../../.env src/seed.ts"
+    "seed": "tsx --env-file=../../.env src/seed.ts",
+    "dev-automation": "tsx --env-file=../../.env src/dev-automation.ts"
   },
   "dependencies": {
     "better-auth": "^1.7.13",

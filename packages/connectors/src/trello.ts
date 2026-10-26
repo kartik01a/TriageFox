@@ -25,6 +25,11 @@ export interface TrelloBoard {
   name: string;
   closed: boolean;
 }
+export interface TrelloLabel {
+  id: string;
+  name: string;
+  color: string | null;
+}
 export interface TrelloList {
   id: string;
   name: string;
@@ -40,9 +45,14 @@ export class TrelloClient {
     this.fetch = opts.fetch ?? fetch;
   }
 
-  private call<T>(path: string, params: Record<string, string> = {}, init?: RequestInit) {
+  private call<T>(
+    path: string,
+    params: Record<string, string> = {},
+    init?: RequestInit,
+    timeoutMs?: number,
+  ) {
     const qs = new URLSearchParams({ key: this.opts.apiKey, token: this.opts.token, ...params });
-    return requestJson<T>("trello", this.fetch, `${this.base}${path}?${qs}`, init);
+    return requestJson<T>("trello", this.fetch, `${this.base}${path}?${qs}`, init, timeoutMs);
   }
 
   me() {
@@ -65,6 +75,70 @@ export class TrelloClient {
       filter: "open",
       fields: "name",
     });
+  }
+
+  private post<T>(path: string, body: Record<string, unknown>) {
+    return this.call<T>(
+      path,
+      {},
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
+  listLabels(boardId: string) {
+    return this.call<TrelloLabel[]>(`/boards/${encodeURIComponent(boardId)}/labels`, {
+      fields: "name,color",
+      limit: "1000",
+    });
+  }
+
+  createLabel(boardId: string, name: string, color: string) {
+    return this.post<TrelloLabel>("/labels", { idBoard: boardId, name, color });
+  }
+
+  /** `desc` and `name` go in a JSON body: descriptions can be longer than a URL allows. */
+  createCard(card: {
+    listId: string;
+    name: string;
+    desc: string;
+    due?: string;
+    labelIds?: string[];
+  }) {
+    return this.post<{ id: string; shortUrl: string; url: string }>("/cards", {
+      idList: card.listId,
+      name: card.name,
+      desc: card.desc,
+      due: card.due,
+      idLabels: card.labelIds?.join(","),
+    });
+  }
+
+  addComment(cardId: string, text: string) {
+    return this.post(`/cards/${encodeURIComponent(cardId)}/actions/comments`, { text });
+  }
+
+  /** Link attachment (used when a file is too large or cannot be uploaded). */
+  attachUrl(cardId: string, url: string, name: string) {
+    return this.post(`/cards/${encodeURIComponent(cardId)}/attachments`, { url, name });
+  }
+
+  uploadAttachment(cardId: string, file: Blob, name: string) {
+    const form = new FormData();
+    form.append("file", file, name);
+    form.append("name", name);
+    return this.call(
+      `/cards/${encodeURIComponent(cardId)}/attachments`,
+      {},
+      {
+        method: "POST",
+        body: form,
+      },
+      60_000,
+    );
   }
 
   /** Invalidate this token at Trello (used on disconnect). */

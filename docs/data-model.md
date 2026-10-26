@@ -86,7 +86,7 @@ Sealed credential shapes (opened only by the worker, binding = org id + connecti
 | Table | Key columns |
 |---|---|
 | `automations` | id, org_id, source_connection_id (FK → connections, **ON DELETE CASCADE**), name, enabled (default false), settings jsonb. **RLS.** |
-| `automation_destinations` | id, automation_id, connection_id, config jsonb (Phase 5) |
+| `automation_destinations` (Phase 5) | id, org_id, automation_id (FK, cascade), connection_id (FK, cascade), config jsonb (tagged `kind: trello \| jira`), enabled, created_at. UNIQUE (automation_id, connection_id). **RLS.** |
 
 Deleting a source connection deletes its automations and, through them, their threads and events. Phase 7 puts a clear warning in front of that.
 
@@ -111,9 +111,9 @@ Deleting a source connection deletes its automations and, through them, their th
 |---|---|
 | `source_events` (Phase 3) | id, org_id, connection_id (FK, cascade), dedupe_key **UNIQUE**, topic, meta jsonb (**IDs only**: websiteId, sessionId, event, fingerprint, state, messageType, from, timestamp; no message content), status (`received` \| `ignored`, check constraint), received_at. **RLS.** |
 | `threads` (Phase 3) | id, org_id, automation_id (FK, cascade), source_type (`conversation`), source_id (Crisp `session_id`), state (`open` \| `resolved`), last_event_at, **last_processed_message_id** (a message fingerprint: our position, never the text), last_evaluated_state, last_evaluated_at, source_updated_at (the conversation's own `updated_at` at our last fetch; reconcile compares against it), evaluation_count, last_error, rolling_summary (**encrypted**, Phase 4), created_at, updated_at. **UNIQUE (automation_id, source_type, source_id).** **RLS.** |
-| `issues` | id, automation_id, origin_thread_id, title, body_md, type, priority (1–5), due_date, due_date_quote, confidence, embedding vector(1536), report_count, status (`active` \| `pending_review` \| `dismissed`), created_at |
+| `issues` (Phase 5) | id, org_id, automation_id, origin_thread_id (FK, cascade), ai_run_id, title, summary, body_md (the finished ticket text), type, priority (1–5, check), due_date, due_date_quote, confidence, report_count, attachment_ids jsonb (Crisp message ids only; files are fetched at delivery), status (`active` \| `pending_review` \| `dismissed`), created_at. `embedding vector(1536)` is added in Phase 6. **RLS.** Tickets are the product's output and are stored in plain columns, unlike `ai_runs`/`activity_log`. |
 | `issue_reports` | issue_id, thread_id, customer_ref, reported_at |
-| `destination_tickets` | id, issue_id, automation_destination_id, external_id, external_key, url, last_pushed_at, last_remote_updated_at, status (`ok` \| `failed` \| `broken`), **UNIQUE (issue_id, automation_destination_id)** |
+| `destination_tickets` (Phase 5) | id, org_id, issue_id (FK, cascade), automation_destination_id (FK, cascade), external_id, external_key, url, last_error, last_pushed_at, last_remote_updated_at, status (`pending` \| `ok` \| `failed` \| `broken`), **UNIQUE (issue_id, automation_destination_id)**. **RLS.** |
 | `ai_runs` (Phase 4) | id, org_id, thread_id (FK, cascade), model, escalated, key_source (`platform` \| `byok`), input_tokens, output_tokens, **cost_micro_usd** (millionths of a dollar, exact sums), decision jsonb (kinds/types/priorities/confidence only, no AI-written text), **raw_output_sealed** (sealed box, binding `ai_run.output`; cleared to NULL after 30 days), created_at. **RLS.** |
 | `activity_log` (Phase 4) | id, org_id, automation_id, thread_id, kind (`ai_create`, `ai_no_action`, `ai_limit`, `ai_key_problem`, `ai_unavailable`…), message (plain language, never message text), refs jsonb, created_at. **RLS.** |
 

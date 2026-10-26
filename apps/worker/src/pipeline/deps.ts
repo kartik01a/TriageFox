@@ -23,6 +23,12 @@ export interface TriageInput {
 /** Phase 4 plugs the AI analysis in here. Until then evaluation fetches and records progress only. */
 export type Triage = (input: TriageInput) => Promise<void>;
 
+/** Creates one issue in one destination (Trello card / Jira issue). */
+export type Deliver = (
+  payload: import("@triagefox/pipeline").DeliverPayload,
+  opts?: { finalAttempt?: boolean },
+) => Promise<void>;
+
 export interface PipelineLogger {
   info(o: object, m: string): void;
   warn(o: object, m: string): void;
@@ -37,6 +43,7 @@ export interface PipelineDeps {
   /** Returns the Crisp client, or throws when the platform has no Crisp credentials. */
   crisp: () => CrispSource;
   triage: Triage;
+  deliver: Deliver;
   log: PipelineLogger;
   now?: () => Date;
 }

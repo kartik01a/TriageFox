@@ -111,6 +111,7 @@ const deps: PipelineDeps = {
   queue,
   crisp: () => crisp,
   log: { info() {}, warn() {}, error() {} },
+  deliver: async () => {},
   triage: async (i) => {
     triaged.push(i);
     await onTriage?.(i);

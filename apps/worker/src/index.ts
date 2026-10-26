@@ -1,12 +1,13 @@
 import * as Sentry from "@sentry/node";
 import { CrispPluginClient } from "@triagefox/connectors";
 import { createDb } from "@triagefox/db";
-import { PIPELINE_QUEUE } from "@triagefox/pipeline";
+import { PIPELINE_QUEUE, scheduleDelivery } from "@triagefox/pipeline";
 import { startRpcServer } from "@triagefox/rpc/server";
 import { createLogger } from "@triagefox/shared";
 import { Queue, UnrecoverableError, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { loadConfig, verifyKeyring } from "./config";
+import { createDeliver } from "./pipeline/deliver";
 import { createTriage } from "./pipeline/triage";
 import { registerSchedulers, startPipelineWorker } from "./pipeline/worker";
 import { JOBS, QUEUES } from "./queues";
@@ -79,7 +80,17 @@ const pipeline = startPipelineWorker(
     queue: pipelineQueue,
     crisp,
     log,
-    triage: createTriage({ db, config, keyring: config.keyring, log }),
+    triage: createTriage({
+      db,
+      config,
+      keyring: config.keyring,
+      log,
+      enqueueDelivery: (p) => scheduleDelivery(pipelineQueue, p),
+    }),
+    deliver: createDeliver({
+      ctx: { db, config, keyring: config.keyring, redis: connection, log },
+      crisp,
+    }),
   },
   { lookbackMs: config.RECONCILE_LOOKBACK_MIN * 60 * 1000 },
 );

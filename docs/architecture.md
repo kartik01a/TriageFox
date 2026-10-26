@@ -109,6 +109,15 @@ Crisp ──plugin hook──▶ POST /api/webhooks/crisp
 - **`maintenance.cleanup`** (daily): deletes hook records past retention.
 - **Known small gap:** a hook that lands in the instant between a running evaluation's final check and its completion is not re-scheduled by the hook (the job is still "active"); the reconcile job picks it up within ~10 minutes.
 
+### As built in Phase 5
+
+- After the AI step, the worker saves the run, **issues** and activity in one transaction, and queues deliveries afterwards (so a job never starts before its issue exists). A `create` action becomes an `issues` row with the finished ticket body (`buildTicketBody`: the template in `docs/ai-triage.md`). `update` / `duplicate_of` actions are recorded in the activity log only; applying them is Phase 6.
+- Tickets below the automation's `minConfidence` are saved as `pending_review` and **not sent**; the review queue UI arrives in Phase 7.
+- The AI is shown the issues already created from the same conversation, so a re-evaluation does not create the ticket again.
+- **`ticket.deliver`** (one job per issue x destination, job id `deliver_<issue>_<destination>`): claims the unique `destination_tickets (issue, destination)` row, creates the card/issue, saves the external id **before** attachments or priority edits, so a retry can never create a second ticket. Per-destination errors do not affect the other destination. Only the final failed attempt marks the ticket `failed`.
+- Known small window: a crash in the instant after the remote create but before the row is saved can produce one duplicate on retry (neither tool offers idempotency keys).
+- Destinations (`automation_destinations`) are created by the Phase 7 wizard; until then `pnpm db:dev-automation <orgId>` creates an enabled automation and copies each connected Trello/Jira target from `connections.metadata.defaults`.
+
 ### Why fetch the conversation instead of trusting the hook
 Hooks can arrive twice or out of order, and Crisp may drop some after repeated failures. Re-fetching the current conversation means every evaluation sees the real latest state. The hook becomes a simple "something changed" signal, and the reconcile job catches anything missed.
 

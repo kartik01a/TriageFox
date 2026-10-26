@@ -1,6 +1,7 @@
 import { eq, schema, withOrg } from "@triagefox/db";
 import {
   clearOldAiOutputs,
+  deliverPayload,
   evaluatePayload,
   JOBS,
   PIPELINE_QUEUE,
@@ -33,6 +34,13 @@ export function startPipelineWorker(deps: PipelineDeps, opts: PipelineWorkerOpti
         }
         case JOBS.reconcile:
           return reconcileCrisp(deps, { lookbackMs: opts.lookbackMs ?? 3 * 60 * 60 * 1000 });
+        case JOBS.deliver: {
+          const payload = deliverPayload.parse(job.data);
+          await deps.deliver(payload, {
+            finalAttempt: job.attemptsMade + 1 >= (job.opts.attempts ?? 1),
+          });
+          return { delivered: true };
+        }
         case JOBS.cleanup: {
           const days = opts.retentionDays ?? 30;
           return {

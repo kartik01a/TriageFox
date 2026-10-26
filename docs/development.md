@@ -50,6 +50,11 @@ Anything that needs a customer's token runs in the worker, so `pnpm dev` (web + 
 - Evals call the real API (about $0.03, 2 minutes): `pnpm --filter @triagefox/ai eval` (`-- --model sol`, `-- --filter injection`). Run after any prompt, rubric or model change.
 - Unit tests use a fake provider and need no key.
 
+## Trying ticket creation by hand
+1. `pnpm infra:up`, `pnpm dev`; sign in, connect Crisp, Trello (pick board + list) and Jira (pick project) under *Connections*.
+2. `pnpm db:dev-automation` lists workspaces; `pnpm db:dev-automation <orgId>` creates an enabled automation with a destination per connected tool (the wizard replaces this in Phase 7).
+3. Chat as a visitor in Crisp (a screenshot is a good test), wait for the quiet window (3 min; resolving the chat runs it at once) and watch the card/issue appear.
+
 ## Tests
 - Unit/integration: Vitest per package (db tests need `pnpm infra:up`).
 - Browser: Playwright in `apps/web/e2e` (reads emails from Mailpit). The test setup starts the worker itself (set `E2E_NO_WORKER=1` to use your own).

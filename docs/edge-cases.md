@@ -53,3 +53,12 @@
 | No OpenAI key configured anywhere | Activity entry, job stops retrying; the conversation is not marked processed |
 | Customer-supplied file URL is not on `storage.crisp.chat` | Not shown to the model; the AI sees "[file not shown]" |
 | Model quotes words the customer never wrote | Quote rejected by code; no due date |
+| Delivery job runs twice, or the same issue is queued twice | The unique (issue, destination) row means a second job finds the existing ticket and stops |
+| Trello fails, Jira works | Separate jobs; only the failed one is retried, the dashboard shows each status |
+| Trello list/board or Jira project deleted (404) | Ticket `broken`, logged, never recreated |
+| Jira project refuses the priority or due date | Priority becomes a `priority-N` label, due date skipped; both logged |
+| No Jira issue type mapped for a ticket type | Ticket `failed` with a clear message; Jira is not called |
+| Screenshot over 10 MB | Added to the ticket as a link instead of an upload |
+| Screenshot on a host other than Crisp storage, or at a private address | Dropped, never downloaded or linked |
+| Ticket confidence below the automation's threshold | Saved as `pending_review`, not sent (review queue in Phase 7) |
+| Ticket created but nowhere to send it | Activity entry "no Trello or Jira destination is set up yet" |

@@ -24,7 +24,7 @@ import {
 type Connection = Awaited<ReturnType<typeof loadConnection>>;
 const REFRESH_MARGIN_MS = 2 * 60 * 1000;
 
-function trello(ctx: Ctx, token: string) {
+export function trello(ctx: Ctx, token: string) {
   const apiKey = ctx.config.TRELLO_API_KEY;
   if (!apiKey) throw new RpcError("not_configured", "Trello is not configured on this server.");
   return new TrelloClient({ apiKey, token, fetch: ctx.fetch });
@@ -57,7 +57,7 @@ function crispPlugin(ctx: Ctx) {
  * refresh tokens, so concurrent refreshes would invalidate each other: one at a time per connection,
  * re-reading the stored tokens after taking the lock.
  */
-async function jiraAccessToken(ctx: Ctx, c: Connection): Promise<string> {
+export async function jiraAccessToken(ctx: Ctx, c: Connection): Promise<string> {
   const current = await openCredentials<JiraTokens>(ctx, c);
   if (current.expiresAt - Date.now() > REFRESH_MARGIN_MS) return current.accessToken;
 
