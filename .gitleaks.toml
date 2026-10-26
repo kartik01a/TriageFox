@@ -1,0 +1,13 @@
+# Used by gitleaks in CI (full history scan). Starts from the default rules.
+title = "TriageFox"
+
+[extend]
+useDefault = true
+
+# These test files contain obviously fake values on purpose (they test that secrets are redacted and
+# that key hints hide all but the last four characters). Nothing real lives here.
+[[allowlists]]
+description = "Fake fixtures in the redaction and key-hint tests"
+paths = [
+  '''packages/ai/src/(index|keys|redact)\.test\.ts''',
+]

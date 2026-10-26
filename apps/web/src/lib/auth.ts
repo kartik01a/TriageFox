@@ -10,12 +10,9 @@ import { db } from "./db";
 import { env } from "./env";
 import { logger } from "./logger";
 import { emailLayout, sendMail } from "./mailer";
+import { selfhostSignupOpen } from "./signup-rules";
 
 /** Platform setting `signupEnabled` (ADR 0009). Defaults to open when the row is missing. */
-export function selfhostSignupOpen(o: { users: number; openSignup: boolean }) {
-  return o.users === 0 || o.openSignup;
-}
-
 async function signupsOpen() {
   if (env().APP_MODE === "selfhost") {
     // The first account sets the installation up; after that people join by invitation unless the operator opens it.
@@ -117,7 +114,8 @@ function createAuth() {
 
     // Brute-force protection on top of Cloudflare's rules (docs/security.md §5).
     rateLimit: {
-      enabled: true,
+      // Only the automated browser tests switch this off (they create many accounts in a minute); never in production.
+      enabled: isProd || process.env.E2E_DISABLE_AUTH_RATE_LIMIT !== "true",
       window: 60,
       max: 60,
       customRules: {

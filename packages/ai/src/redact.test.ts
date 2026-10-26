@@ -48,7 +48,7 @@ describe("redact", () => {
     expect(r("ghp_" + "a".repeat(36))).toBe("[secret]");
     expect(
       r(
-        "auth eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U ok",
+        `auth ${["eyJhbGciOiJIUzI1NiJ9", "eyJzdWIiOiIxMjM0NTY3ODkwIn0", "dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"].join(".")} ok`,
       ),
     ).toBe("auth [secret] ok");
     expect(

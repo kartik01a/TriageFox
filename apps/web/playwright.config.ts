@@ -25,6 +25,7 @@ export default defineConfig({
     command: "pnpm dev",
     url: "http://localhost:3000",
     reuseExistingServer: true,
+    env: { E2E_DISABLE_AUTH_RATE_LIMIT: "true" },
     timeout: 120_000,
   },
 });
