@@ -61,6 +61,23 @@ export const rpcMethods = {
       detail: z.string().optional(),
     }),
   },
+  "ai.explain": {
+    input: z.object({ orgId: z.string().min(1), aiRunId: z.uuid() }),
+    output: z.object({
+      actions: z.array(
+        z.object({
+          kind: z.string(),
+          title: z.string(),
+          summary: z.string(),
+          reason: z.string(),
+          priorityReason: z.string(),
+          type: z.string().optional(),
+          priority: z.number().optional(),
+          confidence: z.number(),
+        }),
+      ),
+    }),
+  },
   "connection.disconnect": {
     input: z.object(orgConn),
     output: z.object({ revoked: z.boolean() }),

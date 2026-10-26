@@ -8,6 +8,8 @@ import {
   refreshJiraTokens,
   TrelloClient,
 } from "@triagefox/connectors";
+import { openSecret } from "@triagefox/crypto";
+import { and, eq, schema, withOrg } from "@triagefox/db";
 import { RpcError } from "@triagefox/rpc";
 import type { RpcHandlers } from "@triagefox/rpc/server";
 import {
@@ -258,6 +260,37 @@ export function createHandlers(ctx: Ctx): RpcHandlers {
           throw e;
         }
       }
+    },
+
+    /** The AI's own words for one run (reason, priority reason). Sealed at rest, so only the worker can open it. */
+    async "ai.explain"({ orgId, aiRunId }) {
+      const [run] = await withOrg(ctx.db, orgId, (tx) =>
+        tx
+          .select({ sealed: schema.aiRuns.rawOutputSealed })
+          .from(schema.aiRuns)
+          .where(and(eq(schema.aiRuns.id, aiRunId), eq(schema.aiRuns.orgId, orgId))),
+      );
+      if (!run) throw new RpcError("not_found", "That decision was not found.");
+      if (!run.sealed) throw new RpcError("not_found", "The details were removed after 30 days.");
+      const opened = JSON.parse(
+        await openSecret(
+          run.sealed,
+          { orgId, recordId: aiRunId, purpose: "ai_run.output" },
+          ctx.keyring,
+        ),
+      ) as { actions?: Record<string, unknown>[] };
+      return {
+        actions: (opened.actions ?? []).map((a) => ({
+          kind: String(a.kind ?? ""),
+          title: String(a.title ?? ""),
+          summary: String(a.summary ?? ""),
+          reason: String(a.reason ?? ""),
+          priorityReason: String(a.priorityReason ?? ""),
+          type: a.type ? String(a.type) : undefined,
+          priority: typeof a.priority === "number" ? a.priority : undefined,
+          confidence: typeof a.confidence === "number" ? a.confidence : 0,
+        })),
+      };
     },
 
     async "connection.disconnect"({ orgId, connectionId }) {

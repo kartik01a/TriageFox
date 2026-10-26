@@ -58,9 +58,10 @@ export function buildTicketBody(c: TicketContent, o: TicketBodyOptions = {}): st
 /** Updates the two lines that change after creation (priority, reporter count) and leaves the rest as it is. */
 export function refreshTicketFooter(
   body: string,
-  o: { priority: Priority; reportedBy: string },
+  o: { priority: Priority; reportedBy: string; type?: TicketType },
 ): string {
   return body
+    .replace(/^Type: [^·\n]+ · /m, (m) => (o.type ? `Type: ${TICKET_TYPE_LABELS[o.type]} · ` : m))
     .replace(
       /^(Type: .*? · Priority: )\d \([A-Za-z]+\)/m,
       (_m, head: string) => `${head}${o.priority} (${PRIORITY_NAMES[o.priority]})`,
