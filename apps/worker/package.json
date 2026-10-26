@@ -13,6 +13,8 @@
   "dependencies": {
     "@sentry/node": "^11.9.0",
     "@triagefox/ai": "workspace:*",
+    "@triagefox/billing": "workspace:*",
+    "@triagefox/mail": "workspace:*",
     "@triagefox/connectors": "workspace:*",
     "@triagefox/crypto": "workspace:*",
     "@triagefox/db": "workspace:*",
@@ -23,6 +25,7 @@
     "chrono-node": "^2.10.3",
     "drizzle-orm": "^0.45.4",
     "ioredis": "^6.0.0",
+    "nodemailer": "^10.2.1",
     "libsodium-wrappers": "^0.8.4",
     "pino": "^10.4.0",
     "postgres": "^3.4.9",

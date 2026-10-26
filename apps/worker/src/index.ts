@@ -6,7 +6,9 @@ import { startRpcServer } from "@triagefox/rpc/server";
 import { createLogger } from "@triagefox/shared";
 import { Queue, UnrecoverableError, Worker } from "bullmq";
 import { Redis } from "ioredis";
+import { createBillingHooks } from "./billing";
 import { describeProviders, loadConfig, verifyKeyring } from "./config";
+import { createNotifier } from "./notify";
 import { createDeliver } from "./pipeline/deliver";
 import { createTriage } from "./pipeline/triage";
 import { createUpdate } from "./pipeline/update";
@@ -89,6 +91,10 @@ const pipeline = startPipelineWorker(
       config,
       keyring: config.keyring,
       log,
+      billing:
+        config.APP_MODE === "hosted"
+          ? createBillingHooks({ db, notifier: createNotifier({ db, config, log }) })
+          : undefined,
       enqueueDelivery: (p) => scheduleDelivery(pipelineQueue, p),
       enqueueUpdate: (p) => scheduleUpdate(pipelineQueue, p),
     }),

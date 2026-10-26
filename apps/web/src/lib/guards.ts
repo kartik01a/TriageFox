@@ -27,7 +27,7 @@ export const json = (body: unknown, status = 200) => NextResponse.json(body, { s
 /** Signed in, same origin (state-changing requests), and owner/admin of the active workspace. */
 export async function managerGuard(
   req: Request,
-  opts: { checkOrigin?: boolean; fresh?: boolean } = {},
+  opts: { checkOrigin?: boolean; fresh?: boolean; ownerOnly?: boolean } = {},
 ) {
   if ((opts.checkOrigin ?? true) && !sameOrigin(req))
     return { ok: false as const, response: json({ ok: false, error: "Bad request origin." }, 403) };
@@ -54,6 +54,11 @@ export async function managerGuard(
         { ok: false, error: "Please confirm your password to continue.", code: "step_up_required" },
         403,
       ),
+    };
+  if (opts.ownerOnly && ctx.role !== "owner")
+    return {
+      ok: false as const,
+      response: json({ ok: false, error: "Only the workspace owner can manage billing." }, 403),
     };
   if (!ctx.canManage)
     return {

@@ -20,6 +20,8 @@ const ERRORS: Record<string, string> = {
   crisp_ticket: "That link expired. Open the TriageFox plugin in Crisp and continue again.",
   crisp_taken: "That Crisp website is already linked to another workspace.",
   forbidden: "Only workspace owners and admins can connect tools.",
+  inbox_limit:
+    "Your plan includes one connected inbox. Upgrade on the Billing page to connect another.",
 };
 
 function connectionLabel(c: ConnectionView) {

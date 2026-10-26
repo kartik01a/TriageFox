@@ -1,10 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { AiError, type AiProvider, type ModelAction } from "@triagefox/ai";
+import { grantComp, startTrial } from "@triagefox/billing";
 import type { CrispConversation } from "@triagefox/connectors";
 import { generateKeyPair, openSecret, type PrivateKeyring, sealSecret } from "@triagefox/crypto";
 import { createDb, type Db, eq, schema, sql, withOrg } from "@triagefox/db";
 import { UnrecoverableError } from "bullmq";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createBillingHooks } from "../billing";
+import type { Notifier } from "../notify";
 import type { TriageInput } from "./deps";
 import { createTriage, toAiMessages } from "./triage";
 
@@ -13,6 +16,7 @@ const owner: Db = createDb(process.env.DATABASE_MIGRATION_URL ?? "", { max: 1 })
 const orgId = `org_${randomUUID()}`;
 const otherOrg = `org_${randomUUID()}`;
 const capOrg = `org_${randomUUID()}`;
+const billOrg = `org_${randomUUID()}`;
 let keyring: PrivateKeyring;
 
 const config = {
@@ -124,9 +128,11 @@ beforeAll(async () => {
   };
 });
 afterAll(async () => {
-  for (const o of [orgId, otherOrg, capOrg])
+  for (const o of [orgId, otherOrg, capOrg, billOrg])
     await owner.$client.unsafe("delete from connections where org_id = $1", [o]);
   await owner.$client.unsafe("delete from ai_settings where org_id = $1", [orgId]);
+  for (const t of ["usage_counters", "usage_conversations", "subscriptions"])
+    await owner.$client.unsafe(`delete from ${t} where org_id = $1`, [billOrg]);
   await db.$client.end();
   await owner.$client.end();
 });
@@ -715,6 +721,76 @@ describe("follow-ups and duplicates", () => {
       ),
     );
     expect(rows[0]?.has).toBe(true);
+  });
+});
+
+describe("plan and trial limits (hosted)", () => {
+  const sent: { subject: string }[] = [];
+  const notifier: Notifier = {
+    emailOwners: async (_o, m) => void sent.push({ subject: m.subject }),
+    alert: async () => {},
+  };
+  const withBilling = (answer: Parameters<typeof fakeProvider>[0] = [create]) =>
+    createTriage({
+      enqueueDelivery: async () => {},
+      enqueueUpdate: async () => {},
+      db,
+      config,
+      keyring,
+      log,
+      billing: createBillingHooks({ db, notifier }),
+      providerFor: fakeProvider(answer).make,
+    });
+  const countersOf = (org: string) =>
+    owner.$client.unsafe(
+      "select conversations_analysed, ai_runs, tickets_created from usage_counters where org_id = $1",
+      [org],
+    );
+
+  it("a workspace with no plan or trial is told so once, and nothing is analysed", async () => {
+    const i = await input(billOrg);
+    const run = withBilling();
+    await expect(run(i)).rejects.toBeInstanceOf(UnrecoverableError);
+    await expect(run(i)).rejects.toBeInstanceOf(UnrecoverableError);
+    const rows = await withOrg(db, billOrg, (tx) =>
+      tx.select().from(schema.activityLog).where(eq(schema.activityLog.threadId, i.thread.id)),
+    );
+    expect(rows.filter((r) => r.kind === "billing_blocked")).toHaveLength(1);
+    expect(await withOrg(db, billOrg, (tx) => tx.select().from(schema.aiRuns))).toHaveLength(0);
+  });
+
+  it("a trial analyses the conversation and counts it; a limit warning email goes out once", async () => {
+    await startTrial(db, billOrg);
+    const i = await input(billOrg);
+    await withBilling()(i);
+    const [row] = await countersOf(billOrg);
+    expect(row).toMatchObject({ conversations_analysed: 1, ai_runs: 1, tickets_created: 1 });
+    expect(sent).toHaveLength(0);
+  });
+
+  it("a paid plan at its limit stops new conversations but not follow-ups", async () => {
+    const [plan] = await owner.$client.unsafe(
+      "insert into plans (slug, name, conversation_limit) values ($1, 'Tiny', 2) returning id",
+      [`tiny-${randomUUID().slice(0, 6)}`],
+    );
+    const org = `org_${randomUUID()}`;
+    await grantComp(db, { orgId: org, planId: String(plan?.id), months: null, reason: "test" });
+    const a = await input(org);
+    const b = await input(org);
+    const c = await input(org);
+    const run = withBilling();
+    await run(a);
+    await run(b); // 2 of 2: the 100% warning
+    expect(sent.some((m) => /reached/.test(m.subject))).toBe(true);
+    await expect(run(c)).rejects.toBeInstanceOf(UnrecoverableError); // a third conversation waits
+    await run(a); // a follow-up of an already counted conversation still works
+    const [row] = await countersOf(org);
+    expect(row).toMatchObject({ conversations_analysed: 2, ai_runs: 3 });
+    await owner.$client.unsafe("delete from usage_counters where org_id = $1", [org]);
+    await owner.$client.unsafe("delete from usage_conversations where org_id = $1", [org]);
+    await owner.$client.unsafe("delete from subscriptions where org_id = $1", [org]);
+    await owner.$client.unsafe("delete from connections where org_id = $1", [org]);
+    await owner.$client.unsafe("delete from plans where id = $1", [plan?.id]);
   });
 });
 

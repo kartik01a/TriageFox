@@ -1,7 +1,9 @@
 "use server";
 
+import { checkInboxLimit } from "@triagefox/billing";
 import { and, eq, gt, isNull, schema, withOrg } from "@triagefox/db";
 import { redirect } from "next/navigation";
+import { billingEnabled } from "@/lib/billing";
 import { audit } from "@/lib/connections";
 import { hashTicket } from "@/lib/crisp-link";
 import { db } from "@/lib/db";
@@ -16,6 +18,8 @@ export async function confirmCrispLink(formData: FormData) {
   if (!ctx.canManage) redirect("/app/connections?error=forbidden");
   const ticket = String(formData.get("ticket") ?? "");
   const orgId = ctx.workspace.id;
+  if (billingEnabled() && !(await checkInboxLimit(db(), orgId)).ok)
+    redirect("/app/connections?error=inbox_limit");
 
   let connectionId: string;
   try {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 
-const LINKS = [
+const LINKS: { href: string; label: string; exact?: boolean }[] = [
   { href: "/app", label: "Overview", exact: true },
   { href: "/app/activity", label: "Activity" },
   { href: "/app/review", label: "Review" },
@@ -15,11 +15,20 @@ const LINKS = [
   { href: "/app/settings/security", label: "Security" },
 ];
 
-export function AppNav({ reviewCount }: { reviewCount: number }) {
+export function AppNav({
+  reviewCount,
+  showBilling,
+}: {
+  reviewCount: number;
+  showBilling: boolean;
+}) {
   const path = usePathname();
   return (
     <nav className="-mb-px flex gap-1 overflow-x-auto text-sm font-medium" aria-label="App">
-      {LINKS.map((l) => {
+      {(showBilling
+        ? [...LINKS.slice(0, 5), { href: "/app/billing", label: "Billing" }, ...LINKS.slice(5)]
+        : LINKS
+      ).map((l) => {
         const active = l.exact ? path === l.href : path.startsWith(l.href);
         return (
           <Link

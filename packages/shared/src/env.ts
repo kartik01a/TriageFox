@@ -37,6 +37,14 @@ export const webEnvSchema = z.object({
   /** Crisp plugin hook signing secret: lets the hook route verify that a delivery really came from Crisp. */
   CRISP_HOOK_SECRET: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().min(32),
+  /** Hosted billing (Dodo Payments). All optional: without them the billing page says billing is not set up. */
+  DODO_API_KEY: z.string().optional(),
+  DODO_WEBHOOK_SECRET: z.string().optional(),
+  DODO_ENV: z.enum(["test", "live"]).default("test"),
+  /** Comma-separated emails allowed into /admin (and only with two-factor sign-in). */
+  PLATFORM_ADMIN_EMAILS: z.string().default(""),
+  /** Crisp identity-verification secret of the support website, to sign the signed-in user's email. */
+  CRISP_IDENTITY_SECRET: z.string().optional(),
   /** Self-host only: keep sign-up open after the first account exists. Default: invitation only. */
   SELFHOST_OPEN_SIGNUP: bool,
   SMTP_HOST: z.string().default("localhost"),
@@ -55,6 +63,16 @@ export const workerEnvSchema = z.object({
   ...base,
   ...cryptoPublic,
   ...ai,
+  /** The worker sends usage warnings, renewal reminders and support alerts. */
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_SECURE: bool,
+  MAIL_FROM: z.string().default("TriageFox <hello@triagefox.local>"),
+  /** Urgent support alerts go here (email) and to the Slack incoming webhook (a secret). */
+  ALERT_EMAIL: z.string().optional(),
+  SLACK_ALERTS_WEBHOOK_URL: z.string().optional(),
   /** Platform OpenAI key: used when a workspace has not added its own (hosted) or in self-host installs. */
   OPENAI_API_KEY: z.string().optional(),
   /** Guardrails (docs/ai-triage.md "Cost guardrails"). */

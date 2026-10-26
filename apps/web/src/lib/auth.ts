@@ -1,4 +1,5 @@
 import "server-only";
+import { startTrial } from "@triagefox/billing";
 import { and, eq, gt, schema, sql } from "@triagefox/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -136,6 +137,11 @@ function createAuth() {
         invitationExpiresIn: 60 * 60 * 24 * 7,
         organizationHooks: {
           afterCreateOrganization: async ({ organization, user }) => {
+            // Hosted: every new workspace starts its free trial (self-hosted installs have no billing).
+            if (e.APP_MODE === "hosted")
+              await startTrial(db(), organization.id).catch((err) =>
+                logger.error({ err: (err as Error).message }, "could not start the trial"),
+              );
             await recordAudit({
               orgId: organization.id,
               actorUserId: user.id,

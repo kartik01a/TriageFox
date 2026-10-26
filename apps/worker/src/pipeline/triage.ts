@@ -15,6 +15,7 @@ import { and, eq, gte, inArray, schema, sql, withOrg } from "@triagefox/db";
 import type { DeliverPayload, UpdatePayload } from "@triagefox/pipeline";
 import type { Priority, WorkerEnv } from "@triagefox/shared";
 import { UnrecoverableError } from "bullmq";
+import { type BillingHooks, blockTitle } from "../billing";
 import { resolveAiKey } from "./ai-key";
 import { applyResult } from "./apply";
 import type { PipelineLogger, Triage, TriageInput } from "./deps";
@@ -37,6 +38,8 @@ export interface TriageDeps {
   enqueueDelivery: (payload: DeliverPayload) => Promise<unknown>;
   /** Queues one update job (update x destination). */
   enqueueUpdate: (payload: UpdatePayload) => Promise<unknown>;
+  /** Plan and trial limits (hosted only). Without it nothing is limited, as in a self-hosted install. */
+  billing?: BillingHooks;
   /** Tests inject a fake model here. */
   providerFor?: (apiKey: string) => AiProvider;
   now?: () => Date;
@@ -170,6 +173,38 @@ export function createTriage(deps: TriageDeps): Triage {
       }
     }
 
+    let entitlement: Awaited<ReturnType<BillingHooks["check"]>> | null = null;
+    if (deps.billing) {
+      entitlement = await deps.billing.check({
+        orgId,
+        threadId: thread.id,
+        hasOwnKey: resolved.source === "byok",
+      });
+      if (!entitlement.decision.allowed) {
+        // Say so once a day, not on every retry: the conversation simply waits.
+        const [recent] = await withOrg(deps.db, orgId, (tx) =>
+          tx
+            .select({ id: schema.activityLog.id })
+            .from(schema.activityLog)
+            .where(
+              and(
+                eq(schema.activityLog.kind, "billing_blocked"),
+                gte(schema.activityLog.createdAt, new Date(now().getTime() - DAY_MS)),
+              ),
+            )
+            .limit(1),
+        );
+        if (!recent)
+          await log(
+            input,
+            "billing_blocked",
+            `${blockTitle(entitlement.decision.reason)}. New conversations wait until this is sorted out.`,
+            { reason: entitlement.decision.reason },
+          );
+        throw new UnrecoverableError(`billing_${entitlement.decision.reason}`);
+      }
+    }
+
     const provider =
       deps.providerFor?.(resolved.key) ?? new OpenAiProvider({ apiKey: resolved.key });
     const aiInput: AiInput = {
@@ -273,6 +308,18 @@ export function createTriage(deps: TriageDeps): Triage {
       runId,
       entries,
     });
+    // Count the conversation, its AI runs and cost against the plan (hosted only).
+    if (deps.billing && entitlement)
+      await deps.billing.after({
+        orgId,
+        threadId: thread.id,
+        periodStart: entitlement.periodStart,
+        trialing: entitlement.trialing,
+        usingPlatformKey: resolved.source === "platform",
+        costMicroUsd: Math.round(result.costUsd * 1e6),
+        ticketsCreated: applied.created.length,
+        limit: entitlement.decision.allowed ? entitlement.decision.limit : null,
+      });
     await withOrg(deps.db, orgId, (tx) =>
       tx
         .insert(schema.activityLog)
