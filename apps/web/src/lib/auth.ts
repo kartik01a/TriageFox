@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gt, schema } from "@triagefox/db";
+import { and, eq, gt, schema, sql } from "@triagefox/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
@@ -12,7 +12,16 @@ import { logger } from "./logger";
 import { emailLayout, sendMail } from "./mailer";
 
 /** Platform setting `signupEnabled` (ADR 0009). Defaults to open when the row is missing. */
+export function selfhostSignupOpen(o: { users: number; openSignup: boolean }) {
+  return o.users === 0 || o.openSignup;
+}
+
 async function signupsOpen() {
+  if (env().APP_MODE === "selfhost") {
+    // The first account sets the installation up; after that people join by invitation unless the operator opens it.
+    const [row] = await db().select({ n: sql<number>`count(*)::int` }).from(schema.user);
+    return selfhostSignupOpen({ users: row?.n ?? 0, openSignup: env().SELFHOST_OPEN_SIGNUP });
+  }
   const [row] = await db()
     .select()
     .from(schema.platformSettings)

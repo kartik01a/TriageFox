@@ -20,6 +20,7 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 | [integrations/adding-a-connector.md](integrations/adding-a-connector.md) | How to add a new source or destination |
 | [billing.md](billing.md) | Merchant of record, fees, payment methods, trial, limits, admin-managed plans (hosted only) |
 | [setup/providers.md](setup/providers.md) | Registering the Trello, Atlassian and Crisp apps (owner / self-host checklist) |
+| [self-hosting.md](self-hosting.md) | **Install guide for running TriageFox yourself**: setup script, registering your own apps, updates, backups, hardening, troubleshooting |
 | [development.md](development.md) | How to run, test and extend the codebase locally |
 | [security.md](security.md) | **Full security plan**: threats, encryption, data minimisation, 2FA, infra, incident runbook, phase checklist, public Security page copy |
 | [edge-cases.md](edge-cases.md) | What can go wrong and how each case is handled |
@@ -54,3 +55,4 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 - 2026-10-27: **Phase 5 (Ticket creation) done**: a Crisp conversation becomes a Trello card and/or Jira issue with labels, priority, due date and attachments; creation is idempotent and each destination is retried on its own. **Next: Phase 6 (Updates + duplicates).**
 - 2026-10-27: **Phase 6 (Updates + duplicates) done**: follow-ups become comments and edits on the existing card/issue without overwriting people's changes, a second customer's report is merged into the existing ticket, and a duplicate of a closed ticket opens a new one. **Next: Phase 7 (Dashboard).**
 - 2026-10-27: **Phase 7 (Dashboard) done**: a new customer can connect, check the AI on their last chats, turn the automation on, review unsure tickets and see every decision, without help from us. **Next: Phase 8 (Self-host package).**
+- 2026-10-27: **Phase 8 (Self-host package) done**: images, hardened Compose stack, setup script, backups, self-hosting guide. **Next: Phase 9 (Billing + admin).**

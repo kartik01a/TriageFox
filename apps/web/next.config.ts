@@ -8,6 +8,9 @@ const rootEnv = join(import.meta.dirname, "..", "..", ".env");
 if (process.env.NODE_ENV !== "production" && existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 const config: NextConfig = {
+  // Self-contained server for the Docker image; the file tracer needs the repo root to find workspace packages.
+  output: "standalone",
+  outputFileTracingRoot: join(import.meta.dirname, "..", ".."),
   transpilePackages: ["@triagefox/shared", "@triagefox/crypto", "@triagefox/db"],
   serverExternalPackages: ["postgres", "libsodium-wrappers", "nodemailer"],
   poweredByHeader: false,

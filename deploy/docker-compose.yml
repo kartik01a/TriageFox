@@ -1,0 +1,170 @@
+# TriageFox, self-hosted: web, worker, Postgres (pgvector), Redis and Caddy (HTTPS).
+# Use: ./deploy/setup.sh   then   docker compose -f deploy/docker-compose.yml up -d --build
+# Every secret comes from deploy/.env. Each service gets only the variables it needs: the web
+# container has the PUBLIC key only, the worker alone has the private key.
+name: triagefox
+
+x-hardened: &hardened
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  tmpfs: ["/tmp"]
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: triagefox # owner: runs migrations only
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run deploy/setup.sh first}
+      POSTGRES_DB: triagefox
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?run deploy/setup.sh first} # restricted runtime role (row-level security applies)
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U triagefox -d triagefox"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?run deploy/setup.sh first}", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  # Applies database migrations, then exits. It uses the owner password and nothing else.
+  migrate:
+    <<: *hardened
+    restart: "no"
+    image: triagefox/worker:local
+    build: { context: .., dockerfile: deploy/Dockerfile, target: worker }
+    command: ["node", "dist/migrate.js"]
+    environment:
+      DATABASE_MIGRATION_URL: postgres://triagefox:${POSTGRES_PASSWORD}@postgres:5432/triagefox
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [backend]
+
+  worker:
+    <<: *hardened
+    image: triagefox/worker:local
+    build: { context: .., dockerfile: deploy/Dockerfile, target: worker }
+    environment:
+      NODE_ENV: production
+      APP_MODE: ${APP_MODE:-selfhost}
+      APP_URL: ${APP_URL:?run deploy/setup.sh first}
+      DATABASE_URL: postgres://triagefox_app:${APP_DB_PASSWORD}@postgres:5432/triagefox
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CRYPTO_CURRENT_VERSION: ${CRYPTO_CURRENT_VERSION:?run deploy/setup.sh first}
+      CRYPTO_PUBLIC_KEYS: ${CRYPTO_PUBLIC_KEYS}
+      CRYPTO_PRIVATE_KEYS: ${CRYPTO_PRIVATE_KEYS:?run deploy/setup.sh first}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AI_MODEL_DEFAULT: ${AI_MODEL_DEFAULT:-gpt-6-luna}
+      AI_MODEL_ESCALATION: ${AI_MODEL_ESCALATION:-gpt-6.1-sol}
+      AI_MODEL_EMBEDDING: ${AI_MODEL_EMBEDDING:-text-embedding-3-small}
+      TRELLO_API_KEY: ${TRELLO_API_KEY:-}
+      ATLASSIAN_CLIENT_ID: ${ATLASSIAN_CLIENT_ID:-}
+      ATLASSIAN_CLIENT_SECRET: ${ATLASSIAN_CLIENT_SECRET:-}
+      CRISP_PLUGIN_ID: ${CRISP_PLUGIN_ID:-}
+      CRISP_PLUGIN_KEY: ${CRISP_PLUGIN_KEY:-}
+      CRISP_PLUGIN_UUID: ${CRISP_PLUGIN_UUID:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    networks: [backend, egress]
+
+  web:
+    <<: *hardened
+    image: triagefox/web:local
+    build: { context: .., dockerfile: deploy/Dockerfile, target: web }
+    tmpfs: ["/tmp", "/app/apps/web/.next/cache"]
+    environment:
+      NODE_ENV: production
+      APP_MODE: ${APP_MODE:-selfhost}
+      APP_URL: ${APP_URL:?run deploy/setup.sh first}
+      DATABASE_URL: postgres://triagefox_app:${APP_DB_PASSWORD}@postgres:5432/triagefox
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?run deploy/setup.sh first}
+      CRYPTO_CURRENT_VERSION: ${CRYPTO_CURRENT_VERSION}
+      CRYPTO_PUBLIC_KEYS: ${CRYPTO_PUBLIC_KEYS:?run deploy/setup.sh first}
+      AI_MODEL_DEFAULT: ${AI_MODEL_DEFAULT:-gpt-6-luna}
+      AI_MODEL_ESCALATION: ${AI_MODEL_ESCALATION:-gpt-6.1-sol}
+      AI_MODEL_EMBEDDING: ${AI_MODEL_EMBEDDING:-text-embedding-3-small}
+      TRELLO_API_KEY: ${TRELLO_API_KEY:-}
+      ATLASSIAN_CLIENT_ID: ${ATLASSIAN_CLIENT_ID:-}
+      CRISP_HOOK_SECRET: ${CRISP_HOOK_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST in deploy/.env (sign-up and invitation emails)}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      MAIL_FROM: ${MAIL_FROM:-TriageFox <hello@localhost>}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      SELFHOST_OPEN_SIGNUP: ${SELFHOST_OPEN_SIGNUP:-false}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    networks: [edge, backend]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  # Trial only (`--profile trial`): catches the sign-up and invitation emails so you can try TriageFox
+  # without an email provider. Open http://127.0.0.1:8025 on the server. Not for real use.
+  mailpit:
+    image: axllent/mailpit:latest
+    profiles: [trial]
+    restart: unless-stopped
+    ports: ["127.0.0.1:8025:8025"]
+    # Docker publishes ports only for containers on a non-internal network, hence "edge" as well.
+    networks: [backend, edge]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?run deploy/setup.sh first}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web: { condition: service_healthy }
+    networks: [edge]
+
+networks:
+  # Postgres and Redis live here only: no route to or from the internet.
+  backend:
+    internal: true
+  # Where Caddy reaches the web app (and the web app reaches the internet for email and OpenAI checks).
+  edge:
+  # The worker's way out to Crisp, Trello, Jira and OpenAI.
+  egress:
+
+volumes:
+  pgdata:
+  redisdata:
+  caddy_data:
+  caddy_config:

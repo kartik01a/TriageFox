@@ -46,3 +46,6 @@ next-env.d.ts
 
 # AI eval run outputs
 packages/ai/evals/results/
+
+# Self-host install
+deploy/backups/

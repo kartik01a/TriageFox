@@ -39,6 +39,7 @@ The repo stays **private** while building, so the first public version is comple
 - Phase 5: done (2026-10-27). Trello + Jira delivery, labels, priority mapping, in-house markdown→ADF, attachments, fan-out, idempotent creation, `issues` / `destination_tickets` / `automation_destinations` with RLS. Scope note: updates and duplicates are Phase 6; `pnpm db:dev-automation` stands in for the wizard until Phase 7.
 - Phase 6: done (2026-10-27). Follow-up comments and edits, human-edit check, "possibly resolved in chat", embeddings and duplicate merging (`issue_reports`, report count, names toggle), regression ticket when the match is closed. Scope note: a manual "retry" button for failed tickets and the review queue are in Phase 7.
 - Phase 7: done (2026-10-27). Navigation, overview, activity log with explanations, review queue, automation page, resumable setup checklist with live preview and dry run, retry for failed tickets, two-factor/step-up/sessions/audit log. Scope notes: "coming soon + vote" cards, notification emails and the first-ticket celebration are deferred; billing is Phase 9.
+- Phase 8: done (2026-10-27). Docker images, hardened Compose stack with Caddy, `setup.sh` (generates every secret without printing it), backup/restore scripts, `APP_MODE=selfhost` behaviour, self-hosting guide and README section. Scope notes: the demo GIF in the README must be recorded by the owner; published images (registry) and Dependabot-style update notices are launch tasks (Phase 10).
 
 ## Integrations roadmap
 

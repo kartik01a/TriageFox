@@ -76,3 +76,8 @@
 | Dry run clicked repeatedly | 3 per workspace per hour; then a plain "wait a bit" |
 | Activity details opened after 30 days | "The details were removed after 30 days." (the sealed output is cleared) |
 | Enabling with no working destination | Refused with a plain reason; nothing changes |
+| `docker compose up` before `setup.sh` | Compose stops with "run deploy/setup.sh first" naming the variable |
+| `setup.sh` run twice | Refuses: it never overwrites an existing `deploy/.env` |
+| Self-host with no OpenAI key in the environment | Worker warns at start-up; each workspace must add its own key |
+| Self-host, second person tries to sign up | Refused unless invited (or `SELFHOST_OPEN_SIGNUP=true`) |
+| Restored a backup with a different `CRYPTO_PRIVATE_KEYS` | Stored tokens can't be opened: connections show "Reconnect needed" |

@@ -168,6 +168,7 @@ Decisions agreed 2026-10-25: no transcript storage, Cloudflare in front, sealed 
 ## 14. Self-hosted installs
 - The setup script generates the worker key pair, database and Redis passwords; the guide includes a hardening checklist (firewall, backups, updates).
 - Self-hosters are responsible for their own server; the app's protections (sealed secrets, RLS, headers) work the same.
+- **As built (Phase 8):** `deploy/setup.sh` generates the database/Redis passwords, the session secret and the sealed-box key pair inside the worker image and writes them straight to `deploy/.env` (mode 600, never printed). The Compose file gives each container only the variables it needs: the web container has the public key, only the worker has the private key. Postgres and Redis sit on an `internal` network with no route to the internet and no published ports; web and worker run as a non-root user with a read-only filesystem, no Linux capabilities and `no-new-privileges`. Sign-up after the first account is invitation-only unless the operator opts in. The hardening checklist is in [self-hosting.md](self-hosting.md).
 
 ## 15. Security checklist by build phase
 | Phase | Must be done |
@@ -180,7 +181,7 @@ Decisions agreed 2026-10-25: no transcript storage, Cloudflare in front, sealed 
 | 5 | Tokens opened only in the worker for delivery; downloads through `safeDownload` (Crisp host allowlist, 10 MB cap, private addresses refused); ADF/markdown built from text nodes only (no raw HTML, javascript: links not linked); `issues`, `automation_destinations` and `destination_tickets` have RLS; a revoked token pauses the connection; delivery errors shown to customers are plain wording with no provider response bodies |
 | 6 | Follow-up and comment text is stored sealed (`issue_updates.content_sealed`) and opened only in the worker; embeddings are computed from redacted customer text; duplicate ids must come from the search results; a person's edits are never overwritten; new tables have RLS |
 | 7 | 2FA, step-up re-auth, "Require 2FA" workspace setting, audit log UI, session management. **Done:** TOTP setup with backup codes and the `/two-factor` sign-in step; "Require 2FA" (owner, needs 2FA on their own account first) enforced for pages and API; step-up for AI key, disconnect and the 2FA rule; sessions list with sign-out; audit log for owners/admins; the review, retry and dry-run routes are owner/admin only and same-origin; dry-run output is never stored |
-| 8 | Hardened Compose (internal networks, non-root, read-only), setup script key generation, self-host hardening guide |
+| 8 | Hardened Compose (internal networks, non-root, read-only), setup script key generation, self-host hardening guide. **Done:** see §14 "As built"; the stack was started and checked end to end (health, HTTPS, migrations, row-level-security role, worker start-up report) |
 | 9 | Admin 2FA + 404 + audit; billing webhooks verified |
 | 10 | Cloudflare + origin lock, encrypted backups + restore test, alerts, OWASP ZAP scan, dependency review, **public Security page**, `SECURITY.md`, privacy policy, subprocessor list |
 

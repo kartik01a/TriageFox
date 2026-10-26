@@ -33,3 +33,29 @@ describe("worker config", () => {
     expect(() => loadConfig(e)).toThrow(/CRYPTO_PRIVATE_KEYS/);
   });
 });
+
+describe("describeProviders", () => {
+  it("says what is missing without naming any value", async () => {
+    const { describeProviders } = await import("./config");
+    const none = describeProviders({ APP_MODE: "selfhost" });
+    expect(none).toMatchObject({ crisp: false, trello: false, jira: false, openai: false });
+    expect(none.warnings.join(" ")).toMatch(/CRISP_PLUGIN_ID/);
+    expect(none.warnings.join(" ")).toMatch(/OPENAI_API_KEY/);
+    const ok = describeProviders({
+      APP_MODE: "selfhost",
+      OPENAI_API_KEY: "sk-x",
+      TRELLO_API_KEY: "k",
+      CRISP_PLUGIN_ID: "a",
+      CRISP_PLUGIN_KEY: "b",
+      CRISP_PLUGIN_UUID: "c",
+    });
+    expect(ok).toMatchObject({
+      crisp: true,
+      trello: true,
+      jira: false,
+      openai: true,
+      warnings: [],
+    });
+    expect(JSON.stringify(ok)).not.toContain("sk-x");
+  });
+});

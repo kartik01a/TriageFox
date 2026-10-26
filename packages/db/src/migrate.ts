@@ -11,7 +11,9 @@ if (!url) {
 }
 const client = postgres(url, { max: 1, onnotice: () => {} });
 await migrate(drizzle(client), {
-  migrationsFolder: join(dirname(fileURLToPath(import.meta.url)), "..", "drizzle"),
+  // In the Docker image the SQL files live next to the bundle (MIGRATIONS_DIR).
+  migrationsFolder:
+    process.env.MIGRATIONS_DIR ?? join(dirname(fileURLToPath(import.meta.url)), "..", "drizzle"),
 });
 await client.end();
 console.log("migrations applied");

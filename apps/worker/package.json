@@ -6,21 +6,27 @@
   "scripts": {
     "dev": "tsx watch --env-file=../../.env src/index.ts",
     "start": "node dist/index.js",
-    "build": "tsup src/index.ts --format esm --target node22 --clean",
+    "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@sentry/node": "^11.9.0",
     "@triagefox/ai": "workspace:*",
+    "@triagefox/connectors": "workspace:*",
     "@triagefox/crypto": "workspace:*",
     "@triagefox/db": "workspace:*",
+    "@triagefox/pipeline": "workspace:*",
+    "@triagefox/rpc": "workspace:*",
     "@triagefox/shared": "workspace:*",
     "bullmq": "^6.4.2",
+    "chrono-node": "^2.10.3",
+    "drizzle-orm": "^0.45.4",
     "ioredis": "^6.0.0",
-    "@triagefox/connectors": "workspace:*",
-    "@triagefox/rpc": "workspace:*",
-    "@triagefox/pipeline": "workspace:*"
+    "libsodium-wrappers": "^0.8.4",
+    "pino": "^10.4.0",
+    "postgres": "^3.4.9",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

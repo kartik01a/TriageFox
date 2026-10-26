@@ -1,0 +1,16 @@
+# SITE_ADDRESS comes from deploy/.env: a domain name (Caddy gets a Let's Encrypt certificate for it
+# automatically) or, for a local trial, "localhost" (Caddy's own local certificate).
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# Hooks and forms are small; refuse anything large before it reaches the app.
+	request_body {
+		max_size 5MB
+	}
+
+	reverse_proxy web:3000
+
+	header {
+		-Server
+	}
+}

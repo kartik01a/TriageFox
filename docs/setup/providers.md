@@ -2,7 +2,7 @@
 
 TriageFox talks to Crisp, Trello and Jira through apps registered under your own developer accounts. The hosted version uses the project owner's apps; self-hosters register their own (same steps). Credentials go in `.env`: see `.env.example`, and never paste them into chat or commit them.
 
-`APP_URL` below is the public address of the web app (`http://localhost:3000` in development).
+Running your own copy? The whole install is in [../self-hosting.md](../self-hosting.md); this page is the detail for each provider. `APP_URL` below is the public address of the web app (`http://localhost:3000` in development).
 
 ## Trello (Power-Up API key)
 1. https://trello.com/power-ups/admin → create a Power-Up (any name) → **API key**: copy it to `TRELLO_API_KEY` (web **and** worker).

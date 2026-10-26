@@ -179,6 +179,13 @@ The web app never holds decrypted credentials. When it needs something only a cu
 - **Worker RPC added:** `ai.explain` (opens a sealed AI output, returns reason / priority reason only) and `automation.dryRun` (reads the newest 10 Crisp chats, runs the same AI step with no existing tickets, returns what it would do; 3 runs per workspace per hour; nothing is stored, no `ai_runs` row, so its few cents are not metered).
 - **Two-factor and step-up:** `workspace_settings.require_2fa`; `requireWorkspace` redirects members without 2FA to the security page and `managerGuard` answers `two_factor_required`. Sensitive actions (replace/remove the AI key, disconnect a tool, change the 2FA rule) need a sign-in from the last 15 minutes (`step_up_required`); the browser then asks for the password (and a code if 2FA is on) via a dialog and retries once. People who sign in only with Google are told to sign in again.
 
+### As built in Phase 8 (self-host package)
+
+- **Images:** one `deploy/Dockerfile` with two targets. `web` is the Next.js standalone server (`output: "standalone"`). `worker` is a tsup bundle (workspace packages bundled in, third-party packages installed with `pnpm deploy --prod`); it also holds `dist/migrate.js` (runs the SQL migrations from `MIGRATIONS_DIR`) and `dist/keys.js` (prints freshly generated secrets for `setup.sh`).
+- **Stack** (`deploy/docker-compose.yml`): `caddy` (HTTPS, reverse proxy, 5 MB body limit) → `web`; `worker`; `postgres` (pgvector, the same init script creates the restricted runtime role); `redis` (password, AOF); a one-shot `migrate` service using only the owner password, which `web` and `worker` wait for. Optional `mailpit` under `--profile trial`. Networks: `backend` (internal, no internet) for Postgres/Redis, `edge` for Caddy↔web, `egress` for the worker's outbound calls.
+- **`APP_MODE=selfhost`:** the home page redirects to sign-in (no marketing site or waitlist); the first account may sign up, then sign-up is invitation-only unless `SELFHOST_OPEN_SIGNUP=true`; billing arrives in Phase 9 and will be off in this mode. At start-up the worker logs which providers are configured and what is missing (`describeProviders`), never a secret value.
+- **Operations:** `deploy/backup.sh` / `restore.sh` (optional passphrase encryption), `GET /api/health` (checks the database) for health checks. Guide: [self-hosting.md](self-hosting.md).
+
 ## Connector interfaces
 
 Details in [integrations/adding-a-connector.md](integrations/adding-a-connector.md). Sources and destinations implement shared `SourceConnector` / `DestinationConnector` interfaces, so new tools plug in without touching the pipeline.

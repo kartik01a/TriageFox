@@ -1,10 +1,13 @@
 import { Gauge, MessagesSquare, Paperclip } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Wordmark } from "@/components/fox-logo";
 import { HeroDemo } from "@/components/landing/hero-demo";
 import { WaitlistForm } from "@/components/landing/waitlist-form";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { env } from "@/lib/env";
+import { getSession } from "@/lib/session";
 
 const features = [
   {
@@ -24,7 +27,9 @@ const features = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  // A self-hosted install has no marketing site or waitlist: go straight to the product.
+  if (env().APP_MODE === "selfhost") redirect((await getSession()) ? "/app" : "/login");
   return (
     <>
       <header className="sticky top-0 z-10 border-b border-border/60 bg-background/80 backdrop-blur">

@@ -4,6 +4,21 @@ Open-source AI that turns customer chats into Jira and Trello tickets, with prio
 
 > **Status:** under active development (pre-launch). Licensed under [AGPL-3.0](LICENSE).
 
+<!-- Demo GIF goes here once recorded: a Crisp chat turning into a Trello card and a Jira issue. -->
+
+## Self-host
+
+Run TriageFox on your own server with Docker Compose: free, your own OpenAI key and developer apps, no billing.
+
+```bash
+git clone https://github.com/<owner>/triagefox.git && cd triagefox
+./deploy/setup.sh                                   # asks for your domain, generates every secret
+# fill in your Crisp / Trello / Jira / OpenAI / email settings in deploy/.env
+docker compose -f deploy/docker-compose.yml up -d
+```
+
+Step by step, including registering the Crisp, Trello and Atlassian apps, backups and a hardening checklist: **[docs/self-hosting.md](docs/self-hosting.md)**. Prefer not to run servers? The hosted version at triagefox.com does all of that for you.
+
 ## Develop locally
 
 Requirements: Node 22, pnpm 10, Docker.

@@ -55,3 +55,11 @@ jobs:
           name: playwright-traces
           path: apps/web/test-results
           retention-days: 7
+
+  selfhost:
+    name: Self-host images and stack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build, start and check the self-host stack
+        run: ./deploy/smoke-test.sh

@@ -6,7 +6,7 @@ import { startRpcServer } from "@triagefox/rpc/server";
 import { createLogger } from "@triagefox/shared";
 import { Queue, UnrecoverableError, Worker } from "bullmq";
 import { Redis } from "ioredis";
-import { loadConfig, verifyKeyring } from "./config";
+import { describeProviders, loadConfig, verifyKeyring } from "./config";
 import { createDeliver } from "./pipeline/deliver";
 import { createTriage } from "./pipeline/triage";
 import { createUpdate } from "./pipeline/update";
@@ -35,6 +35,9 @@ if (config.SENTRY_DSN) {
 
 await verifyKeyring(config.keyring);
 log.info("sealed-box keys verified");
+const providers = describeProviders(config);
+log.info({ ...providers, warnings: undefined }, "providers");
+for (const w of providers.warnings) log.warn(w);
 
 const db = createDb(config.DATABASE_URL, { max: 5 });
 await db.$client`select 1`;

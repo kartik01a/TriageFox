@@ -37,6 +37,8 @@ export const webEnvSchema = z.object({
   /** Crisp plugin hook signing secret: lets the hook route verify that a delivery really came from Crisp. */
   CRISP_HOOK_SECRET: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().min(32),
+  /** Self-host only: keep sign-up open after the first account exists. Default: invitation only. */
+  SELFHOST_OPEN_SIGNUP: bool,
   SMTP_HOST: z.string().default("localhost"),
   SMTP_PORT: z.coerce.number().default(1025),
   SMTP_USER: z.string().optional(),
