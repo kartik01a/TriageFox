@@ -10,4 +10,7 @@ useDefault = true
 description = "Fake fixtures in the redaction and key-hint tests"
 paths = [
   '''packages/ai/src/(index|keys|redact)\.test\.ts''',
+  # The made-up webhook signing secret that the fake payment provider and its tests sign with.
+  '''packages/billing/src/(fake|dodo\.test)\.ts''',
+  '''apps/web/playwright\.config\.ts''',
 ]
