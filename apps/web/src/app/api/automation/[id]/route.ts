@@ -22,6 +22,7 @@ const settingsSchema = z
     quietWindowSec: z.number().int().min(30).max(1800),
     timezone: z.string().max(60).refine(isZone, "Unknown time zone."),
     language: z.string().regex(/^[a-z]{2}(-[A-Za-z]{2})?$/),
+    reviewed: z.boolean(),
   })
   .partial();
 

@@ -111,7 +111,7 @@ export default async function SetupPage() {
     crisp: !!crisp,
     tool: tools.length > 0,
     target: withTarget.length > 0,
-    automation: !!automation && destinationCount > 0,
+    automation: !!automation && destinationCount > 0 && automation.settings.reviewed === true,
     ai: true,
     enabled: !!automation?.enabled,
   };

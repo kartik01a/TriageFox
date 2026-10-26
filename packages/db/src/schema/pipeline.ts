@@ -19,6 +19,8 @@ export interface AutomationSettings {
   quietWindowSec: number;
   timezone: string;
   language: string;
+  /** The person has looked at and saved these (setup checklist step). */
+  reviewed?: boolean;
 }
 
 export const defaultAutomationSettings: AutomationSettings = {

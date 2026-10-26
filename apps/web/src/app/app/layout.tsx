@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppNav } from "@/components/app/app-nav";
+import { StepUpProvider } from "@/components/app/step-up";
 import { Wordmark } from "@/components/fox-logo";
 import { reviewCount } from "@/lib/app-data";
 import { requireSession } from "@/lib/session";
@@ -30,7 +31,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         )}
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">{children}</main>
+      <StepUpProvider email={user.email}>
+        <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">{children}</main>
+      </StepUpProvider>
     </div>
   );
 }

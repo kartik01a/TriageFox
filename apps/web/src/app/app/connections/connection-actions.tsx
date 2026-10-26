@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useStepUpFetch } from "@/components/app/step-up";
 import { Button } from "@/components/ui/button";
 
 export function ConnectionActions({
@@ -14,6 +15,7 @@ export function ConnectionActions({
   redirectAfterDelete?: boolean;
 }) {
   const router = useRouter();
+  const stepUpFetch = useStepUpFetch();
   const [busy, setBusy] = useState<"check" | "delete" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -42,7 +44,7 @@ export function ConnectionActions({
     if (!window.confirm(`Disconnect ${label}? Automations using it will stop until you reconnect.`))
       return;
     setBusy("delete");
-    const res = await fetch(`/api/connections/${id}`, { method: "DELETE" });
+    const res = await stepUpFetch(`/api/connections/${id}`, { method: "DELETE" });
     const data = (await res.json()) as { ok: boolean; error?: string };
     setBusy(null);
     if (!data.ok) return setMsg(data.error ?? "Could not disconnect.");

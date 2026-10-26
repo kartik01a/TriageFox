@@ -7,7 +7,7 @@ const idSchema = z.uuid();
 
 /** Disconnect: the worker revokes the token where the provider allows it, then deletes our copy. */
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await managerGuard(req);
+  const guard = await managerGuard(req, { fresh: true });
   if (!guard.ok) return guard.response;
   const id = idSchema.safeParse((await params).id);
   if (!id.success) return json({ ok: false, error: "Not found." }, 404);

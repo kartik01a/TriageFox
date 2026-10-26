@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray, lt, schema, sql, withOrg } from "@triagefox/db";
+import { and, desc, eq, gte, inArray, lt, schema, sql, withOrg } from "@triagefox/db";
 import { db } from "./db";
 
 export const ACTIVITY_FILTERS = {
@@ -34,7 +34,7 @@ export async function monthStats(orgId: string) {
     tx
       .select({ kind: schema.activityLog.kind, n: sql<number>`count(*)::int` })
       .from(schema.activityLog)
-      .where(sql`${schema.activityLog.createdAt} >= ${monthStart()}`)
+      .where(gte(schema.activityLog.createdAt, monthStart()))
       .groupBy(schema.activityLog.kind),
   );
   const count = (kinds: readonly string[]) =>

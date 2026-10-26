@@ -171,6 +171,14 @@ The web app never holds decrypted credentials. When it needs something only a cu
 - The worker re-checks the workspace on every call: a connection is loaded inside `withOrg(orgId)`, so another workspace's id is simply "not found".
 - Errors are typed (`auth_expired`, `not_found`, `rate_limited`, `unavailable`, `invalid`, `not_configured`, `forbidden`, `internal`) with customer-safe messages; unexpected errors are logged in the worker and hidden from the caller.
 
+### As built in Phase 7
+
+- **Pages** (all server-rendered, dynamic): `/app` overview, `/app/setup`, `/app/automation`, `/app/activity`, `/app/review`, `/app/settings/security` (plus the earlier connections, members, AI key). `/two-factor` completes a 2FA sign-in.
+- **API routes** (owner/admin, same-origin): `POST /api/automation` (create the paused automation on the Crisp connection and pick up connected destinations), `PATCH /api/automation/:id` (settings, on/off; switching on is refused with a plain reason unless Crisp is active and at least one enabled destination has an active connection), `PATCH /api/automation/:id/destinations/:destId`, `POST /api/automation/:id/dry-run`, `POST /api/review/:id` (create / dismiss; the row is locked and must still be `pending_review`), `POST /api/tickets/:id/retry`, `PUT /api/security/require-2fa`. `GET /api/activity/:aiRunId` is open to any member.
+- **Destinations stay in step with targets:** saving a connection's board/project (`PUT /api/connections/:id/targets`) calls `syncDestinations`, which creates or updates the automation's destination from `connections.metadata.defaults` (keeping its label ids and on/off flag unless the target changed).
+- **Worker RPC added:** `ai.explain` (opens a sealed AI output, returns reason / priority reason only) and `automation.dryRun` (reads the newest 10 Crisp chats, runs the same AI step with no existing tickets, returns what it would do; 3 runs per workspace per hour; nothing is stored, no `ai_runs` row, so its few cents are not metered).
+- **Two-factor and step-up:** `workspace_settings.require_2fa`; `requireWorkspace` redirects members without 2FA to the security page and `managerGuard` answers `two_factor_required`. Sensitive actions (replace/remove the AI key, disconnect a tool, change the 2FA rule) need a sign-in from the last 15 minutes (`step_up_required`); the browser then asks for the password (and a code if 2FA is on) via a dialog and retries once. People who sign in only with Google are told to sign in again.
+
 ## Connector interfaces
 
 Details in [integrations/adding-a-connector.md](integrations/adding-a-connector.md). Sources and destinations implement shared `SourceConnector` / `DestinationConnector` interfaces, so new tools plug in without touching the pipeline.

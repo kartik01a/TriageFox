@@ -101,6 +101,8 @@ function createAuth() {
     session: {
       expiresIn: 60 * 60 * 24 * 14,
       updateAge: 60 * 60 * 24,
+      // Sensitive built-in actions (such as turning two-factor off) need a sign-in from the last 15 minutes.
+      freshAge: 60 * 15,
       cookieCache: { enabled: true, maxAge: 5 * 60 },
     },
 

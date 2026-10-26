@@ -90,7 +90,9 @@ Sealed credential shapes (opened only by the worker, binding = org id + connecti
 
 Deleting a source connection deletes its automations and, through them, their threads and events. Phase 7 puts a clear warning in front of that.
 
-`automations.settings` (defaults in `defaultAutomationSettings`):
+`workspace_settings` (Phase 7): org_id (PK), require_2fa, updated_at. **RLS.** No row = defaults.
+
+`automations.settings` (defaults in `defaultAutomationSettings`; also an optional `reviewed` flag set when the setup checklist's settings step is saved):
 ```json
 {
   "includeSourceLink": false,

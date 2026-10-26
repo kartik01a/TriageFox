@@ -17,15 +17,44 @@ export function sameOrigin(req: Request): boolean {
   }
 }
 
+/** How recently the person must have signed in for sensitive actions. */
+export const FRESH_MS = 15 * 60 * 1000;
+export const isFresh = (signedInAt: Date | string, now = Date.now()) =>
+  now - new Date(signedInAt).getTime() < FRESH_MS;
+
 export const json = (body: unknown, status = 200) => NextResponse.json(body, { status });
 
 /** Signed in, same origin (state-changing requests), and owner/admin of the active workspace. */
-export async function managerGuard(req: Request, opts: { checkOrigin?: boolean } = {}) {
+export async function managerGuard(
+  req: Request,
+  opts: { checkOrigin?: boolean; fresh?: boolean } = {},
+) {
   if ((opts.checkOrigin ?? true) && !sameOrigin(req))
     return { ok: false as const, response: json({ ok: false, error: "Bad request origin." }, 403) };
   const ctx = await resolveWorkspace();
   if (!ctx)
     return { ok: false as const, response: json({ ok: false, error: "Please sign in." }, 401) };
+  if (!ctx.twoFactorOk)
+    return {
+      ok: false as const,
+      response: json(
+        {
+          ok: false,
+          error: "This workspace requires two-factor sign-in.",
+          code: "two_factor_required",
+        },
+        403,
+      ),
+    };
+  // Step-up: sensitive actions need a sign-in from the last few minutes (the browser asks for the password).
+  if (opts.fresh && !isFresh(ctx.session.session.createdAt))
+    return {
+      ok: false as const,
+      response: json(
+        { ok: false, error: "Please confirm your password to continue.", code: "step_up_required" },
+        403,
+      ),
+    };
   if (!ctx.canManage)
     return {
       ok: false as const,

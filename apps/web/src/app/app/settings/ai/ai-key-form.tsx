@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { useStepUpFetch } from "@/components/app/step-up";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 
@@ -17,6 +18,7 @@ export function AiKeyForm({
   models: string[];
 }) {
   const router = useRouter();
+  const stepUpFetch = useStepUpFetch();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -27,7 +29,7 @@ export function AiKeyForm({
     setBusy(true);
     setError(null);
     setDone(false);
-    const res = await fetch("/api/ai-key", {
+    const res = await stepUpFetch("/api/ai-key", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ key: new FormData(form).get("key") }),
@@ -45,7 +47,7 @@ export function AiKeyForm({
   async function remove() {
     if (!window.confirm("Remove your OpenAI key? Automations that use it will pause.")) return;
     setBusy(true);
-    await fetch("/api/ai-key", { method: "DELETE" });
+    await stepUpFetch("/api/ai-key", { method: "DELETE" });
     setBusy(false);
     router.refresh();
   }

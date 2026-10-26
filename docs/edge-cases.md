@@ -70,3 +70,9 @@
 | AI proposes a duplicate of a ticket it was not shown | Dropped (ids must come from the candidates) |
 | Embedding service fails | No candidates this time (a possible duplicate becomes its own ticket); new ticket gets no embedding until a later run |
 | Support fixed it in chat | Comment "Possibly resolved in chat"; the ticket stays open, nothing is closed or deleted |
+| Two people click Create on the same review item | The row is locked and must still be `pending_review`: the second gets "already handled" |
+| Workspace requires 2FA and a member has none | Pages redirect to the security page; API calls answer `two_factor_required` |
+| Sensitive action after a long-lived sign-in | `step_up_required`; the browser asks for the password (and a code), then retries once |
+| Dry run clicked repeatedly | 3 per workspace per hour; then a plain "wait a bit" |
+| Activity details opened after 30 days | "The details were removed after 30 days." (the sealed output is cleared) |
+| Enabling with no working destination | Refused with a plain reason; nothing changes |

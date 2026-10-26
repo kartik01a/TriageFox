@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 /** Pre-launch waitlist. Not tenant data (no workspace), so no RLS. */
 export const waitlistSignups = pgTable("waitlist_signups", {
@@ -35,3 +35,11 @@ export const auditLog = pgTable(
   },
   (t) => [index("audit_log_org_created_idx").on(t.orgId, t.createdAt)],
 );
+
+/** Per-workspace security switches. RLS on org_id (migration 0009). Absent row = defaults. */
+export const workspaceSettings = pgTable("workspace_settings", {
+  orgId: text("org_id").primaryKey(),
+  /** Every member must have two-factor sign-in to use the workspace. */
+  require2fa: boolean("require_2fa").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

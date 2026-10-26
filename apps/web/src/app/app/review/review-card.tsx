@@ -44,7 +44,7 @@ export function ReviewCard({ item, canManage }: { item: Item; canManage: boolean
   }
 
   return (
-    <Card className="space-y-4">
+    <Card role="article" aria-label={item.title} className="space-y-4">
       <div>
         <h2 className="font-semibold">{item.title}</h2>
         <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{item.summary}</p>

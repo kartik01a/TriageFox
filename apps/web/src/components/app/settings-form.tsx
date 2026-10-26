@@ -44,7 +44,7 @@ export function SettingsForm({
       const res = await fetch(`/api/automation/${automationId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ settings: s }),
+        body: JSON.stringify({ settings: { ...s, reviewed: true } }),
       });
       const data = (await res.json()) as { ok: boolean; error?: string };
       setMessage(

@@ -169,6 +169,17 @@ A left-side stepper with progress; every step saves, so users can leave and resu
 
 ---
 
+## As built in Phase 7
+
+- **Navigation:** Overview · Activity · Review (with a count) · Automation · Connections · Members · AI key · Security. Scrolls sideways on phones.
+- **Setup (`/app/setup`)** is a resumable checklist, not a wizard with its own state: every step is computed from the database (Crisp connected → a ticket tool connected → board/project chosen → ticket settings saved → AI → try it and turn it on). The current step is open, finished steps collapse. "Waiting for Crisp…" refreshes itself every 4 s. The ticket settings step has the **live preview**; saving it completes the step. The last step has the **dry run** ("Try it on my last 10 chats") and the on/off switch.
+- **Overview:** this month's created / updated / merged / skipped, an honest time-saved estimate (10 min per created ticket, 3 per update), problems link, recent activity, connection health.
+- **Activity:** filters Created · Updated · Skipped · Duplicate · Problems; a row opens to the AI's reason and priority reason (fetched from the sealed output by the worker, available for 30 days) plus links to the ticket and the Crisp conversation.
+- **Review:** edit type/priority, Create or Dismiss. A double click cannot act twice.
+- **Automation:** source → destinations diagram with health, a per-destination switch, "Tickets that didn't arrive" with Try again, the dry run, and the settings form.
+- **Security:** two-factor setup (QR + backup codes), "Require 2FA" (owner), sessions (sign out one / everywhere else), audit log (owner/admin).
+- **Not built yet / changed:** "Coming soon + vote" cards, confetti and the first-ticket toast, notification emails, and the Billing page (Phase 9); the Settings area is split across Members / AI key / Security instead of one page.
+
 ## Admin (`/admin`): deliberately simple
 Plain shadcn tables and forms, no animation, no custom styling:
 - **Settings:** trial days, trial conversation cap, card required (toggle), unlimited trial with own key (toggle), trial AI budget, platform AI ceiling, sign-ups on/off.

@@ -19,7 +19,7 @@ const body = z.object({ key: z.string().trim().min(20).max(300) });
  * worker, and only a hint (sk-…1234) is ever readable again. Models are never customer choices.
  */
 export async function POST(req: Request) {
-  const guard = await managerGuard(req);
+  const guard = await managerGuard(req, { fresh: true });
   if (!guard.ok) return guard.response;
   const { ctx } = guard;
   const orgId = ctx.workspace.id;
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const guard = await managerGuard(req);
+  const guard = await managerGuard(req, { fresh: true });
   if (!guard.ok) return guard.response;
   const orgId = guard.ctx.workspace.id;
   await withOrg(db(), orgId, (tx) =>

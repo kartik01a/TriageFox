@@ -82,7 +82,7 @@ export function DryRunPanel({ automationId }: { automationId: string }) {
         ) : (
           <ul className="divide-y divide-border rounded-lg border border-border">
             {results.map((r, i) => (
-              <li key={`${r.when}-${i}`} className="text-sm">
+              <li key={r.conversationUrl} className="text-sm">
                 <button
                   type="button"
                   className="flex w-full flex-wrap items-center gap-2 px-4 py-3 text-left"
