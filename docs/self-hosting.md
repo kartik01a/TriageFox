@@ -15,8 +15,8 @@ Just trying it on your laptop? Use `localhost` as the domain and the built-in te
 ## 1. Install
 
 ```bash
-git clone https://github.com/<owner>/triagefox.git
-cd triagefox
+git clone https://github.com/kartik01a/TriageFox.git
+cd TriageFox
 ./deploy/setup.sh
 ```
 
