@@ -14,6 +14,8 @@ FROM base AS build
 COPY . .
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile
+# Git does not keep empty folders: make sure the (possibly empty) public folder exists to copy later.
+RUN mkdir -p apps/web/public
 RUN pnpm --filter @triagefox/web build
 RUN pnpm --filter @triagefox/worker build
 # Production dependencies only, for the worker (workspace packages are bundled into dist/).
