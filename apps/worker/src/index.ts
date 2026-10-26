@@ -7,6 +7,7 @@ import { createLogger } from "@triagefox/shared";
 import { Queue, UnrecoverableError, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { loadConfig, verifyKeyring } from "./config";
+import { createTriage } from "./pipeline/triage";
 import { registerSchedulers, startPipelineWorker } from "./pipeline/worker";
 import { JOBS, QUEUES } from "./queues";
 import { createHandlers } from "./rpc/handlers";
@@ -78,14 +79,7 @@ const pipeline = startPipelineWorker(
     queue: pipelineQueue,
     crisp,
     log,
-    // Phase 4 replaces this with the AI analysis. Until then an evaluation fetches the conversation and
-    // records how far we got. It never logs or stores message content.
-    triage: async ({ thread, conversation }) => {
-      log.info(
-        { threadId: thread.id, messages: conversation.messages.length, state: conversation.state },
-        "conversation evaluated",
-      );
-    },
+    triage: createTriage({ db, config, keyring: config.keyring, log }),
   },
   { lookbackMs: config.RECONCILE_LOOKBACK_MIN * 60 * 1000 },
 );

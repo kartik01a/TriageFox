@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@sentry/node": "^11.9.0",
+    "@triagefox/ai": "workspace:*",
     "@triagefox/crypto": "workspace:*",
     "@triagefox/db": "workspace:*",
     "@triagefox/shared": "workspace:*",

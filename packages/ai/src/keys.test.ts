@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keyHint, type ModelConfig, validateOpenAiKey } from "./index";
+import { keyHint, type ModelConfig, validateOpenAiKey } from "./keys";
 
 const models: ModelConfig = { default: "m-small", escalation: "m-big", embedding: "m-embed" };
 const KEY = "sk-test-0123456789abcdefghijkl"; // secret-scan:ignore fake key

@@ -10,11 +10,18 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "eval": "tsx --env-file=../../.env evals/run.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "@triagefox/shared": "workspace:*",
+    "chrono-node": "^2.10.3",
+    "zod": "^4.6.7"
   }
 }

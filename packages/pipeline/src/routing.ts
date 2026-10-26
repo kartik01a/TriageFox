@@ -58,3 +58,11 @@ export async function purgeOldSourceEvents(db: Db, days: number): Promise<number
   );
   return Number(rows[0]?.count ?? 0);
 }
+
+/** Clears sealed model outputs older than `days` (counts, cost and decisions stay). */
+export async function clearOldAiOutputs(db: Db, days: number): Promise<number> {
+  const rows = await db.execute<{ count: string }>(
+    sql`select clear_old_ai_outputs(${days}) as count`,
+  );
+  return Number(rows[0]?.count ?? 0);
+}

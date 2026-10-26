@@ -53,6 +53,12 @@ export const workerEnvSchema = z.object({
   ...base,
   ...cryptoPublic,
   ...ai,
+  /** Platform OpenAI key: used when a workspace has not added its own (hosted) or in self-host installs. */
+  OPENAI_API_KEY: z.string().optional(),
+  /** Guardrails (docs/ai-triage.md "Cost guardrails"). */
+  AI_MAX_RUNS_PER_THREAD_PER_MONTH: z.coerce.number().int().positive().default(10),
+  /** Spend ceiling per workspace per day on the platform key; own keys are not capped by us. */
+  AI_PLATFORM_DAILY_USD_PER_ORG: z.coerce.number().positive().default(1),
   TRELLO_API_KEY: z.string().optional(),
   ATLASSIAN_CLIENT_ID: z.string().optional(),
   ATLASSIAN_CLIENT_SECRET: z.string().optional(),

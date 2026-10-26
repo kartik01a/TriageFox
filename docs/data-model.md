@@ -114,8 +114,10 @@ Deleting a source connection deletes its automations and, through them, their th
 | `issues` | id, automation_id, origin_thread_id, title, body_md, type, priority (1–5), due_date, due_date_quote, confidence, embedding vector(1536), report_count, status (`active` \| `pending_review` \| `dismissed`), created_at |
 | `issue_reports` | issue_id, thread_id, customer_ref, reported_at |
 | `destination_tickets` | id, issue_id, automation_destination_id, external_id, external_key, url, last_pushed_at, last_remote_updated_at, status (`ok` \| `failed` \| `broken`), **UNIQUE (issue_id, automation_destination_id)** |
-| `ai_runs` | id, thread_id, model, key_source (`platform` \| `byok`), input_tokens, output_tokens, cost_usd, decision jsonb, raw_output (**encrypted**, cleared after 30 days), created_at |
-| `activity_log` | id, org_id, automation_id, kind, message, refs jsonb, created_at |
+| `ai_runs` (Phase 4) | id, org_id, thread_id (FK, cascade), model, escalated, key_source (`platform` \| `byok`), input_tokens, output_tokens, **cost_micro_usd** (millionths of a dollar, exact sums), decision jsonb (kinds/types/priorities/confidence only, no AI-written text), **raw_output_sealed** (sealed box, binding `ai_run.output`; cleared to NULL after 30 days), created_at. **RLS.** |
+| `activity_log` (Phase 4) | id, org_id, automation_id, thread_id, kind (`ai_create`, `ai_no_action`, `ai_limit`, `ai_key_problem`, `ai_unavailable`…), message (plain language, never message text), refs jsonb, created_at. **RLS.** |
+
+Migration 0006 also adds `clear_old_ai_outputs(days)` (SECURITY DEFINER, runtime role may execute) used by the daily cleanup job.
 
 **Routing functions** (migration 0005, `SECURITY DEFINER`, executable only by the runtime role, identifiers only): a hook knows just the Crisp website id and the runtime role cannot read across workspaces, so `crisp_routes(website_id)` returns `(org_id, connection_id, automation_id, quiet_window_sec)` for active connections with enabled automations, `crisp_reconcile_targets()` lists the same for every website, and `purge_old_source_events(days)` applies retention.
 

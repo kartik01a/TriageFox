@@ -48,3 +48,8 @@
 | Conversation has only operator messages | Thread created, marked processed, never sent to the AI |
 | Crisp stops allowing access (plugin uninstalled) | Connection `revoked`, job not retried; reconcile does the same for its website |
 | Customer-supplied file URL points inside our network | Refused by the SSRF guard before any connection is made |
+| Conversation analysed more than 10 times in 30 days | Skipped with an activity entry (`AI_MAX_RUNS_PER_THREAD_PER_MONTH`) |
+| Platform AI key spend hits the daily ceiling for a workspace | Paused with an activity entry; picked up again by reconcile the next day |
+| No OpenAI key configured anywhere | Activity entry, job stops retrying; the conversation is not marked processed |
+| Customer-supplied file URL is not on `storage.crisp.chat` | Not shown to the model; the AI sees "[file not shown]" |
+| Model quotes words the customer never wrote | Quote rejected by code; no due date |

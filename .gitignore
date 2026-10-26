@@ -43,3 +43,6 @@ spikes/captured/
 
 *.tsbuildinfo
 next-env.d.ts
+
+# AI eval run outputs
+packages/ai/evals/results/

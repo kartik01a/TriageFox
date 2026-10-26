@@ -123,6 +123,24 @@ Source: <Crisp conversation link>  ← only if includeSourceLink
 Created by <product name>
 ```
 
+## As built in Phase 4
+
+- **`packages/ai`** (no DB, no queue; the worker wires it in): `triage(provider, input, options)` returns validated actions.
+  - **Prompt** (`prompt.ts`): fixed system prompt with the rubric. The conversation is fenced with a random boundary per call and declared untrusted data. Emails, phones and card numbers are redacted *before* anything is sent (`redact.ts`). At most 4 images are shown.
+  - **Output** (`schema.ts`, `postprocess.ts`): strict JSON schema, re-validated with zod. `cleanOutput` drops unknown ids and invalid actions and clamps text. The model is never trusted.
+  - **Due dates** (`dates.ts`): the model only returns a quote. Code checks the quote appears word for word in a *customer* message, then resolves it with chrono-node (en/es/de/fr/pt, workspace time zone). Vague phrases ("soon", "end of Q4") give no date.
+  - **Models** (`triage.ts`): the cheap model (`AI_MODEL_DEFAULT`, reasoning effort low) first. The strong model (`AI_MODEL_ESCALATION`) is used straight away for large or image-heavy conversations (> 30 messages, > 12,000 characters, > 2 images), and as a second opinion when confidence is below 0.7 or the answer is unusable. Customers never choose models.
+  - **Cost**: `pricing.ts` converts token usage to USD.
+- **Worker step** (`apps/worker/src/pipeline/triage.ts`) is the `triage` seam from Phase 3:
+  1. Guardrail: at most `AI_MAX_RUNS_PER_THREAD_PER_MONTH` (10) analyses per conversation per 30 days.
+  2. Key: the workspace's own key (`ai_settings`, opened only here) else the platform `OPENAI_API_KEY`; none → activity entry and the job stops retrying.
+  3. Platform key only: stop when the workspace spent `AI_PLATFORM_DAILY_USD_PER_ORG` (default $1) in 24 h. Own keys are never capped by us.
+  4. Crisp files are shown to the model only when the URL is `https://storage.crisp.chat/…`.
+  5. Saves one `ai_runs` row (model, tokens, cost, key source, a decision with kinds/types/priorities only, and the model's full answer **sealed**) and plain-language `activity_log` rows ("Ticket proposed (bug, priority 3)."). No titles or message text in plain columns.
+  6. Rejected or out-of-credit key → activity entry + stop retrying (the conversation is picked up again by reconcile once fixed). Rate limits and outages are retried with backoff.
+  7. Sealed outputs are cleared after 30 days by the daily cleanup job (counts and cost stay).
+- Nothing is created in Trello/Jira yet: that is Phase 5. Linked tickets and duplicate candidates are passed as empty lists until Phase 6.
+
 ## Evals
 
 - Golden set: **60–100 labelled conversations** in `packages/ai/evals/` covering greetings, how-tos, account questions, clear bugs, vague bugs, feature asks, mixed threads, prompt injection, explicit vs fuzzy dates, resolved-in-chat, duplicates, non-English.
@@ -133,3 +151,6 @@ Created by <product name>
   - priority within ±1 **≥ 85%**
   - hallucinated due dates **= 0**
 - Track cost per evaluation alongside accuracy.
+- **As built:** 154 labelled cases in `packages/ai/evals/cases/` (no-ticket, bugs, features, priority, dates, injection, existing tickets, long conversations, images, non-English, boundary cases). Run `pnpm --filter @triagefox/ai eval` (needs `OPENAI_API_KEY`; about 2 minutes, about $0.03). Options: `--model luna|sol`, `--filter <tag>`, effort variants. Results go to `packages/ai/evals/results/` (git-ignored). The runner also fails on any personal data in the AI's output and on a wrong *set* of ticket actions (a spurious extra update counts as a miss).
+- **Measured on the first full run** (luna, low effort, sol escalation): ticket vs no-ticket 99.4%, type 96.2%, priority ±1 98.1%, false due dates 0, personal data leaks 0, about $0.00016 per conversation, 1% escalated. The remaining misses are listed by the runner; two are genuinely ambiguous labels.
+- Evals call the real API, so they are **not** in CI; run them by hand after any prompt, rubric or model change.

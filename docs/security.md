@@ -176,7 +176,7 @@ Decisions agreed 2026-10-25: no transcript storage, Cloudflare in front, sealed 
 | 1 | Crypto module (sealed boxes, key versions), data-access layer + RLS, security headers, gitleaks + push protection + Dependabot + CodeQL, pino redaction |
 | 2 | OAuth `state` + PKCE, sealed storage of tokens, write-only key UI, worker-side calls for listing boards/projects, delete on disconnect |
 | 3 | Webhook signature + timestamp, IDs-only event storage, SSRF guard |
-| 4 | AI: no tools, strict schema, ID validation, PII stripping, encrypted summaries |
+| 4 | AI: no tools, strict schema, ID validation, PII stripping, encrypted summaries. **Done:** no tools are offered to the model; output passes the JSON schema + zod + `cleanOutput` (unknown ids dropped); emails/phones/cards are redacted before sending and the evals fail on any personal data in the output; the conversation is fenced as untrusted data and injection cases are in the eval set; the model's answer is stored sealed and cleared after 30 days, plain columns hold no AI-written text; own keys are opened only in the worker; images are shown only from `storage.crisp.chat` |
 | 7 | 2FA, step-up re-auth, "Require 2FA" workspace setting, audit log UI, session management |
 | 8 | Hardened Compose (internal networks, non-root, read-only), setup script key generation, self-host hardening guide |
 | 9 | Admin 2FA + 404 + audit; billing webhooks verified |

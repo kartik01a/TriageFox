@@ -1,5 +1,11 @@
 import { eq, schema, withOrg } from "@triagefox/db";
-import { evaluatePayload, JOBS, PIPELINE_QUEUE, purgeOldSourceEvents } from "@triagefox/pipeline";
+import {
+  clearOldAiOutputs,
+  evaluatePayload,
+  JOBS,
+  PIPELINE_QUEUE,
+  purgeOldSourceEvents,
+} from "@triagefox/pipeline";
 import { type Job, Worker } from "bullmq";
 import type { PipelineDeps } from "./deps";
 import { evaluateThread } from "./evaluate";
@@ -27,8 +33,13 @@ export function startPipelineWorker(deps: PipelineDeps, opts: PipelineWorkerOpti
         }
         case JOBS.reconcile:
           return reconcileCrisp(deps, { lookbackMs: opts.lookbackMs ?? 3 * 60 * 60 * 1000 });
-        case JOBS.cleanup:
-          return { purged: await purgeOldSourceEvents(deps.db, opts.retentionDays ?? 30) };
+        case JOBS.cleanup: {
+          const days = opts.retentionDays ?? 30;
+          return {
+            purged: await purgeOldSourceEvents(deps.db, days),
+            clearedAiOutputs: await clearOldAiOutputs(deps.db, days),
+          };
+        }
         default:
           throw new Error(`Unknown job: ${job.name}`);
       }
