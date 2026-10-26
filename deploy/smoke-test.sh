@@ -8,6 +8,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 [ -e .env ] && { echo "deploy/.env exists: this test only runs on a machine without an installation." >&2; exit 1; }
+# The test mailbox must not clash with a developer's own Mailpit on 8025.
+export MAILPIT_PORT=18025
 compose=(docker compose -f docker-compose.yml --profile trial)
 cleanup() { "${compose[@]}" down -v --remove-orphans >/dev/null 2>&1 || true; rm -f .env; }
 trap cleanup EXIT
