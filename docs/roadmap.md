@@ -37,6 +37,7 @@ The repo stays **private** while building, so the first public version is comple
 
 - Phase 4: done (2026-10-26). `packages/ai` (prompt, schema, redaction, date resolver, cost, model policy), worker step with own-key/platform-key selection and cost guardrails, `ai_runs` + `activity_log` (RLS, sealed output, 30-day clearing), 154-case eval set. Eval targets met. Scope note: nothing is sent to Trello/Jira yet (Phase 5).
 - Phase 5: done (2026-10-27). Trello + Jira delivery, labels, priority mapping, in-house markdown→ADF, attachments, fan-out, idempotent creation, `issues` / `destination_tickets` / `automation_destinations` with RLS. Scope note: updates and duplicates are Phase 6; `pnpm db:dev-automation` stands in for the wizard until Phase 7.
+- Phase 6: done (2026-10-27). Follow-up comments and edits, human-edit check, "possibly resolved in chat", embeddings and duplicate merging (`issue_reports`, report count, names toggle), regression ticket when the match is closed. Scope note: a manual "retry" button for failed tickets and the review queue are in Phase 7.
 
 ## Integrations roadmap
 

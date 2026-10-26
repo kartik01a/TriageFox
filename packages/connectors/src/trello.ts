@@ -30,6 +30,13 @@ export interface TrelloLabel {
   name: string;
   color: string | null;
 }
+export interface TrelloCard {
+  id: string;
+  closed: boolean;
+  dueComplete?: boolean;
+  idLabels: string[];
+  desc: string;
+}
 export interface TrelloList {
   id: string;
   name: string;
@@ -87,6 +94,41 @@ export class TrelloClient {
         body: JSON.stringify(body),
       },
     );
+  }
+
+  private put<T>(path: string, body: Record<string, unknown>) {
+    return this.call<T>(
+      path,
+      {},
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
+  getCard(cardId: string) {
+    return this.call<TrelloCard>(`/cards/${encodeURIComponent(cardId)}`, {
+      fields: "closed,dueComplete,idLabels,desc",
+    });
+  }
+
+  updateCard(cardId: string, patch: { desc?: string; due?: string; idLabels?: string[] }) {
+    return this.put(`/cards/${encodeURIComponent(cardId)}`, {
+      ...(patch.desc !== undefined ? { desc: patch.desc } : {}),
+      ...(patch.due !== undefined ? { due: patch.due } : {}),
+      ...(patch.idLabels ? { idLabels: patch.idLabels.join(",") } : {}),
+    });
+  }
+
+  /** Description edits on a card (who and when), newest first. Used to avoid overwriting a person's edit. */
+  async descriptionEdits(cardId: string): Promise<{ byMemberId: string; at: string }[]> {
+    const actions = await this.call<{ date: string; idMemberCreator: string }[]>(
+      `/cards/${encodeURIComponent(cardId)}/actions`,
+      { filter: "updateCard:desc", limit: "50" },
+    );
+    return actions.map((a) => ({ byMemberId: a.idMemberCreator, at: a.date }));
   }
 
   listLabels(boardId: string) {

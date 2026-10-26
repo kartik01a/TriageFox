@@ -1,5 +1,5 @@
 import type { Queue } from "bullmq";
-import { type DeliverPayload, type EvaluatePayload, JOBS } from "./queues";
+import { type DeliverPayload, type EvaluatePayload, JOBS, type UpdatePayload } from "./queues";
 
 export const evaluateJobId = (threadId: string) => `evaluate_${threadId}`;
 
@@ -55,6 +55,23 @@ export function scheduleDelivery(queue: Queue, target: DeliverPayload) {
   return queue.add(JOBS.deliver, target, {
     jobId: deliverJobId(target),
     attempts: 5,
+    backoff: { type: "exponential", delay: 15_000 },
+    removeOnComplete: true,
+    removeOnFail: true,
+  });
+}
+
+export const updateJobId = (p: Pick<UpdatePayload, "updateId" | "destinationId">) =>
+  `update_${p.updateId}_${p.destinationId}`;
+
+/**
+ * One job per update x destination. More attempts than a delivery: the ticket may not exist yet when
+ * the follow-up arrives, so the job waits for it with growing delays.
+ */
+export function scheduleUpdate(queue: Queue, target: UpdatePayload) {
+  return queue.add(JOBS.update, target, {
+    jobId: updateJobId(target),
+    attempts: 8,
     backoff: { type: "exponential", delay: 15_000 },
     removeOnComplete: true,
     removeOnFail: true,

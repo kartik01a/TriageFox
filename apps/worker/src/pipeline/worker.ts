@@ -6,6 +6,7 @@ import {
   JOBS,
   PIPELINE_QUEUE,
   purgeOldSourceEvents,
+  updatePayload,
 } from "@triagefox/pipeline";
 import { type Job, Worker } from "bullmq";
 import type { PipelineDeps } from "./deps";
@@ -40,6 +41,13 @@ export function startPipelineWorker(deps: PipelineDeps, opts: PipelineWorkerOpti
             finalAttempt: job.attemptsMade + 1 >= (job.opts.attempts ?? 1),
           });
           return { delivered: true };
+        }
+        case JOBS.update: {
+          const payload = updatePayload.parse(job.data);
+          await deps.applyUpdate(payload, {
+            finalAttempt: job.attemptsMade + 1 >= (job.opts.attempts ?? 1),
+          });
+          return { applied: true };
         }
         case JOBS.cleanup: {
           const days = opts.retentionDays ?? 30;

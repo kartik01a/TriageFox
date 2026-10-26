@@ -11,6 +11,8 @@ export const JOBS = {
   reconcile: "crisp.reconcile",
   /** Create (or finish creating) one issue in one destination. One job per issue x destination. */
   deliver: "ticket.deliver",
+  /** Tell one destination about a follow-up, a duplicate report or a chat resolution. */
+  update: "ticket.update",
   /** Delete expired records. Repeatable. */
   cleanup: "maintenance.cleanup",
 } as const;
@@ -24,6 +26,13 @@ export const deliverPayload = z.object({
   destinationId: z.uuid(),
 });
 export type DeliverPayload = z.infer<typeof deliverPayload>;
+
+export const updatePayload = z.object({
+  orgId: z.string().min(1),
+  updateId: z.uuid(),
+  destinationId: z.uuid(),
+});
+export type UpdatePayload = z.infer<typeof updatePayload>;
 
 export interface PipelineQueue {
   queue: Queue;

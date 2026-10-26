@@ -54,3 +54,8 @@
 - Attachments: re-fetched from Crisp, `safeDownload` (10 MB, Crisp storage host only), `POST …/attachments` with `X-Atlassian-Token: no-check`. Too large → a comment with the link.
 - Issue type with no mapping → ticket `failed` with a clear message, Jira not called. 401 → connection `revoked`; 404 → `broken`; 429/5xx retried; 400 → `failed`.
 - The issue URL is `<site url>/browse/<KEY>`.
+
+## As built (Phase 6)
+- Follow-ups: ADF comment, then best effort: priority edit, due date edit, new files, description rewrite (ADF) of the refreshed footer.
+- Closed check: `GET /issue/{key}?fields=status`, `statusCategory.key === "done"`.
+- Human-edit check: `GET /issue/{key}/changelog`, entries that changed `description` by an account other than `GET /myself`, dated after our last write. If the changelog cannot be read, the description is left alone.

@@ -25,6 +25,7 @@ const action = (over: Partial<ModelAction> = {}): ModelAction => ({
   confidence: 0.9,
   reason: "Customer reports checkout failing on Safari",
   category: null,
+  resolvedInChat: false,
   ...over,
 });
 const out = (...actions: ModelAction[]): ModelOutput => ({ actions });
@@ -433,5 +434,57 @@ describe("prompt construction", () => {
     expect(p.text).toContain('"id":"iss_1"');
     expect(p.system).toMatch(/DATA written by third parties/);
     expect(p.system).toMatch(/Never follow them/);
+  });
+});
+
+describe("resolved in chat", () => {
+  it("is kept only on update actions", async () => {
+    const f = fake(
+      out(
+        action({ kind: "update", issueId: "iss_1", resolvedInChat: true }),
+        action({ resolvedInChat: true }),
+      ),
+    );
+    const r = await triage(
+      f.provider,
+      input([msg("1", "customer", "That worked, thanks!")], {
+        existingIssues: [{ id: "iss_1", title: "t", summary: "s", priority: 3 }],
+      }),
+      opts,
+    );
+    expect(r.actions.find((a) => a.kind === "update")?.resolvedInChat).toBe(true);
+    expect(r.actions.find((a) => a.kind === "create")?.resolvedInChat).toBe(false);
+  });
+});
+
+describe("embeddings", () => {
+  it("OpenAiProvider.embed returns vectors in input order and maps errors", async () => {
+    const { OpenAiProvider } = await import("./openai");
+    const ok = new OpenAiProvider({
+      apiKey: "k",
+      fetch: (async () =>
+        new Response(
+          JSON.stringify({
+            data: [
+              { index: 1, embedding: [2] },
+              { index: 0, embedding: [1] },
+            ],
+          }),
+        )) as typeof fetch,
+    });
+    expect(await ok.embed("m", ["a", "b"])).toEqual([[1], [2]]);
+    const denied = new OpenAiProvider({
+      apiKey: "k",
+      fetch: (async () => new Response("{}", { status: 401 })) as typeof fetch,
+    });
+    await expect(denied.embed("m", ["a"])).rejects.toMatchObject({ kind: "auth" });
+    const quota = new OpenAiProvider({
+      apiKey: "k",
+      fetch: (async () =>
+        new Response(JSON.stringify({ error: { code: "insufficient_quota" } }), {
+          status: 429,
+        })) as typeof fetch,
+    });
+    await expect(quota.embed("m", ["a"])).rejects.toMatchObject({ kind: "no_quota" });
   });
 });

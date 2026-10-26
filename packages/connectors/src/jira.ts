@@ -217,6 +217,40 @@ export class JiraClient {
     await this.send("PUT", `/issue/${encodeURIComponent(key)}`, change);
   }
 
+  myself() {
+    return this.get<{ accountId: string }>("/myself");
+  }
+
+  /** `done` = the issue is in a "Done" status category (closed). */
+  async isDone(key: string): Promise<boolean> {
+    const issue = await this.get<{ fields?: { status?: { statusCategory?: { key?: string } } } }>(
+      `/issue/${encodeURIComponent(key)}?fields=status`,
+    );
+    return issue.fields?.status?.statusCategory?.key === "done";
+  }
+
+  /** Description changes (who and when). Used to avoid overwriting a person's edit. */
+  async descriptionEdits(key: string): Promise<{ byAccountId: string; at: string }[]> {
+    const out: { byAccountId: string; at: string }[] = [];
+    for (let startAt = 0; startAt < 500; ) {
+      const page = await this.get<{
+        values?: {
+          created: string;
+          author?: { accountId?: string };
+          items?: { field?: string }[];
+        }[];
+        isLast?: boolean;
+      }>(`/issue/${encodeURIComponent(key)}/changelog?maxResults=100&startAt=${startAt}`);
+      const values = page.values ?? [];
+      for (const v of values)
+        if (v.items?.some((i) => i.field === "description"))
+          out.push({ byAccountId: v.author?.accountId ?? "", at: v.created });
+      startAt += values.length;
+      if (page.isLast !== false || values.length === 0) break;
+    }
+    return out;
+  }
+
   addComment(key: string, adf: unknown) {
     return this.send("POST", `/issue/${encodeURIComponent(key)}/comment`, { body: adf });
   }

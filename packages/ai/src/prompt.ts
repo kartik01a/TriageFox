@@ -53,6 +53,7 @@ Rules for tricky cases:
 - If the customer adds new information to a problem already covered by an existing ticket of THIS conversation → kind "update", issueId = that ticket's id, and put only the NEW information in summary.
 - If the problem is the same as one in <similar_tickets> (same root problem, not merely the same area) → kind "duplicate_of", issueId = that ticket's id.
 - Only use "update" when the conversation adds genuinely NEW information about that ticket's problem. If the customer just repeats, thanks you, or raises something unrelated, do nothing for that ticket (and create a new ticket only for a different problem).
+- For an "update" set resolvedInChat to true ONLY when the operator fixed the problem inside this conversation (a workaround or fix worked) and the customer confirms or clearly accepts it; the summary then says what fixed it. A workaround that only avoids the problem ("use another browser for now") is NOT a fix: the bug still exists, so resolvedInChat is false. In every other case resolvedInChat is false (always false for create, duplicate_of and no_action).
 - Use only ids that were given to you. Never invent an id. For "create" and "no_action", issueId is null.
 
 # Filling in a ticket

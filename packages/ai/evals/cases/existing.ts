@@ -16,6 +16,34 @@ const csv = {
 /** Conversations with tickets already created from them, or similar tickets from other conversations. */
 export const existing = [
   c(
+    "exist-resolved-in-chat",
+    ["existing", "resolved-in-chat"],
+    [
+      "C: The Pay button on checkout does nothing on Safari.",
+      "O: Thanks, I've reported it.",
+      "O: Quick check: could you disable the 'Reader' extension in Safari and reload?",
+      "C: That worked, I can pay now. Thanks!",
+    ],
+    { positive: true, kind: "update", issueId: "iss_1", resolvedInChat: true },
+    {
+      existingIssues: [checkout],
+      note: "A workaround fixed it for this customer: comment, never close.",
+    },
+  ),
+  c(
+    "exist-workaround-but-bug-remains",
+    ["existing", "resolved-in-chat"],
+    [
+      "C: The Pay button on checkout does nothing on Safari.",
+      "O: Thanks, I've reported it.",
+      "C: Update: it fails on Safari on iPad too.",
+      "O: Noted. Meanwhile please use Chrome, that works.",
+      "C: OK, I'll use Chrome for now.",
+    ],
+    { positive: true, kind: "update", issueId: "iss_1", resolvedInChat: false },
+    { existingIssues: [checkout], note: "A workaround is not a fix: the bug is still open." },
+  ),
+  c(
     "exist-update-new-info",
     ["existing"],
     [

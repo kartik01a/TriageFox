@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildTicketBody, JiraClient, markdownToAdf, ProviderError, TrelloClient } from "./index";
+import {
+  buildTicketBody,
+  JiraClient,
+  markdownToAdf,
+  ProviderError,
+  refreshTicketFooter,
+  TrelloClient,
+} from "./index";
 
 describe("markdownToAdf", () => {
   it("converts the ticket template: headings, lists, bold, rule", () => {
@@ -172,5 +179,60 @@ describe("Jira issue creation", () => {
       .catch((e) => e);
     expect(err).toBeInstanceOf(ProviderError);
     expect(err.kind).toBe("invalid");
+  });
+});
+
+describe("refreshTicketFooter", () => {
+  const body =
+    "## Summary\nx\n\n---\nType: Bug · Priority: 3 (Medium) — Workaround exists.\nReported by 1 customer\nCreated by TriageFox";
+  it("changes only the priority and reporter lines", () => {
+    const next = refreshTicketFooter(body, { priority: 5, reportedBy: "3 customers" });
+    expect(next).toContain("Type: Bug · Priority: 5 (Critical) — Workaround exists.");
+    expect(next).toContain("Reported by 3 customers");
+    expect(next).toContain("## Summary\nx");
+    expect(next).toContain("Created by TriageFox");
+  });
+});
+
+describe("state and edit-history calls", () => {
+  it("Trello: reads a card and the people who edited its description", async () => {
+    const { fn } = fake((url) =>
+      url.pathname.endsWith("/actions")
+        ? { body: [{ date: "2026-10-27T10:00:00.000Z", idMemberCreator: "M1" }] }
+        : { body: { id: "c", closed: true, idLabels: ["a"], desc: "" } },
+    );
+    const t = new TrelloClient({ apiKey: "K", token: "T", fetch: fn });
+    expect((await t.getCard("c")).closed).toBe(true);
+    expect(await t.descriptionEdits("c")).toEqual([
+      { byMemberId: "M1", at: "2026-10-27T10:00:00.000Z" },
+    ]);
+  });
+  it("Jira: knows when an issue is Done and who changed the description", async () => {
+    const { fn } = fake((url) =>
+      url.pathname.endsWith("/changelog")
+        ? {
+            body: {
+              values: [
+                {
+                  created: "2026-10-27T10:00:00.000Z",
+                  author: { accountId: "A1" },
+                  items: [{ field: "description" }, { field: "status" }],
+                },
+                {
+                  created: "2026-10-27T11:00:00.000Z",
+                  author: { accountId: "A2" },
+                  items: [{ field: "status" }],
+                },
+              ],
+              isLast: true,
+            },
+          }
+        : { body: { fields: { status: { statusCategory: { key: "done" } } } } },
+    );
+    const j = new JiraClient({ accessToken: "A", cloudId: "C", fetch: fn });
+    expect(await j.isDone("TF-1")).toBe(true);
+    expect(await j.descriptionEdits("TF-1")).toEqual([
+      { byAccountId: "A1", at: "2026-10-27T10:00:00.000Z" },
+    ]);
   });
 });

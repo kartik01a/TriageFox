@@ -54,3 +54,16 @@ export function buildTicketBody(c: TicketContent, o: TicketBodyOptions = {}): st
   out.push(`Created by ${o.productName ?? "TriageFox"}`);
   return out.join("\n");
 }
+
+/** Updates the two lines that change after creation (priority, reporter count) and leaves the rest as it is. */
+export function refreshTicketFooter(
+  body: string,
+  o: { priority: Priority; reportedBy: string },
+): string {
+  return body
+    .replace(
+      /^(Type: .*? · Priority: )\d \([A-Za-z]+\)/m,
+      (_m, head: string) => `${head}${o.priority} (${PRIORITY_NAMES[o.priority]})`,
+    )
+    .replace(/^Reported by .*$/m, `Reported by ${line(o.reportedBy)}`);
+}

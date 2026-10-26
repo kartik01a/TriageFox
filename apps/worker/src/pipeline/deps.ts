@@ -29,6 +29,12 @@ export type Deliver = (
   opts?: { finalAttempt?: boolean },
 ) => Promise<void>;
 
+/** Applies one update (comment, files, priority, due date) to one destination. */
+export type ApplyUpdate = (
+  payload: import("@triagefox/pipeline").UpdatePayload,
+  opts?: { finalAttempt?: boolean },
+) => Promise<void>;
+
 export interface PipelineLogger {
   info(o: object, m: string): void;
   warn(o: object, m: string): void;
@@ -44,6 +50,7 @@ export interface PipelineDeps {
   crisp: () => CrispSource;
   triage: Triage;
   deliver: Deliver;
+  applyUpdate: ApplyUpdate;
   log: PipelineLogger;
   now?: () => Date;
 }

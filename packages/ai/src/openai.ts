@@ -30,6 +30,44 @@ export class OpenAiProvider implements AiProvider {
     },
   ) {}
 
+  async embed(model: string, texts: string[]): Promise<number[][]> {
+    const f = this.opts.fetch ?? fetch;
+    let res: Response;
+    try {
+      res = await f(`${this.opts.baseUrl ?? "https://api.openai.com/v1"}/embeddings`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${this.opts.apiKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ model, input: texts }),
+        signal: AbortSignal.timeout(this.opts.timeoutMs ?? 30_000),
+      });
+    } catch {
+      throw new AiError("unavailable", "OpenAI could not be reached.");
+    }
+    const json = (await res.json().catch(() => ({}))) as {
+      data?: { index: number; embedding: number[] }[];
+      error?: { code?: string };
+    };
+    if (res.status === 401 || res.status === 403)
+      throw new AiError("auth", "OpenAI rejected the API key.");
+    if (res.status === 429)
+      throw new AiError(
+        json.error?.code === "insufficient_quota" ? "no_quota" : "rate_limited",
+        "OpenAI is limiting requests.",
+      );
+    if (!res.ok)
+      throw new AiError(
+        res.status >= 500 ? "unavailable" : "invalid_request",
+        "OpenAI could not create embeddings.",
+      );
+    const data = [...(json.data ?? [])].sort((a, b) => a.index - b.index);
+    if (data.length !== texts.length)
+      throw new AiError("bad_output", "Unexpected embeddings answer.");
+    return data.map((d) => d.embedding);
+  }
+
   async complete(req: CompletionRequest): Promise<CompletionResult> {
     const f = this.opts.fetch ?? fetch;
     const url = `${this.opts.baseUrl ?? "https://api.openai.com/v1"}/chat/completions`;

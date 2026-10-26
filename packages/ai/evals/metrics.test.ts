@@ -18,6 +18,7 @@ const act = (over: Partial<TriageAction> = {}): TriageAction => ({
   confidence: 0.9,
   reason: "",
   needsReview: false,
+  resolvedInChat: false,
   ...over,
 });
 const result = (actions: TriageAction[], discarded = 0): TriageResult => ({

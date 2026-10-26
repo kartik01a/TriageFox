@@ -69,6 +69,8 @@ export interface TriageAction {
   confidence: number;
   reason: string;
   category?: NoActionCategory;
+  /** update actions: support fixed it in the chat and the customer confirmed. */
+  resolvedInChat: boolean;
   /** create actions below minConfidence. */
   needsReview: boolean;
 }

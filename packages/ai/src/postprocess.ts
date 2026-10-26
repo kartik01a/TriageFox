@@ -58,6 +58,7 @@ export function cleanOutput(
       dueDateQuote: null as string | null,
       relevantAttachmentIds: [] as string[],
       needsReview: false,
+      resolvedInChat: false,
       reason: scrub(a.reason, 300),
       confidence,
     };
@@ -128,6 +129,7 @@ export function cleanOutput(
       confidence,
       reason: scrub(a.reason, 300),
       category: undefined,
+      resolvedInChat: a.kind === "update" && a.resolvedInChat === true,
       needsReview: a.kind === "create" && confidence < input.minConfidence,
     };
   }
@@ -156,6 +158,7 @@ export function cleanOutput(
       confidence: 0,
       reason: "The AI returned no usable decision.",
       needsReview: false,
+      resolvedInChat: false,
     });
   }
   return { actions: capped, cleanup: { droppedActions, discardedDueDates, redactions } };

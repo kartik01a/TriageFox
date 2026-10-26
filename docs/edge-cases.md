@@ -62,3 +62,11 @@
 | Screenshot on a host other than Crisp storage, or at a private address | Dropped, never downloaded or linked |
 | Ticket confidence below the automation's threshold | Saved as `pending_review`, not sent (review queue in Phase 7) |
 | Ticket created but nowhere to send it | Activity entry "no Trello or Jira destination is set up yet" |
+| Follow-up arrives before the ticket exists in the tracker | The update job retries with growing delays until the ticket exists (8 attempts), then is skipped and logged |
+| Same follow-up job runs twice | `applied_to` records each destination; the comment is added once |
+| Someone edited the ticket description | Description and footer left alone; comments, labels and priority still updated; logged |
+| Another customer reports a ticket that is closed (Trello archived / Jira Done) | New ticket "(again)" that points to the old one, delivered to that tool only |
+| Same conversation re-analysed and still matches the duplicate | One report per conversation: the count does not change |
+| AI proposes a duplicate of a ticket it was not shown | Dropped (ids must come from the candidates) |
+| Embedding service fails | No candidates this time (a possible duplicate becomes its own ticket); new ticket gets no embedding until a later run |
+| Support fixed it in chat | Comment "Possibly resolved in chat"; the ticket stays open, nothing is closed or deleted |

@@ -9,13 +9,15 @@ import {
   type TriageMessage,
   type TriageResult,
 } from "@triagefox/ai";
-import { buildTicketBody, CRISP_FILE_HOSTS } from "@triagefox/connectors";
+import { CRISP_FILE_HOSTS } from "@triagefox/connectors";
 import { openSecret, type PrivateKeyring, sealSecret } from "@triagefox/crypto";
 import { and, eq, gte, inArray, schema, sql, withOrg } from "@triagefox/db";
-import type { DeliverPayload } from "@triagefox/pipeline";
+import type { DeliverPayload, UpdatePayload } from "@triagefox/pipeline";
 import type { Priority, WorkerEnv } from "@triagefox/shared";
 import { UnrecoverableError } from "bullmq";
+import { applyResult } from "./apply";
 import type { PipelineLogger, Triage, TriageInput } from "./deps";
+import { customerText, embedIssues, findDuplicateCandidates } from "./duplicates";
 
 export interface TriageDeps {
   db: Parameters<typeof withOrg>[0];
@@ -32,6 +34,8 @@ export interface TriageDeps {
   log: PipelineLogger;
   /** Queues one delivery job (issue x destination). */
   enqueueDelivery: (payload: DeliverPayload) => Promise<unknown>;
+  /** Queues one update job (update x destination). */
+  enqueueUpdate: (payload: UpdatePayload) => Promise<unknown>;
   /** Tests inject a fake model here. */
   providerFor?: (apiKey: string) => AiProvider;
   now?: () => Date;
@@ -218,10 +222,21 @@ export function createTriage(deps: TriageDeps): Triage {
         priority: i.priority as Priority,
         dueDate: i.dueDate,
       })),
-      // Phase 6 fills this in (similar tickets from other conversations).
       duplicateCandidates: [],
       minConfidence: automation.settings.minConfidence,
     };
+
+    // Similar open tickets from other conversations (best effort; the AI confirms or rejects).
+    aiInput.duplicateCandidates = await findDuplicateCandidates({
+      db: deps.db,
+      orgId,
+      automationId: automation.id,
+      threadId: thread.id,
+      provider,
+      model: models.embedding,
+      text: customerText(aiInput.messages),
+      log: deps.log,
+    });
 
     let result: TriageResult;
     try {
@@ -247,9 +262,18 @@ export function createTriage(deps: TriageDeps): Triage {
       { orgId, recordId: runId, purpose: "ai_run.output" },
       deps.keyring,
     );
-    const deliveries: DeliverPayload[] = [];
-    await withOrg(deps.db, orgId, async (tx) => {
-      await tx.insert(schema.aiRuns).values({
+    const entries = (
+      result.actions.length > 0
+        ? result.actions.map((a) => ({
+            kind: `ai_${a.kind}`,
+            message: activityMessage(a),
+            refs: { aiRunId: runId } as Record<string, unknown>,
+          }))
+        : [{ kind: "ai_no_action", message: "No ticket needed.", refs: { aiRunId: runId } }]
+    ) as { kind: string; message: string; refs: Record<string, unknown> }[];
+
+    await withOrg(deps.db, orgId, (tx) =>
+      tx.insert(schema.aiRuns).values({
         id: runId,
         orgId,
         threadId: thread.id,
@@ -261,79 +285,34 @@ export function createTriage(deps: TriageDeps): Triage {
         costMicroUsd: Math.round(result.costUsd * 1e6),
         decision: summariseDecision(result.actions),
         rawOutputSealed,
-      });
-      const entries: { kind: string; message: string; refs: Record<string, unknown> }[] =
-        result.actions.length > 0
-          ? result.actions.map((a) => ({
-              kind: `ai_${a.kind}`,
-              message: activityMessage(a),
-              refs: { aiRunId: runId } as Record<string, unknown>,
-            }))
-          : [{ kind: "ai_no_action", message: "No ticket needed.", refs: { aiRunId: runId } }];
-
-      const destinations = await tx
-        .select({ id: schema.automationDestinations.id })
-        .from(schema.automationDestinations)
-        .where(
-          and(
-            eq(schema.automationDestinations.automationId, automation.id),
-            eq(schema.automationDestinations.enabled, true),
-          ),
-        );
-
-      for (const a of result.actions) {
-        if (a.kind !== "create" || !a.type || !a.priority) continue;
-        const [issue] = await tx
-          .insert(schema.issues)
-          .values({
-            orgId,
-            automationId: automation.id,
-            originThreadId: thread.id,
-            aiRunId: runId,
-            title: a.title,
-            summary: a.summary,
-            bodyMd: buildTicketBody(
-              { ...a, type: a.type, priority: a.priority },
-              {
-                reportedBy:
-                  automation.settings.includeCustomerNames && conversation.customer.nickname
-                    ? conversation.customer.nickname
-                    : "1 customer",
-                sourceUrl: automation.settings.includeSourceLink
-                  ? `https://app.crisp.chat/website/${conversation.websiteId}/inbox/${conversation.sessionId}/`
-                  : undefined,
-              },
-            ),
-            type: a.type,
-            priority: a.priority,
-            dueDate: a.dueDate,
-            dueDateQuote: a.dueDateQuote,
-            confidence: a.confidence,
-            attachmentIds: a.relevantAttachmentIds,
-            status: a.needsReview ? "pending_review" : "active",
-          })
-          .returning({ id: schema.issues.id });
-        if (!issue || a.needsReview) continue;
-        if (destinations.length === 0)
-          entries.push({
-            kind: "no_destination",
-            message: "A ticket was prepared, but no Trello or Jira destination is set up yet.",
-            refs: { issueId: issue.id },
-          });
-        for (const d of destinations)
-          deliveries.push({ orgId, issueId: issue.id, destinationId: d.id });
-      }
-      await tx.insert(schema.activityLog).values(
-        entries.map((e) => ({
-          orgId,
-          automationId: automation.id,
-          threadId: thread.id,
-          ...e,
-        })),
-      );
+      }),
+    );
+    const applied = await applyResult({
+      db: deps.db,
+      keyring: deps.keyring,
+      input,
+      result,
+      runId,
+      entries,
     });
-    // After commit, so a job never runs before its issue exists.
-    for (const d of deliveries) await deps.enqueueDelivery(d);
+    await withOrg(deps.db, orgId, (tx) =>
+      tx
+        .insert(schema.activityLog)
+        .values(
+          entries.map((e) => ({ orgId, automationId: automation.id, threadId: thread.id, ...e })),
+        ),
+    );
+    // After commit, so a job never runs before the rows it needs exist.
+    for (const d of applied.deliveries) await deps.enqueueDelivery(d);
+    for (const u of applied.updates) await deps.enqueueUpdate(u);
+    await embedIssues({
+      db: deps.db,
+      orgId,
+      provider,
+      model: models.embedding,
+      issues: applied.created,
+      log: deps.log,
+    });
     deps.log.info(
       {
         threadId: thread.id,

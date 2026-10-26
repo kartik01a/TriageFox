@@ -43,4 +43,6 @@ export interface CompletionResult {
 /** The AI backend. OpenAI today; another provider can implement this later. */
 export interface AiProvider {
   complete(req: CompletionRequest): Promise<CompletionResult>;
+  /** Text embeddings (duplicate search). Optional: without it, duplicate detection is simply off. */
+  embed?(model: string, texts: string[]): Promise<number[][]>;
 }

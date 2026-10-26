@@ -10,6 +10,7 @@ import {
   timestamp,
   unique,
   uuid,
+  vector,
 } from "drizzle-orm/pg-core";
 import { connections } from "./connections";
 import { automations, threads } from "./pipeline";
@@ -71,6 +72,8 @@ export const issues = pgTable(
     dueDate: date("due_date", { mode: "string" }),
     dueDateQuote: text("due_date_quote"),
     confidence: real("confidence").notNull(),
+    /** Embedding of title + summary, for duplicate search. Null until it has been computed. */
+    embedding: vector("embedding", { dimensions: 1536 }),
     reportCount: integer("report_count").notNull().default(1),
     /** Crisp message fingerprints of the files to attach (ids only; files are fetched at delivery). */
     attachmentIds: jsonb("attachment_ids").$type<string[]>().notNull().default([]),
@@ -111,4 +114,55 @@ export const destinationTickets = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("destination_tickets_unique").on(t.issueId, t.destinationId)],
+);
+
+/** Every conversation that reported an issue (the first one and each confirmed duplicate). */
+export const issueReports = pgTable(
+  "issue_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    issueId: uuid("issue_id")
+      .notNull()
+      .references(() => issues.id, { onDelete: "cascade" }),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => threads.id, { onDelete: "cascade" }),
+    /** The customer's name, stored only when the automation allows names in tickets. */
+    customerRef: text("customer_ref"),
+    reportedAt: timestamp("reported_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("issue_reports_unique").on(t.issueId, t.threadId)],
+);
+
+/**
+ * Something to tell the trackers about an existing issue: a follow-up from the same conversation,
+ * another customer's report, or "possibly fixed in chat". The AI-written text is sealed; once every
+ * destination has it, the row is just a record.
+ */
+export const issueUpdates = pgTable(
+  "issue_updates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    issueId: uuid("issue_id")
+      .notNull()
+      .references(() => issues.id, { onDelete: "cascade" }),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => threads.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<"update" | "duplicate" | "resolved_in_chat">().notNull(),
+    /** Sealed JSON `{ text }` (binding: orgId, row id, "issue_update.content"). */
+    contentSealed: text("content_sealed").notNull(),
+    attachmentIds: jsonb("attachment_ids").$type<string[]>().notNull().default([]),
+    /** Crisp's website/session needed to fetch the files later are on the thread; only ids here. */
+    newPriority: integer("new_priority"),
+    newDueDate: date("new_due_date", { mode: "string" }),
+    /** Names allowed in tickets only; otherwise null. */
+    customerRef: text("customer_ref"),
+    /** destination_tickets ids this update has already been applied to (retries skip them). */
+    appliedTo: jsonb("applied_to").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("issue_updates_issue_idx").on(t.issueId)],
 );

@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { CrispPluginClient } from "@triagefox/connectors";
 import { createDb } from "@triagefox/db";
-import { PIPELINE_QUEUE, scheduleDelivery } from "@triagefox/pipeline";
+import { PIPELINE_QUEUE, scheduleDelivery, scheduleUpdate } from "@triagefox/pipeline";
 import { startRpcServer } from "@triagefox/rpc/server";
 import { createLogger } from "@triagefox/shared";
 import { Queue, UnrecoverableError, Worker } from "bullmq";
@@ -9,6 +9,7 @@ import { Redis } from "ioredis";
 import { loadConfig, verifyKeyring } from "./config";
 import { createDeliver } from "./pipeline/deliver";
 import { createTriage } from "./pipeline/triage";
+import { createUpdate } from "./pipeline/update";
 import { registerSchedulers, startPipelineWorker } from "./pipeline/worker";
 import { JOBS, QUEUES } from "./queues";
 import { createHandlers } from "./rpc/handlers";
@@ -86,10 +87,16 @@ const pipeline = startPipelineWorker(
       keyring: config.keyring,
       log,
       enqueueDelivery: (p) => scheduleDelivery(pipelineQueue, p),
+      enqueueUpdate: (p) => scheduleUpdate(pipelineQueue, p),
     }),
     deliver: createDeliver({
       ctx: { db, config, keyring: config.keyring, redis: connection, log },
       crisp,
+    }),
+    applyUpdate: createUpdate({
+      ctx: { db, config, keyring: config.keyring, redis: connection, log },
+      crisp,
+      enqueueDelivery: (p) => scheduleDelivery(pipelineQueue, p),
     }),
   },
   { lookbackMs: config.RECONCILE_LOOKBACK_MIN * 60 * 1000 },

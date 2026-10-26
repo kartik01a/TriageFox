@@ -19,6 +19,11 @@
 - Attachments: re-fetched from Crisp at delivery (the conversation is never stored), downloaded with `safeDownload` (host `storage.crisp.chat` only, 10 MB cap) and uploaded as multipart. Over 10 MB → added as a link attachment and noted in the activity log. Files from any other host are dropped, never linked.
 - Errors: 401 → connection `revoked`, ticket `failed`, no retry. 404 (list/board gone) → `broken`, never recreated. 429/5xx → retried with backoff (5 attempts), then `failed`. 400 → `failed` with a plain message.
 
+## As built (Phase 6)
+- Follow-ups: comment (`**Customer added:** …`), then best effort: priority label swapped (the old `P<n>` label ids remembered in `config.labelIds` are removed, the new one added), due date, new files (upload, or link when over 10 MB), description footer.
+- Closed check: `GET /cards/{id}`; `closed` or `dueComplete` counts as closed.
+- Human-edit check: `GET /cards/{id}/actions?filter=updateCard:desc`; an action by another member than the connection's `memberId`, dated after our last write, blocks the description rewrite.
+
 ## Setup (wizard)
 1. List the user's boards → pick a board.
 2. List lists on the board → pick the target list (e.g. "Inbox" / "Triage").

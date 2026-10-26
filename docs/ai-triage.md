@@ -139,7 +139,9 @@ Created by <product name>
   5. Saves one `ai_runs` row (model, tokens, cost, key source, a decision with kinds/types/priorities only, and the model's full answer **sealed**) and plain-language `activity_log` rows ("Ticket proposed (bug, priority 3)."). No titles or message text in plain columns.
   6. Rejected or out-of-credit key → activity entry + stop retrying (the conversation is picked up again by reconcile once fixed). Rate limits and outages are retried with backoff.
   7. Sealed outputs are cleared after 30 days by the daily cleanup job (counts and cost stay).
-- Nothing is created in Trello/Jira yet: that is Phase 5. Linked tickets and duplicate candidates are passed as empty lists until Phase 6.
+- **Phase 5/6:** `create` actions become issues and deliveries; `update` / `duplicate_of` / "resolved in chat" become comments and edits (see `docs/architecture.md` "As built in Phase 5" and "As built in Phase 6").
+- **Resolved in chat:** `update` actions carry a boolean `resolvedInChat` (true only when support fixed the problem inside the chat and the customer confirmed; a workaround such as "use another browser" is not a fix). Code ignores the flag on every other kind.
+- **Duplicate candidates:** before the AI call the worker embeds the customer's own (redacted) words with `AI_MODEL_EMBEDDING` and fetches the 5 nearest *open* tickets of the same automation from other conversations with cosine similarity of at least 0.35 (measured: same problem 0.67-0.72, unrelated 0.2-0.23). The AI confirms or rejects; ids it was not offered are dropped. No embedding call is made when the automation has no embedded ticket yet.
 
 ## Evals
 
@@ -151,6 +153,6 @@ Created by <product name>
   - priority within ±1 **≥ 85%**
   - hallucinated due dates **= 0**
 - Track cost per evaluation alongside accuracy.
-- **As built:** 154 labelled cases in `packages/ai/evals/cases/` (no-ticket, bugs, features, priority, dates, injection, existing tickets, long conversations, images, non-English, boundary cases). Run `pnpm --filter @triagefox/ai eval` (needs `OPENAI_API_KEY`; about 2 minutes, about $0.03). Options: `--model luna|sol`, `--filter <tag>`, effort variants. Results go to `packages/ai/evals/results/` (git-ignored). The runner also fails on any personal data in the AI's output and on a wrong *set* of ticket actions (a spurious extra update counts as a miss).
+- **As built:** 156 labelled cases in `packages/ai/evals/cases/` (no-ticket, bugs, features, priority, dates, injection, existing tickets, long conversations, images, non-English, boundary cases). Run `pnpm --filter @triagefox/ai eval` (needs `OPENAI_API_KEY`; about 2 minutes, about $0.03). Options: `--model luna|sol`, `--filter <tag>`, effort variants. Results go to `packages/ai/evals/results/` (git-ignored). The runner also fails on any personal data in the AI's output and on a wrong *set* of ticket actions (a spurious extra update counts as a miss).
 - **Measured on the first full run** (luna, low effort, sol escalation): ticket vs no-ticket 99.4%, type 96.2%, priority ±1 98.1%, false due dates 0, personal data leaks 0, about $0.00016 per conversation, 1% escalated. The remaining misses are listed by the runner; two are genuinely ambiguous labels.
 - Evals call the real API, so they are **not** in CI; run them by hand after any prompt, rubric or model change.

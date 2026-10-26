@@ -26,6 +26,8 @@ export interface Expect {
   category?: NoActionCategory | NoActionCategory[];
   /** For update / duplicate_of. */
   issueId?: string;
+  /** update only: the customer confirmed the problem was fixed inside the chat. */
+  resolvedInChat?: boolean;
 }
 
 export interface EvalCase {

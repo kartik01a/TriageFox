@@ -115,6 +115,7 @@ async function runOne(k: EvalCase): Promise<{ score: CaseScore; error?: string }
         category: null,
         piiLeak: false,
         issueId: null,
+        resolvedInChat: null,
         falseDueDate: false,
         hallucinatedQuote: false,
         escalated: false,
@@ -161,6 +162,7 @@ const failures = selected
         s.dueDate,
         s.category,
         s.issueId,
+        s.resolvedInChat,
       ].some((v) => v === false) || s.falseDueDate,
   );
 if (failures.length) {
@@ -176,6 +178,7 @@ if (failures.length) {
         "dueDate",
         "category",
         "issueId",
+        "resolvedInChat",
       ] as const
     ).filter((d) => s[d] === false);
     const e = k.expect;
@@ -208,6 +211,7 @@ console.log(`ticket count          ${pct(report.accuracy.creates)}`);
 console.log(`due date correct      ${pct(report.accuracy.dueDate)}`);
 console.log(`category (no_action)  ${pct(report.accuracy.category)}`);
 console.log(`update/duplicate id   ${pct(report.accuracy.issueId)}`);
+console.log(`resolved-in-chat      ${pct(report.accuracy.resolvedInChat)}`);
 console.log(`quotes the model invented (caught by code): ${report.hallucinatedQuotes}`);
 console.log(
   `escalated: ${(report.escalationRate * 100).toFixed(0)}%   avg tokens in/out: ${report.avgInputTokens.toFixed(0)}/${report.avgOutputTokens.toFixed(0)}`,

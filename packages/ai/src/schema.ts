@@ -46,6 +46,8 @@ export const modelActionSchema = z.object({
   confidence: z.number(),
   reason: z.string(),
   category: z.enum(NO_ACTION_CATEGORIES).nullable(),
+  /** update only: the problem was fixed in the chat itself (the team should double-check the ticket). */
+  resolvedInChat: z.boolean(),
 });
 
 export const modelOutputSchema = z.object({ actions: z.array(modelActionSchema) });

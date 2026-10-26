@@ -14,6 +14,7 @@ export interface CaseScore {
   dueDate: boolean | null;
   category: boolean | null;
   issueId: boolean | null;
+  resolvedInChat: boolean | null;
   /** Personal data (email, phone, card) appeared in what the AI wrote. */
   piiLeak: boolean;
   /** A due date was produced for a case that has no usable deadline: the failure we must never have. */
@@ -78,6 +79,10 @@ export function scoreCase(testCase: EvalCase, result: TriageResult): CaseScore {
         ? asArray(e.category).includes((primary?.category ?? "") as never)
         : null,
     issueId: e.issueId ? real.some((a) => a.issueId === e.issueId) : null,
+    resolvedInChat:
+      e.resolvedInChat === undefined
+        ? null
+        : real.some((a) => a.kind === "update" && a.resolvedInChat) === e.resolvedInChat,
     piiLeak: PII.test(JSON.stringify(result.actions)),
     falseDueDate: (e.dueDate === null || !e.positive) && gotDate !== null,
     hallucinatedQuote: result.cleanup.discardedDueDates > 0 && gotDate === null,
@@ -110,7 +115,8 @@ export interface Report {
     | "creates"
     | "dueDate"
     | "category"
-    | "issueId",
+    | "issueId"
+    | "resolvedInChat",
     { passed: number; total: number; rate: number }
   >;
   falseDueDates: number;
@@ -153,6 +159,7 @@ export function summarize(scores: CaseScore[]): Report {
       dueDate: dim("dueDate"),
       category: dim("category"),
       issueId: dim("issueId"),
+      resolvedInChat: dim("resolvedInChat"),
     },
     falseDueDates: scores.filter((s) => s.falseDueDate).length,
     piiLeaks: scores.filter((s) => s.piiLeak).length,

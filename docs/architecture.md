@@ -111,12 +111,23 @@ Crisp ──plugin hook──▶ POST /api/webhooks/crisp
 
 ### As built in Phase 5
 
-- After the AI step, the worker saves the run, **issues** and activity in one transaction, and queues deliveries afterwards (so a job never starts before its issue exists). A `create` action becomes an `issues` row with the finished ticket body (`buildTicketBody`: the template in `docs/ai-triage.md`). `update` / `duplicate_of` actions are recorded in the activity log only; applying them is Phase 6.
+- After the AI step, the worker saves the run, **issues** and activity in one transaction, and queues deliveries afterwards (so a job never starts before its issue exists). A `create` action becomes an `issues` row with the finished ticket body (`buildTicketBody`: the template in `docs/ai-triage.md`). `update` / `duplicate_of` actions are applied by Phase 6 (below).
 - Tickets below the automation's `minConfidence` are saved as `pending_review` and **not sent**; the review queue UI arrives in Phase 7.
 - The AI is shown the issues already created from the same conversation, so a re-evaluation does not create the ticket again.
 - **`ticket.deliver`** (one job per issue x destination, job id `deliver_<issue>_<destination>`): claims the unique `destination_tickets (issue, destination)` row, creates the card/issue, saves the external id **before** attachments or priority edits, so a retry can never create a second ticket. Per-destination errors do not affect the other destination. Only the final failed attempt marks the ticket `failed`.
 - Known small window: a crash in the instant after the remote create but before the row is saved can produce one duplicate on retry (neither tool offers idempotency keys).
 - Destinations (`automation_destinations`) are created by the Phase 7 wizard; until then `pnpm db:dev-automation <orgId>` creates an enabled automation and copies each connected Trello/Jira target from `connections.metadata.defaults`.
+
+### As built in Phase 6
+
+- **Applying the AI's other actions** (`apply.ts`, one transaction with the run, issues and reports):
+  - `update` (a ticket of *this* conversation): new priority / due date are saved on the issue and the footer lines refreshed; a sealed `issue_updates` row (kind `update`) carries the new information. `resolvedInChat` makes it kind `resolved_in_chat` (a comment only, nothing else changes).
+  - `duplicate_of` (a candidate from another conversation): one `issue_reports` row per conversation (unique: seeing the same duplicate again changes nothing), `report_count + 1`, footer "Reported by N customers" (or the names, only when `includeCustomerNames` is on and every report has one), and a sealed `issue_updates` row (kind `duplicate`) with the new files.
+  - A ticket still `pending_review` is changed in our database only; nothing exists in the trackers yet.
+- **`ticket.update`** (one job per update x destination, up to 8 attempts): waits (retries) while the ticket is still being created; then adds the comment first and marks the destination as done (`issue_updates.applied_to`) before any extras, so a retry never comments twice. Extras, each best effort and logged: priority (Trello: swap the priority label; Jira: edit), due date, new files (same 10 MB / Crisp-host rules as delivery), and the description footer.
+- **Human-edit check:** the description footer is rewritten only if nobody but us changed the description since our last write (Trello: `updateCard:desc` actions by another member; Jira: changelog entries by another account). If the check fails or someone edited, the description is left alone and the activity log says so. Comments, labels and priority are not gated.
+- **Duplicate of a closed ticket:** if the matching Trello card is archived / due-complete, or the Jira issue is in a Done status category, nothing is added to it. A new issue "<title> (again)" is created that says "Possible regression: <old link>", and delivered to that destination only.
+- **Embeddings:** every new issue gets an embedding of title + summary right after commit (best effort; failure only means it cannot be matched yet). Stored in `issues.embedding` (pgvector, HNSW cosine index).
 
 ### Why fetch the conversation instead of trusting the hook
 Hooks can arrive twice or out of order, and Crisp may drop some after repeated failures. Re-fetching the current conversation means every evaluation sees the real latest state. The hook becomes a simple "something changed" signal, and the reconcile job catches anything missed.
