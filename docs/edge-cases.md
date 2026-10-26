@@ -81,3 +81,16 @@
 | Self-host with no OpenAI key in the environment | Worker warns at start-up; each workspace must add its own key |
 | Self-host, second person tries to sign up | Refused unless invited (or `SELFHOST_OPEN_SIGNUP=true`) |
 | Restored a backup with a different `CRYPTO_PRIVATE_KEYS` | Stored tokens can't be opened: connections show "Reconnect needed" |
+| Same payment webhook delivered twice | The provider's event id is stored once; the repeat does nothing |
+| Webhook for a workspace we cannot find | Answered 200 and logged (a retry would not help) |
+| Webhook with a bad signature or an old timestamp | Bare 401, nothing changes |
+| Payment fails | `past_due` with a grace period (admin setting, default 7 days), then new conversations wait; a success clears it |
+| Customer cancels | Access continues to the end of the paid period; then new conversations wait |
+| Conversation limit reached | New conversations wait until next period, or an upgrade, or the workspace's own key; follow-ups of counted conversations still work; never extra charges |
+| Platform trial AI budget used up | New trials without their own key are told to add one |
+| Price changed while people are subscribed | New plan version; subscribers keep theirs; the old version stays on sale until the new one is published |
+| Plan made public without payment product ids | Refused |
+| Invite code reused, expired, for another email, or redeemed twice at once | Refused; exactly one redemption wins |
+| Admin asks for /admin without two-factor | 404, same as anyone else |
+| Our own support chat when our own plan is over a limit | Never limited: the support automation skips billing |
+| Chat typed with someone else's email in the public widget | Inbox shows "unverified: check before acting" |

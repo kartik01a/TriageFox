@@ -51,6 +51,8 @@ export interface PipelineDeps {
   triage: Triage;
   deliver: Deliver;
   applyUpdate: ApplyUpdate;
+  /** Daily billing reminders (hosted only). */
+  reminders?: () => Promise<unknown>;
   log: PipelineLogger;
   now?: () => Date;
 }

@@ -361,3 +361,134 @@ describe("free access", () => {
     expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1);
   });
 });
+
+describe("plan editing", () => {
+  it("a price change makes a new version without the old product ids, so nobody buys the new price at the old one", async () => {
+    const { createPlan, updatePlan, PlanError } = await import("./admin");
+    const slug = `edit-${tag}`;
+    const v1 = await createPlan(owner, {
+      slug,
+      name: "Edit me",
+      prices: { USD: { monthly: 900, yearly: 9000 } },
+      providerPriceIds: { dodo: { USD: { monthly: "pdt_a", yearly: "pdt_b" } } },
+      isPublic: true,
+    });
+    expect(v1.version).toBe(1);
+
+    const rename = await updatePlan(owner, v1.id, { name: "Renamed", isPopular: true });
+    expect(rename).toMatchObject({ versioned: false });
+    expect(rename.plan.id).toBe(v1.id);
+
+    const repriced = await updatePlan(owner, v1.id, {
+      prices: { USD: { monthly: 1000, yearly: 10000 } },
+    });
+    expect(repriced.versioned).toBe(true);
+    expect(repriced.plan).toMatchObject({ version: 2, isPublic: false, providerPriceIds: {} });
+    // The old version keeps its price and ids, for the people already on it.
+    const old = await owner.select().from(schema.plans).where(eq(schema.plans.id, v1.id));
+    expect(old[0]?.prices.USD?.monthly).toBe(900);
+    expect(old[0]?.providerPriceIds.dodo?.USD?.monthly).toBe("pdt_a");
+
+    await expect(updatePlan(owner, v1.id, { name: "x" })).rejects.toThrow(PlanError); // only the newest is editable
+    await expect(updatePlan(owner, repriced.plan.id, { isPublic: true })).rejects.toThrow(
+      /product ids/,
+    );
+    const live = await updatePlan(owner, repriced.plan.id, {
+      providerPriceIds: { dodo: { USD: { monthly: "pdt_c", yearly: "pdt_d" } } },
+      isPublic: true,
+    });
+    expect(live.plan.isPublic).toBe(true);
+    await owner.delete(schema.plans).where(eq(schema.plans.slug, slug));
+  });
+
+  it("a plan cannot be created public without product ids", async () => {
+    const { createPlan } = await import("./admin");
+    await expect(
+      createPlan(owner, {
+        slug: `nope-${tag}`,
+        name: "No ids",
+        prices: { USD: { monthly: 100, yearly: 1000 } },
+        isPublic: true,
+      }),
+    ).rejects.toThrow(/product ids/);
+  });
+});
+
+describe("what customers can buy", () => {
+  it("after a price change the old version stays on sale until the new one is published", async () => {
+    const { createPlan, updatePlan } = await import("./admin");
+    const { listPlans } = await import("./service");
+    const slug = `sale-${tag}`;
+    const v1 = await createPlan(owner, {
+      slug,
+      name: "On sale",
+      prices: { USD: { monthly: 900, yearly: 9000 } },
+      providerPriceIds: { dodo: { USD: { monthly: "pdt_1", yearly: "pdt_2" } } },
+      isPublic: true,
+    });
+    const v2 = await updatePlan(owner, v1.id, {
+      prices: { USD: { monthly: 1000, yearly: 10000 } },
+    });
+    expect(
+      (await listPlans(owner, { publicOnly: true })).find((p) => p.slug === slug)?.version,
+    ).toBe(1);
+    await updatePlan(owner, v2.plan.id, {
+      providerPriceIds: { dodo: { USD: { monthly: "pdt_3", yearly: "pdt_4" } } },
+      isPublic: true,
+    });
+    expect(
+      (await listPlans(owner, { publicOnly: true })).find((p) => p.slug === slug)?.version,
+    ).toBe(2);
+    await owner.delete(schema.plans).where(eq(schema.plans.slug, slug));
+  });
+});
+
+describe("isolation between workspaces", () => {
+  it("one workspace cannot read or change another's subscription or usage", async () => {
+    const a = fresh();
+    const b = fresh();
+    await startTrial(db, a);
+    await startTrial(db, b);
+    const t = randomUUID();
+    const c = await checkEntitlement(db, { orgId: a, threadId: t, hasOwnKey: true });
+    await recordUsage(db, {
+      orgId: a,
+      threadId: t,
+      periodStart: c.periodStart,
+      costMicroUsd: 5,
+      trialing: true,
+      usingPlatformKey: false,
+      ticketsCreated: 0,
+      limit: null,
+    });
+
+    // Acting as B, A's rows are invisible and unwritable.
+    expect(
+      await withOrg(db, b, (tx) =>
+        tx.select().from(schema.subscriptions).where(eq(schema.subscriptions.orgId, a)),
+      ),
+    ).toHaveLength(0);
+    expect(
+      await withOrg(db, b, (tx) =>
+        tx.select().from(schema.usageCounters).where(eq(schema.usageCounters.orgId, a)),
+      ),
+    ).toHaveLength(0);
+    expect(
+      await withOrg(db, b, (tx) =>
+        tx
+          .update(schema.subscriptions)
+          .set({ status: "canceled" })
+          .where(eq(schema.subscriptions.orgId, a))
+          .returning(),
+      ),
+    ).toHaveLength(0);
+    await expect(
+      withOrg(db, b, (tx) =>
+        tx
+          .insert(schema.usageConversations)
+          .values({ orgId: a, periodStart: "2026-01-01", threadId: randomUUID() }),
+      ),
+    ).rejects.toThrow();
+    expect((await getSubscription(db, a)).subscription?.status).toBe("trialing");
+  });
+});

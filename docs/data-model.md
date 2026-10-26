@@ -32,6 +32,8 @@ source_events (raw hooks, per connection)
 | `subscriptions` | org_id, provider (`dodo` \| `lemonsqueezy`), provider_customer_id, provider_subscription_id, plan_id, plan_version, interval (`monthly` \| `yearly`), status (`trialing` \| `active` \| `past_due` \| `canceled` \| `comped`), trial_ends_at, current_period_end |
 | `usage_counters` | org_id, period_start, conversations_analysed, tickets_created, ai_runs, ai_cost_usd, trial_ai_cost_usd |
 
+**As built (Phase 9):** `plans` (global, versioned), `subscriptions` (one per workspace, RLS; adds `cancel_at_period_end`, `past_due_since`, `comp_until`, `comp_reason`, `reminder_sent_for_period_end`, `paused_by_admin`), `usage_counters` and `usage_conversations` (RLS; cost in millionths of a dollar; `usage_conversations` makes a conversation count once per period), `invite_codes` (hash only), `billing_events` (webhook dedupe), `admin_audit_log`, `support_items` (global; unique per thread and category). `automations.settings.supportInbox` marks our own support automation. Migrations 0010 and 0011.
+
 ### Platform configuration (hosted mode, edited via admin routes; see [decisions/0009](decisions/0009-config-in-db-admin-routes.md))
 | Table | Key columns |
 |---|---|

@@ -2,7 +2,9 @@ import { billingSummary } from "@triagefox/billing";
 import { eq, schema, withOrg } from "@triagefox/db";
 import Link from "next/link";
 import { AppNav } from "@/components/app/app-nav";
+import { HelpButton } from "@/components/app/help-button";
 import { StepUpProvider } from "@/components/app/step-up";
+import { CrispIdentity } from "@/components/crisp-identity";
 import { Wordmark } from "@/components/fox-logo";
 import { reviewCount } from "@/lib/app-data";
 import { billingEnabled } from "@/lib/billing";
@@ -53,6 +55,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span className="hidden max-w-48 truncate text-sm text-muted-foreground sm:inline">
               {user.email}
             </span>
+            {process.env.NEXT_PUBLIC_CRISP_WEBSITE_ID && <HelpButton />}
             <SignOutButton />
           </div>
         </div>
@@ -72,6 +75,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             Billing
           </Link>
         </div>
+      )}
+      {ctx && (
+        <CrispIdentity
+          email={user.email}
+          name={user.name}
+          workspaceId={ctx.workspace.id}
+          workspaceName={ctx.workspace.name}
+        />
       )}
       <StepUpProvider email={user.email}>
         <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">{children}</main>

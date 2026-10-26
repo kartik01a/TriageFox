@@ -25,7 +25,14 @@ export default defineConfig({
     command: "pnpm dev",
     url: "http://localhost:3000",
     reuseExistingServer: true,
-    env: { E2E_DISABLE_AUTH_RATE_LIMIT: "true" },
+    env: {
+      E2E_DISABLE_AUTH_RATE_LIMIT: "true",
+      // Billing and admin tests: a webhook secret the tests sign with (the fake provider's, not a real one)
+      // and the one email allowed into /admin.
+      DODO_API_KEY: "e2e-not-a-real-key",
+      DODO_WEBHOOK_SECRET: "whsec_dGVzdC1zZWNyZXQtZm9yLXRoZS1mYWtlLXByb3ZpZGVy",
+      PLATFORM_ADMIN_EMAILS: "e2e-admin@example.test",
+    },
     timeout: 120_000,
   },
 });

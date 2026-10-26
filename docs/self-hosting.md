@@ -129,6 +129,10 @@ How the containers are separated:
 | Everyone must reconnect their tools after a restore | `CRYPTO_PRIVATE_KEYS` in the new `deploy/.env` doesn't match the one that sealed the data. |
 | Worker logs "OPENAI_API_KEY is not set" | Set it in `deploy/.env`, or each workspace adds its own key under *AI key*. |
 
+## Hosted-only settings
+
+`DODO_*`, `PLATFORM_ADMIN_EMAILS`, `CRISP_IDENTITY_SECRET`, `ALERT_EMAIL` and `SLACK_ALERTS_WEBHOOK_URL` in `.env.example` belong to the hosted version. A self-hosted install ignores them: there is no billing, trial, plan limit or admin area.
+
 ## Differences from the hosted version
 
 No billing or plan limits; AI is paid for with your own OpenAI key; you operate the server, backups and updates; you register your own Crisp, Trello and Atlassian apps; there is no marketing site (the home page goes straight to sign-in).

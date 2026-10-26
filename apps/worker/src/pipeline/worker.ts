@@ -49,6 +49,8 @@ export function startPipelineWorker(deps: PipelineDeps, opts: PipelineWorkerOpti
           });
           return { applied: true };
         }
+        case JOBS.reminders:
+          return (await deps.reminders?.()) ?? { skipped: true };
         case JOBS.cleanup: {
           const days = opts.retentionDays ?? 30;
           return {
@@ -88,5 +90,6 @@ export async function registerSchedulers(queue: PipelineDeps["queue"]) {
     { every: RECONCILE_EVERY_MS },
     { name: JOBS.reconcile },
   );
+  await queue.upsertJobScheduler("billing-reminders", { every: DAY_MS }, { name: JOBS.reminders });
   await queue.upsertJobScheduler("cleanup-daily", { every: DAY_MS }, { name: JOBS.cleanup });
 }

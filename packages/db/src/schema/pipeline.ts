@@ -21,6 +21,8 @@ export interface AutomationSettings {
   language: string;
   /** The person has looked at and saved these (setup checklist step). */
   reviewed?: boolean;
+  /** TriageFox's own support automation: also files conversations in the admin inbox (docs/own-support.md). */
+  supportInbox?: boolean;
 }
 
 export const defaultAutomationSettings: AutomationSettings = {

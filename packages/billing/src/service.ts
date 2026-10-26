@@ -33,12 +33,19 @@ export async function getSettings(db: Db): Promise<PlatformSettings> {
 
 // ---- Plans ---------------------------------------------------------------------------------------
 
-/** The newest active version of every plan; `publicOnly` is what the pricing page shows. */
+/**
+ * The newest active version of every plan. `publicOnly` is what customers can buy: the newest version that is
+ * public, so after a price change the old version stays on sale until the new one has its product ids and is published.
+ */
 export async function listPlans(db: Db, opts: { publicOnly?: boolean } = {}): Promise<Plan[]> {
   const rows = await db
     .select()
     .from(schema.plans)
-    .where(eq(schema.plans.isActive, true))
+    .where(
+      opts.publicOnly
+        ? and(eq(schema.plans.isActive, true), eq(schema.plans.isPublic, true))
+        : eq(schema.plans.isActive, true),
+    )
     .orderBy(asc(schema.plans.sortOrder), desc(schema.plans.version));
   const seen = new Set<string>();
   const latest: Plan[] = [];
@@ -47,7 +54,7 @@ export async function listPlans(db: Db, opts: { publicOnly?: boolean } = {}): Pr
     seen.add(p.slug);
     latest.push(p);
   }
-  return opts.publicOnly ? latest.filter((p) => p.isPublic) : latest;
+  return latest;
 }
 
 /** Which plan version, interval and currency a provider product id belongs to. */

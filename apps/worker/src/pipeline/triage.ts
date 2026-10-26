@@ -16,10 +16,12 @@ import type { DeliverPayload, UpdatePayload } from "@triagefox/pipeline";
 import type { Priority, WorkerEnv } from "@triagefox/shared";
 import { UnrecoverableError } from "bullmq";
 import { type BillingHooks, blockTitle } from "../billing";
+import type { Notifier } from "../notify";
 import { resolveAiKey } from "./ai-key";
 import { applyResult } from "./apply";
 import type { PipelineLogger, Triage, TriageInput } from "./deps";
 import { customerText, embedIssues, findDuplicateCandidates } from "./duplicates";
+import { recordSupportItems } from "./support";
 
 export interface TriageDeps {
   db: Parameters<typeof withOrg>[0];
@@ -40,6 +42,8 @@ export interface TriageDeps {
   enqueueUpdate: (payload: UpdatePayload) => Promise<unknown>;
   /** Plan and trial limits (hosted only). Without it nothing is limited, as in a self-hosted install. */
   billing?: BillingHooks;
+  /** Urgent alerts for TriageFox's own support inbox. */
+  notifier?: Notifier;
   /** Tests inject a fake model here. */
   providerFor?: (apiKey: string) => AiProvider;
   now?: () => Date;
@@ -174,8 +178,10 @@ export function createTriage(deps: TriageDeps): Triage {
     }
 
     let entitlement: Awaited<ReturnType<BillingHooks["check"]>> | null = null;
-    if (deps.billing) {
-      entitlement = await deps.billing.check({
+    // TriageFox's own support automation is never limited by its own plans.
+    const billing = automation.settings.supportInbox ? undefined : deps.billing;
+    if (billing) {
+      entitlement = await billing.check({
         orgId,
         threadId: thread.id,
         hasOwnKey: resolved.source === "byok",
@@ -308,9 +314,16 @@ export function createTriage(deps: TriageDeps): Triage {
       runId,
       entries,
     });
+    if (automation.settings.supportInbox)
+      await recordSupportItems({
+        db: deps.db,
+        notifier: deps.notifier,
+        input,
+        actions: result.actions,
+      });
     // Count the conversation, its AI runs and cost against the plan (hosted only).
-    if (deps.billing && entitlement)
-      await deps.billing.after({
+    if (billing && entitlement)
+      await billing.after({
         orgId,
         threadId: thread.id,
         periodStart: entitlement.periodStart,

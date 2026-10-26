@@ -5,6 +5,7 @@ export {
   eq,
   gt,
   gte,
+  ilike,
   inArray,
   isNull,
   like,

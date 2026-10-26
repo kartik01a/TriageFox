@@ -186,6 +186,12 @@ The web app never holds decrypted credentials. When it needs something only a cu
 - **`APP_MODE=selfhost`:** the home page redirects to sign-in (no marketing site or waitlist); the first account may sign up, then sign-up is invitation-only unless `SELFHOST_OPEN_SIGNUP=true`; billing arrives in Phase 9 and will be off in this mode. At start-up the worker logs which providers are configured and what is missing (`describeProviders`), never a secret value.
 - **Operations:** `deploy/backup.sh` / `restore.sh` (optional passphrase encryption), `GET /api/health` (checks the database) for health checks. Guide: [self-hosting.md](self-hosting.md).
 
+### As built in Phase 9 (billing and admin, hosted only)
+
+- **Admin:** `/admin/*` pages and `/api/admin/*` routes. Access = hosted mode + an email in `PLATFORM_ADMIN_EMAILS` + two-factor sign-in; everyone else gets a plain 404 (pages and API). Writes are same-origin only and every change goes to `admin_audit_log` with before and after. Routes: `settings` (GET, PUT one key validated by its own schema), `plans` (GET, POST) and `plans/:id` (PATCH: new version when a price or limit changes), `workspaces` (GET search) and `workspaces/:id` (POST action: extend-trial, pause, resume, comp, revoke-comp), `invite-codes` (GET, POST), `usage` (GET), `inbox` (GET) and `inbox/:id` (PATCH), `support-automation` (POST). The UI is deliberately plain.
+- **Cross-workspace reads without a bypass role:** admin actions on one workspace run through `withOrg(thatOrg)`; totals across workspaces come from narrow `SECURITY DEFINER` functions (`platform_ai_micro_usd`, `platform_trial_ai_micro_usd`, `admin_top_usage`, `billing_org_for_subscription`, `billing_due_reminders`, `billing_ending_trials`) that return numbers or ids only.
+- **Worker:** limit check + usage counting inside the triage step (`apps/worker/src/billing.ts`), the notifier (owner emails, urgent alerts: `notify.ts`), the daily reminders job (`reminders.ts`) and the support recorder (`pipeline/support.ts`). The shared SMTP sender lives in `packages/mail`.
+
 ## Connector interfaces
 
 Details in [integrations/adding-a-connector.md](integrations/adding-a-connector.md). Sources and destinations implement shared `SourceConnector` / `DestinationConnector` interfaces, so new tools plug in without touching the pipeline.

@@ -13,6 +13,8 @@ export const JOBS = {
   deliver: "ticket.deliver",
   /** Tell one destination about a follow-up, a duplicate report or a chat resolution. */
   update: "ticket.update",
+  /** Renewal reminders and trial-ending notices (hosted only). Repeatable. */
+  reminders: "billing.reminders",
   /** Delete expired records. Repeatable. */
   cleanup: "maintenance.cleanup",
 } as const;

@@ -29,5 +29,14 @@ Running your own copy? The whole install is in [../self-hosting.md](../self-host
 5. **Hooks**: set the **Development Web Hook** URL to `<public URL>/api/webhooks/crisp` (locally your ngrok static domain; change any older `/crisp` URL) and put the signing secret Crisp shows in `CRISP_HOOK_SECRET` (web app). Subscribe to `message:send`, `message:received` and `session:set_state`.
 6. **Production**: "Ask a production token" and publish for review before customers can install (launch task).
 
+## Dodo Payments (hosted version only)
+1. https://app.dodopayments.com → start in **test mode**. Developer → API Keys: create a key → `DODO_API_KEY`. Keep `DODO_ENV=test`; switch to `live` (with the live key and webhook secret) only at launch.
+2. Developer → Webhooks: add the endpoint **`APP_URL/api/webhooks/billing`**, subscribe to the subscription and payment events, copy the signing secret → `DODO_WEBHOOK_SECRET` (it starts with `whsec_`).
+3. Products: create one **subscription** product per plan, per interval and per currency (monthly and yearly, in USD and, for India, INR at a fixed price). Copy each product id (`pdt_…`).
+4. In `/admin/plans`, enter the ids on the plan (`providerPriceIds`: `{ "dodo": { "USD": { "monthly": "pdt_…", "yearly": "pdt_…" }, "INR": { … } } }`), then make the plan public.
+5. Customer portal: allow cancelling and updating the payment method.
+6. Test once with Dodo's test cards: buy a plan, check *Billing* turns to Active, cancel in the portal, check it shows the end date.
+7. Admins: set `PLATFORM_ADMIN_EMAILS` and turn on two-factor for that account. Alerts: `ALERT_EMAIL` and an optional Slack incoming webhook in `SLACK_ALERTS_WEBHOOK_URL`. Own support identity: `CRISP_IDENTITY_SECRET` from the TriageFox Support website's settings.
+
 ## OpenAI
 Customers bring their own key under *AI key*; for the platform's own AI set `OPENAI_API_KEY` where the worker reads it (Phase 4). Models are configured with `AI_MODEL_DEFAULT`, `AI_MODEL_ESCALATION`, `AI_MODEL_EMBEDDING`.

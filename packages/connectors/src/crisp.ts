@@ -58,7 +58,12 @@ export class CrispPluginClient {
     const site = encodeURIComponent(websiteId);
     const session = encodeURIComponent(sessionId);
     const conv = await this.get<{
-      data: { state?: string; updated_at?: number; meta?: { nickname?: string; email?: string } };
+      data: {
+        state?: string;
+        updated_at?: number;
+        meta?: { nickname?: string; email?: string; verified?: boolean };
+        verifications?: { key?: string; verified?: boolean }[];
+      };
     }>(`/website/${site}/conversation/${session}`);
 
     const byFingerprint = new Map<string, CrispMessage>();
@@ -90,6 +95,12 @@ export class CrispPluginClient {
       customer: {
         nickname: conv.data?.meta?.nickname || undefined,
         email: conv.data?.meta?.email || undefined,
+        // Only a signed identity (our server signed the email, see docs/own-support.md) counts as verified.
+        verified:
+          conv.data?.meta?.verified === true ||
+          conv.data?.verifications?.some((v) => v.key === "email" && v.verified === true)
+            ? true
+            : undefined,
       },
       messages,
     };
@@ -139,7 +150,7 @@ export interface CrispConversation {
   state: "open" | "resolved";
   /** Milliseconds. */
   updatedAt: number;
-  customer: { nickname?: string; email?: string };
+  customer: { nickname?: string; email?: string; verified?: boolean };
   /** Oldest first. System events are dropped. */
   messages: CrispMessage[];
 }

@@ -75,3 +75,12 @@ Crisp free plan: ₹0. AI for our own support uses the platform key and is tiny 
 | 1 | Crisp widget on the landing page (plain live chat; reply in the Crisp app) |
 | 7 | In-app Help button with identity verification |
 | 9 | `internal_inbox` destination, platform automation, `/admin/inbox`, testimonial tab, email + Slack alerts |
+
+## As built in Phase 9
+
+- **Automation flag instead of a destination:** the platform workspace's automation is marked `supportInbox` (admin: *Support inbox → Which workspace is our own support?*). The normal pipeline runs on it; in addition `recordSupportItems` files what the AI found in `support_items` (one item per conversation and category, updated when the conversation is read again). This is simpler than a connector and gives the same result; the inbox is not a tracker destination. That automation is **never limited by plans** and uses the platform AI key.
+- **Categories:** created tickets become `bug` (bug, UI/UX, performance, infra, security, data) or `feature` (feature, improvement); no-action chats become `billing`, `refund_request`, `account`, `complaint`, `praise` or `question`; greetings and spam are ignored. Which categories are captured, which are urgent and the bug priority that is urgent are admin settings (`support`).
+- **Who it is:** the customer's email is matched to a user and workspace. `identity_verified` is true only when Crisp reports a signed identity for the conversation (`verified` on the conversation / email verification entry: the exact field is **to confirm against a real signed chat**; until then it simply stays false, which is the safe side).
+- **In-app help:** a *Help* button opens the chat; the app signs the user's email with `CRISP_IDENTITY_SECRET` (Crisp identity verification) and attaches the workspace id and name.
+- **Alerts:** a new urgent item sends an email to `ALERT_EMAIL` and a Slack message to `SLACK_ALERTS_WEBHOOK_URL` (both optional), once per item.
+- **Admin inbox:** `/admin/inbox` with status filters, private notes, identity shown as verified / "unverified: check before acting", an *Open in Crisp* link and a Testimonials tab with "approved to quote". Unanswered questions after 4 hours are not built yet (a later improvement).

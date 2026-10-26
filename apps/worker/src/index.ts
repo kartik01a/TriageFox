@@ -14,6 +14,7 @@ import { createTriage } from "./pipeline/triage";
 import { createUpdate } from "./pipeline/update";
 import { registerSchedulers, startPipelineWorker } from "./pipeline/worker";
 import { JOBS, QUEUES } from "./queues";
+import { sendBillingReminders } from "./reminders";
 import { createHandlers } from "./rpc/handlers";
 
 const log = createLogger("worker");
@@ -95,6 +96,7 @@ const pipeline = startPipelineWorker(
         config.APP_MODE === "hosted"
           ? createBillingHooks({ db, notifier: createNotifier({ db, config, log }) })
           : undefined,
+      notifier: config.APP_MODE === "hosted" ? createNotifier({ db, config, log }) : undefined,
       enqueueDelivery: (p) => scheduleDelivery(pipelineQueue, p),
       enqueueUpdate: (p) => scheduleUpdate(pipelineQueue, p),
     }),
@@ -102,6 +104,10 @@ const pipeline = startPipelineWorker(
       ctx: { db, config, keyring: config.keyring, redis: connection, log },
       crisp,
     }),
+    reminders:
+      config.APP_MODE === "hosted"
+        ? () => sendBillingReminders({ db, notifier: createNotifier({ db, config, log }) })
+        : undefined,
     applyUpdate: createUpdate({
       ctx: { db, config, keyring: config.keyring, redis: connection, log },
       crisp,
