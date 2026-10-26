@@ -54,19 +54,29 @@ export function ReviewCard({ item, canManage }: { item: Item; canManage: boolean
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="space-y-1 text-sm">
-          <span className="font-medium">Type</span>
-          <Select value={type} onChange={(e) => setType(e.target.value)} disabled={!canManage}>
+        <div className="space-y-1 text-sm">
+          <label htmlFor={`type-${item.id}`} className="font-medium">
+            Type
+          </label>
+          <Select
+            id={`type-${item.id}`}
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            disabled={!canManage}
+          >
             {TICKET_TYPES.map((t) => (
               <option key={t} value={t}>
                 {TICKET_TYPE_LABELS[t]}
               </option>
             ))}
           </Select>
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="font-medium">Priority</span>
+        </div>
+        <div className="space-y-1 text-sm">
+          <label htmlFor={`priority-${item.id}`} className="font-medium">
+            Priority
+          </label>
           <Select
+            id={`priority-${item.id}`}
             value={priority}
             onChange={(e) => setPriority(Number(e.target.value))}
             disabled={!canManage}
@@ -77,7 +87,7 @@ export function ReviewCard({ item, canManage }: { item: Item; canManage: boolean
               </option>
             ))}
           </Select>
-        </label>
+        </div>
       </div>
       {error && (
         <p className="text-sm text-danger" role="alert">

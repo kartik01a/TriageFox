@@ -51,12 +51,12 @@ export default async function ActivityPage({
           Every decision, with the reason. Open a row to see why the AI decided what it did.
         </p>
       </div>
-      <div className="flex flex-wrap gap-2" role="navigation" aria-label="Filter">
+      <nav className="flex flex-wrap gap-2" aria-label="Filter">
         {tab(undefined, "All")}
         {(Object.keys(ACTIVITY_FILTERS) as ActivityFilter[]).map((k) =>
           tab(k, ACTIVITY_FILTERS[k].label),
         )}
-      </div>
+      </nav>
       {shown.length === 0 ? (
         <Card className="text-sm text-muted-foreground">
           {active

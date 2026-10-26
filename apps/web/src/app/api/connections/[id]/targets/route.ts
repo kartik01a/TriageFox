@@ -2,6 +2,7 @@ import { suggestIssueTypeMap, suggestPriorityMap, usableIssueTypes } from "@tria
 import { and, eq, schema, withOrg } from "@triagefox/db";
 import { PRIORITIES, TICKET_TYPES } from "@triagefox/shared";
 import { z } from "zod";
+import { getAutomation, syncDestinations } from "@/lib/automations";
 import { audit, getConnectionView } from "@/lib/connections";
 import { db } from "@/lib/db";
 import { json, managerGuard, rpcErrorResponse } from "@/lib/guards";
@@ -153,6 +154,9 @@ export async function PUT(req: Request, { params }: Params) {
       .set({ metadata: { ...(row?.metadata ?? {}), defaults } })
       .where(and(eq(schema.connections.id, c.conn.id), eq(schema.connections.orgId, c.orgId)));
   });
+  // Keep the automation's destinations in step with the chosen target.
+  const automation = await getAutomation(c.orgId);
+  if (automation) await syncDestinations(c.orgId, automation.id);
   await audit({
     orgId: c.orgId,
     actorUserId: c.userId,

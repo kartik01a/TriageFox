@@ -7,6 +7,7 @@
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { destinationConfigFromDefaults } from "./destinations";
 import { automationDestinations, automations, connections } from "./schema/index";
 
 const url = process.env.DATABASE_MIGRATION_URL;
@@ -55,18 +56,7 @@ const targets = await db
   .from(connections)
   .where(and(eq(connections.orgId, orgId), eq(connections.status, "active")));
 for (const c of targets) {
-  const d = c.metadata.defaults as Record<string, unknown> | undefined;
-  let config: (typeof automationDestinations.$inferInsert)["config"] | null = null;
-  if (c.provider === "trello" && d?.boardId && d?.listId)
-    config = { kind: "trello", boardId: String(d.boardId), listId: String(d.listId) };
-  if (c.provider === "jira" && d?.projectKey && d?.setupOk)
-    config = {
-      kind: "jira",
-      cloudId: String(d.cloudId),
-      projectKey: String(d.projectKey),
-      issueTypeMap: d.issueTypeMap as Record<string, string>,
-      priorityMap: d.priorityMap as Record<string, string>,
-    };
+  const config = destinationConfigFromDefaults(c);
   if (!config) continue;
   await db
     .insert(automationDestinations)

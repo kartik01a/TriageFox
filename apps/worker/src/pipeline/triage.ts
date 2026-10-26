@@ -15,6 +15,7 @@ import { and, eq, gte, inArray, schema, sql, withOrg } from "@triagefox/db";
 import type { DeliverPayload, UpdatePayload } from "@triagefox/pipeline";
 import type { Priority, WorkerEnv } from "@triagefox/shared";
 import { UnrecoverableError } from "bullmq";
+import { resolveAiKey } from "./ai-key";
 import { applyResult } from "./apply";
 import type { PipelineLogger, Triage, TriageInput } from "./deps";
 import { customerText, embedIssues, findDuplicateCandidates } from "./duplicates";
@@ -120,29 +121,6 @@ export function createTriage(deps: TriageDeps): Triage {
     );
   }
 
-  /** Own key first (write-only; opened only here); otherwise the platform key. */
-  async function resolveKey(
-    orgId: string,
-  ): Promise<{ key: string; source: "byok" | "platform" } | null> {
-    const [row] = await withOrg(deps.db, orgId, (tx) =>
-      tx
-        .select({ sealed: schema.aiSettings.keySealed })
-        .from(schema.aiSettings)
-        .where(eq(schema.aiSettings.orgId, orgId)),
-    );
-    if (row?.sealed) {
-      const key = await openSecret(
-        row.sealed,
-        { orgId, recordId: orgId, purpose: "ai.key" },
-        deps.keyring,
-      );
-      return { key, source: "byok" };
-    }
-    return deps.config.OPENAI_API_KEY
-      ? { key: deps.config.OPENAI_API_KEY, source: "platform" }
-      : null;
-  }
-
   return async (input) => {
     const { orgId, thread, automation, conversation } = input;
     const since = new Date(now().getTime() - 30 * DAY_MS);
@@ -163,7 +141,7 @@ export function createTriage(deps: TriageDeps): Triage {
       return;
     }
 
-    const resolved = await resolveKey(orgId);
+    const resolved = await resolveAiKey(deps, orgId);
     if (!resolved) {
       await log(
         input,

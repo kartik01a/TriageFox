@@ -1,3 +1,4 @@
+import { AiError } from "@triagefox/ai";
 import {
   CrispPluginClient,
   exchangeJiraCode,
@@ -22,6 +23,7 @@ import {
   updateConnection,
   withLock,
 } from "./context";
+import { dryRun } from "./dry-run";
 
 type Connection = Awaited<ReturnType<typeof loadConnection>>;
 const REFRESH_MARGIN_MS = 2 * 60 * 1000;
@@ -259,6 +261,19 @@ export function createHandlers(ctx: Ctx): RpcHandlers {
             return { status: "revoked" as const, detail: e.message };
           throw e;
         }
+      }
+    },
+
+    async "automation.dryRun"(input) {
+      try {
+        return await dryRun(ctx, crispPlugin(ctx), input);
+      } catch (err) {
+        if (err instanceof AiError) {
+          if (err.kind === "auth" || err.kind === "no_quota")
+            throw new RpcError("auth_expired", "The OpenAI key was rejected or is out of credit.");
+          throw new RpcError("unavailable", "The AI is not responding. Please try again shortly.");
+        }
+        return failWith(ctx, null, "Crisp", err);
       }
     },
 

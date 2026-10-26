@@ -61,6 +61,29 @@ export const rpcMethods = {
       detail: z.string().optional(),
     }),
   },
+  "automation.dryRun": {
+    input: z.object({ orgId: z.string().min(1), automationId: z.uuid() }),
+    output: z.object({
+      analysed: z.number(),
+      results: z.array(
+        z.object({
+          when: z.number(),
+          snippet: z.string(),
+          conversationUrl: z.string(),
+          decision: z.enum(["create", "update", "duplicate_of", "no_action"]),
+          category: z.string().optional(),
+          type: z.string().optional(),
+          priority: z.number().optional(),
+          title: z.string(),
+          bodyPreview: z.string(),
+          reason: z.string(),
+          confidence: z.number(),
+          needsReview: z.boolean(),
+          dueDate: z.string().nullable(),
+        }),
+      ),
+    }),
+  },
   "ai.explain": {
     input: z.object({ orgId: z.string().min(1), aiRunId: z.uuid() }),
     output: z.object({
