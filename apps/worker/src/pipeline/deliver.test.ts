@@ -17,6 +17,7 @@ let keyring: PrivateKeyring;
 const net = new FakeNet();
 
 const log = { info() {}, warn() {}, error() {} };
+const revoked: { orgId: string; id: string; provider: string }[] = [];
 let ctx: Ctx;
 const conv = (messages: CrispConversation["messages"] = []): CrispConversation => ({
   sessionId: "sess",
@@ -211,6 +212,7 @@ beforeAll(async () => {
     redis,
     keyring,
     log,
+    onRevoked: async (c) => void revoked.push(c),
     fetch: net.fetch,
     config: {
       TRELLO_API_KEY: "KEY",
@@ -488,5 +490,69 @@ describe("fan-out and gating", () => {
     const b = await world({ trello: true });
     await deliver()({ orgId, issueId: a.issue?.id ?? "", destinationId: b.trello?.dest ?? "" });
     expect(net.calls).toHaveLength(0);
+  });
+});
+
+describe("revoking a tool in the middle of a run", () => {
+  it("pauses cleanly: the owner is told once, nothing is lost, and a retry after reconnecting finishes the job", async () => {
+    net.reset();
+    net.routes.push(trelloOk);
+    revoked.length = 0;
+    const w = await world({ trello: true });
+    const dest = w.trello?.dest ?? "";
+    const first = { orgId, issueId: w.issue?.id ?? "", destinationId: dest };
+    await deliver()(first); // delivered before the revocation
+    expect((await ticket(first.issueId, dest))?.status).toBe("ok");
+
+    // A second ticket from the same automation, and then Trello stops accepting our token.
+    const [second] = await withOrg(db, orgId, (tx) =>
+      tx
+        .insert(schema.issues)
+        .values({
+          orgId,
+          automationId: w.issue?.automationId ?? "",
+          originThreadId: w.thread?.id ?? "",
+          title: "Second bug",
+          summary: "s",
+          bodyMd: "## Summary\nx",
+          type: "bug",
+          priority: 2,
+          confidence: 0.9,
+        })
+        .returning(),
+    );
+    const secondP = { orgId, issueId: second?.id ?? "", destinationId: dest };
+    net.reset();
+    net.routes.push(
+      ({ method, url }) =>
+        method === "POST" && url.pathname === "/1/cards" ? { status: 401 } : undefined,
+      trelloOk,
+    );
+    await deliver()(secondP);
+    await deliver()({ ...secondP }); // running it again must not tell the owner a second time
+
+    expect((await ticket(secondP.issueId, dest))?.status).toBe("failed");
+    expect(revoked).toHaveLength(1);
+    expect(revoked[0]).toMatchObject({ orgId, id: w.trello?.conn, provider: "trello" });
+    const [conn] = await withOrg(db, orgId, (tx) =>
+      tx
+        .select()
+        .from(schema.connections)
+        .where(eq(schema.connections.id, w.trello?.conn ?? "")),
+    );
+    expect(conn?.status).toBe("revoked");
+
+    // The person reconnects; "try again" sends the ticket that did not arrive, and the first one is untouched.
+    await withOrg(db, orgId, (tx) =>
+      tx
+        .update(schema.connections)
+        .set({ status: "active", statusDetail: null })
+        .where(eq(schema.connections.id, w.trello?.conn ?? "")),
+    );
+    net.reset();
+    net.routes.push(trelloOk);
+    await deliver()(secondP);
+    expect((await ticket(secondP.issueId, dest))?.status).toBe("ok");
+    expect(net.count("POST", /^\/1\/cards$/)).toBe(1); // only the second ticket was created now
   });
 });

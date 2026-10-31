@@ -1,6 +1,8 @@
 import { applyBillingEvent, WebhookError } from "@triagefox/billing";
 import { billingProvider } from "@/lib/billing";
 import { db } from "@/lib/db";
+import { ipFromHeaders } from "@/lib/ip";
+import { allowRequest, tooMany } from "@/lib/limits";
 import { logger } from "@/lib/logger";
 
 const MAX_BODY = 256 * 1024;
@@ -13,6 +15,8 @@ const MAX_BODY = 256 * 1024;
 export async function POST(req: Request) {
   const provider = billingProvider();
   if (!provider) return new Response(null, { status: 404 });
+  if (!(await allowRequest(`billing-hook:${ipFromHeaders(req.headers)}`, 600, 60)))
+    return tooMany();
   const raw = await req.text();
   if (raw.length > MAX_BODY) return new Response(null, { status: 401 });
   let event: ReturnType<typeof provider.parseWebhook>;

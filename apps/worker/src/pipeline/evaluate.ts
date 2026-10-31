@@ -36,12 +36,22 @@ async function markConnectionRevoked(
   connectionId: string,
   detail: string,
 ) {
+  const [before] = await withOrg(deps.db, orgId, (tx) =>
+    tx
+      .select({ status: schema.connections.status })
+      .from(schema.connections)
+      .where(and(eq(schema.connections.id, connectionId), eq(schema.connections.orgId, orgId))),
+  );
   await withOrg(deps.db, orgId, (tx) =>
     tx
       .update(schema.connections)
       .set({ status: "revoked", statusDetail: detail })
       .where(and(eq(schema.connections.id, connectionId), eq(schema.connections.orgId, orgId))),
   );
+  if (before && before.status !== "revoked")
+    await deps
+      .onRevoked?.({ orgId, id: connectionId, provider: "crisp", detail })
+      .catch(() => undefined);
 }
 
 async function recordError(deps: PipelineDeps, p: EvaluatePayload, message: string) {

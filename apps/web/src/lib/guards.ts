@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { env } from "./env";
+import { allowRequest, tooMany } from "./limits";
 import { resolveWorkspace } from "./workspace";
 
 /**
@@ -55,6 +56,9 @@ export async function managerGuard(
         403,
       ),
     };
+  // A runaway script or a stuck button cannot hammer the system: 300 changes a minute per workspace is far above real use.
+  if (req.method !== "GET" && !(await allowRequest(`org:${ctx.workspace.id}:write`, 300, 60)))
+    return { ok: false as const, response: tooMany() };
   if (opts.ownerOnly && ctx.role !== "owner")
     return {
       ok: false as const,

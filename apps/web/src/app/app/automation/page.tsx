@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DestinationToggle, EnableButton, RetryButton } from "@/components/app/automation-controls";
+import {
+  DestinationToggle,
+  EnableButton,
+  RetryAllButton,
+  RetryButton,
+} from "@/components/app/automation-controls";
 import { DryRunPanel } from "@/components/app/dry-run-panel";
 import { SettingsForm } from "@/components/app/settings-form";
 import { StatusBadge } from "@/components/status-badge";
@@ -109,9 +114,14 @@ export default async function AutomationPage() {
 
       {failedTickets.length > 0 && (
         <section aria-labelledby="failed" className="space-y-3">
-          <h2 id="failed" className="font-semibold text-danger">
-            Tickets that didn't arrive
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="failed" className="font-semibold text-danger">
+              Tickets that didn't arrive
+            </h2>
+            {canManage && failedTickets.length > 1 && (
+              <RetryAllButton count={failedTickets.length} />
+            )}
+          </div>
           <Card className="divide-y divide-border p-0">
             {failedTickets.map((t) => (
               <div

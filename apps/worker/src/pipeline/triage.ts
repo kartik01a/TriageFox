@@ -270,6 +270,13 @@ export function createTriage(deps: TriageDeps): Triage {
             ? "Your OpenAI key was rejected or is out of credit"
             : "The platform AI key was rejected";
         await log(input, "ai_key_problem", `${whose}; analysis is paused until it is fixed.`);
+        if (resolved.source === "platform")
+          await deps.notifier?.alert({
+            subject: "The platform OpenAI key was rejected or is out of credit",
+            text: "Every workspace using TriageFox AI is paused until this is fixed. Check the OpenAI account (key and billing).",
+            dedupeKey: "platform-openai-key",
+            dedupeSeconds: 1800,
+          });
         throw new UnrecoverableError(`ai_${err.kind}`);
       }
       throw err; // rate limits, outages and bad output: retried with backoff

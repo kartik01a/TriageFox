@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { db } from "./db";
 import { env } from "./env";
 import { sameOrigin } from "./guards";
+import { allowRequest, tooMany } from "./limits";
 import { getSession } from "./session";
 
 export const adminEmails = () =>
@@ -37,6 +38,8 @@ export async function adminGuard(req: Request) {
     return { ok: false as const, response: notFoundResponse() };
   const admin = await currentAdmin();
   if (!admin) return { ok: false as const, response: notFoundResponse() };
+  if (!(await allowRequest(`admin:${admin.email}`, 120, 60)))
+    return { ok: false as const, response: tooMany() };
   return { ok: true as const, admin };
 }
 

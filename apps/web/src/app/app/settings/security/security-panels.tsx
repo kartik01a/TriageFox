@@ -73,7 +73,7 @@ export function TwoFactorPanel({ enabled }: { enabled: boolean }) {
 
   if (setup)
     return (
-      <form onSubmit={verify} className="space-y-4">
+      <form method="post" onSubmit={verify} className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Scan this with an authenticator app (1Password, Google Authenticator, Authy), then enter
           the 6-digit code it shows.
@@ -97,7 +97,7 @@ export function TwoFactorPanel({ enabled }: { enabled: boolean }) {
     );
 
   return (
-    <form onSubmit={enabled ? disable : start} className="space-y-4">
+    <form method="post" onSubmit={enabled ? disable : start} className="space-y-4">
       <p className="text-sm text-muted-foreground">
         {enabled
           ? "Two-factor sign-in is on for your account."

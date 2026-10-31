@@ -51,6 +51,15 @@ export interface PipelineDeps {
   triage: Triage;
   deliver: Deliver;
   applyUpdate: ApplyUpdate;
+  /** Called once when a connection turns `revoked`. */
+  onRevoked?: (c: {
+    orgId: string;
+    id: string;
+    provider: string;
+    detail: string | null;
+  }) => Promise<void>;
+  /** A real, deduplicated alert to the operator (a job that kept failing, a platform key problem). */
+  alert?: (a: { key: string; subject: string; text: string }) => Promise<void>;
   /** Daily billing reminders (hosted only). */
   reminders?: () => Promise<unknown>;
   log: PipelineLogger;

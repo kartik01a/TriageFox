@@ -33,7 +33,7 @@ export function InviteForm({ organizationId }: { organizationId: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3" noValidate>
+    <form method="post" onSubmit={onSubmit} className="space-y-3" noValidate>
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
         <div>
           <Label htmlFor="invite-email">Email</Label>

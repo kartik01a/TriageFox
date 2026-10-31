@@ -69,6 +69,22 @@ docker compose -f deploy/docker-compose.yml --profile trial up -d
 
 Open `https://localhost` (accept the local certificate warning). Sign-up emails are caught by a test mailbox at http://127.0.0.1:8025. Don't use this profile for real use.
 
+## Ready-made images (no build)
+
+Tagged releases publish Intel and ARM images to GitHub's registry. To use them instead of building from source, run the setup with the two image names, or set them in `deploy/.env` later:
+
+```bash
+WEB_IMAGE=ghcr.io/kartik01a/triagefox-web:v1.0.0 \
+WORKER_IMAGE=ghcr.io/kartik01a/triagefox-worker:v1.0.0 \
+./deploy/setup.sh
+```
+
+`TRIAGEFOX_PULL=always` (set for you) makes `docker compose up -d` pull them. Then update with `docker compose -f deploy/docker-compose.yml pull && docker compose -f deploy/docker-compose.yml up -d`.
+
+## When a connection stops working
+
+If Trello, Jira or Crisp stops accepting TriageFox (access revoked, plugin removed), the owner gets one email (this needs your SMTP settings in `deploy/.env`), the connection shows "Reconnect needed", and tickets that could not be sent wait. Reconnect it on the Connections page, then press **Try all again** on the Automation page. Set `ALERT_EMAIL` (and optionally `SLACK_ALERTS_WEBHOOK_URL`) to also hear about jobs that keep failing and about a rejected OpenAI key.
+
 ## Updating
 
 ```bash

@@ -38,7 +38,7 @@ export type PlatformSettings = {
 };
 
 export const defaultPlatformSettings: PlatformSettings = {
-  trial: { days: 14, conversationCap: 50, cardRequired: false, unlimitedWithOwnKey: true },
+  trial: { days: 7, conversationCap: 50, cardRequired: false, unlimitedWithOwnKey: true },
   budgets: { trialAiUsdMonthly: 10, platformAiUsdMonthly: 200 },
   grace: { pastDueDays: 7 },
   reminders: { monthlyDays: 3, yearlyDays: 7 },

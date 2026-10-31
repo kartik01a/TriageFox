@@ -87,7 +87,7 @@ export function AiKeyForm({
         </p>
       )}
       {canManage ? (
-        <form onSubmit={save} className="space-y-3" autoComplete="off">
+        <form method="post" onSubmit={save} className="space-y-3" autoComplete="off">
           <div>
             <Label htmlFor="key">{hint ? "Replace key" : "OpenAI API key"}</Label>
             <Input

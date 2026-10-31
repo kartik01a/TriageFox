@@ -8,7 +8,7 @@ import { Queue, UnrecoverableError, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { createBillingHooks } from "./billing";
 import { describeProviders, loadConfig, verifyKeyring } from "./config";
-import { createNotifier } from "./notify";
+import { createNotifier, revokedNotice } from "./notify";
 import { createDeliver } from "./pipeline/deliver";
 import { createTriage } from "./pipeline/triage";
 import { createUpdate } from "./pipeline/update";
@@ -60,11 +60,26 @@ const worker = new Worker(
 worker.on("failed", (job, err) => log.error({ jobId: job?.id, err: err.message }, "job failed"));
 worker.on("error", (err) => log.error({ err: err.message }, "worker error"));
 
+// One notifier for everything that needs to tell a person something (owners, the operator).
+const notifier = createNotifier({ db, config, log, redis: connection });
+const onRevoked = async (c: { orgId: string; provider: string }) => {
+  const n = revokedNotice(c.provider);
+  await notifier.emailOwners(c.orgId, {
+    subject: n.subject,
+    heading: n.heading,
+    body: n.body,
+    cta: n.cta,
+  });
+};
+const alert = (a: { key: string; subject: string; text: string }) =>
+  notifier.alert({ subject: a.subject, text: a.text, dedupeKey: a.key, dedupeSeconds: 3600 });
+const ctx = { db, config, keyring: config.keyring, redis: connection, log, onRevoked };
+
 // Requests from the web app that need decrypted credentials (docs/security.md §3).
 const rpc = startRpcServer({
   connection,
   log,
-  handlers: createHandlers({ db, config, keyring: config.keyring, redis: connection, log }),
+  handlers: createHandlers(ctx),
 });
 rpc.on("error", (err) => log.error({ err: err.message }, "rpc server error"));
 
@@ -87,29 +102,26 @@ const pipeline = startPipelineWorker(
     queue: pipelineQueue,
     crisp,
     log,
+    onRevoked,
+    alert,
     triage: createTriage({
       db,
       config,
       keyring: config.keyring,
       log,
-      billing:
-        config.APP_MODE === "hosted"
-          ? createBillingHooks({ db, notifier: createNotifier({ db, config, log }) })
-          : undefined,
-      notifier: config.APP_MODE === "hosted" ? createNotifier({ db, config, log }) : undefined,
+      billing: config.APP_MODE === "hosted" ? createBillingHooks({ db, notifier }) : undefined,
+      notifier,
       enqueueDelivery: (p) => scheduleDelivery(pipelineQueue, p),
       enqueueUpdate: (p) => scheduleUpdate(pipelineQueue, p),
     }),
     deliver: createDeliver({
-      ctx: { db, config, keyring: config.keyring, redis: connection, log },
+      ctx,
       crisp,
     }),
     reminders:
-      config.APP_MODE === "hosted"
-        ? () => sendBillingReminders({ db, notifier: createNotifier({ db, config, log }) })
-        : undefined,
+      config.APP_MODE === "hosted" ? () => sendBillingReminders({ db, notifier }) : undefined,
     applyUpdate: createUpdate({
-      ctx: { db, config, keyring: config.keyring, redis: connection, log },
+      ctx,
       crisp,
       enqueueDelivery: (p) => scheduleDelivery(pipelineQueue, p),
     }),

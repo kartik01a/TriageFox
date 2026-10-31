@@ -1,0 +1,55 @@
+name: Release images
+
+# Push a tag like v1.0.0 to publish the web and worker images to GitHub's container registry.
+# Each architecture is built on its own native runner (no emulation), then joined into one multi-arch tag,
+# so the same command works on Intel servers and on ARM ones (Oracle's free tier is ARM).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    name: ${{ matrix.target }} (${{ matrix.arch }})
+    strategy:
+      fail-fast: true
+      matrix:
+        target: [web, worker]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+        exclude: []
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Log in to the registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
+      - name: Build and push
+        run: |
+          image="$REGISTRY/$(echo '${{ github.repository_owner }}' | tr 'A-Z' 'a-z')/triagefox-${{ matrix.target }}"
+          docker build -f deploy/Dockerfile --target "${{ matrix.target }}" -t "$image:${{ github.ref_name }}-${{ matrix.arch }}" .
+          docker push "$image:${{ github.ref_name }}-${{ matrix.arch }}"
+
+  manifest:
+    name: Join architectures
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to the registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
+      - name: Create the multi-architecture tags
+        run: |
+          owner="$(echo '${{ github.repository_owner }}' | tr 'A-Z' 'a-z')"
+          for target in web worker; do
+            image="$REGISTRY/$owner/triagefox-$target"
+            docker buildx imagetools create -t "$image:${{ github.ref_name }}" -t "$image:latest" \
+              "$image:${{ github.ref_name }}-amd64" "$image:${{ github.ref_name }}-arm64"
+          done

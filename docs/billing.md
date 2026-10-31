@@ -57,7 +57,7 @@ Effective for us: **≈ 6% + $0.40** per international subscription payment, **p
 4. **Avoid chargebacks** ($30 each, and a high rate can get the seller account suspended): no-card trial, clear limits, easy cancel, annual renewal reminders (see the refund policy).
 
 ## Refund policy
-**No refunds.** The 14-day free trial is the "try before you buy".
+**No refunds.** The 7-day free trial is the "try before you buy".
 - **Cancel anytime:** cancelling stops the next renewal; access continues until the end of the paid period. No partial or pro-rated refunds.
 - **Only these exceptions**, each decided by the owner after checking the evidence:
   - a duplicate or mistaken charge (our or Dodo's billing error)
@@ -99,7 +99,7 @@ Revisit at ~$2–3k MRR.
 ## Plans, trial and limits: stored in the database, not in code
 All of these are rows in the DB, managed through **admin routes** ([decisions/0009](decisions/0009-config-in-db-admin-routes.md)):
 - **Plans:** name, monthly/yearly price, conversation limit (or unlimited + fair-use cap), connected-inbox limit, own-key required, support level, MoR product/price IDs, visible/active, sort order, "most popular" badge.
-- **Trial settings:** days (launch: 14), conversation cap (50), card required (false), monthly trial AI budget ($10), unlimited with own key (true).
+- **Trial settings:** days (launch: 7, ADR 0012), conversation cap (50), card required (false), monthly trial AI budget ($10), unlimited with own key (true).
 - **Platform settings:** monthly platform AI spend ceiling, sign-ups open/closed.
 
 The pricing page reads active plans from the DB (cached ~5 min). **Price changes create a new plan version**: existing subscribers keep their price unless deliberately moved. The matching price must exist in the MoR first (created in its dashboard or API, IDs saved on the plan).

@@ -21,6 +21,7 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 | [billing.md](billing.md) | Merchant of record, fees, payment methods, trial, limits, admin-managed plans (hosted only) |
 | [setup/providers.md](setup/providers.md) | Registering the Trello, Atlassian and Crisp apps (owner / self-host checklist) |
 | [self-hosting.md](self-hosting.md) | **Install guide for running TriageFox yourself**: setup script, registering your own apps, updates, backups, hardening, troubleshooting |
+| [launch.md](launch.md) | **Launch guide**: accounts, running the hosted version, marketplace and provider submissions, legal checks, making the repo public |
 | [development.md](development.md) | How to run, test and extend the codebase locally |
 | [security.md](security.md) | **Full security plan**: threats, encryption, data minimisation, 2FA, infra, incident runbook, phase checklist, public Security page copy |
 | [edge-cases.md](edge-cases.md) | What can go wrong and how each case is handled |
@@ -57,3 +58,4 @@ This folder **is pushed** with the code, except [`docs/private/`](private/), whi
 - 2026-10-27: **Phase 7 (Dashboard) done**: a new customer can connect, check the AI on their last chats, turn the automation on, review unsure tickets and see every decision, without help from us. **Next: Phase 8 (Self-host package).**
 - 2026-10-27: **Phase 8 (Self-host package) done**: images, hardened Compose stack, setup script, backups, self-hosting guide. **Next: Phase 9 (Billing + admin).**
 - 2026-10-27: **Phase 9 (Billing + admin) done** (live payment test pending): trial and plan limits, Dodo checkout/portal/webhooks, pricing and billing pages, admin area, free access, renewal reminders, own support inbox. **Next: Phase 10 (Hardening + launch).**
+- 2026-10-31: **Phase 10 (Hardening + launch) done in code and docs**: rate limits, backoff, revoked-tool handling, operator alerts, the full landing page, privacy policy, terms, security and subprocessor pages, release workflow, security scan and Lighthouse results. All ten build phases are complete. **Next: the owner's end-to-end test, then the steps in [launch.md](launch.md).**

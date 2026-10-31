@@ -3,6 +3,8 @@ import { handleCrispHook } from "@triagefox/pipeline";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { json } from "@/lib/guards";
+import { ipFromHeaders } from "@/lib/ip";
+import { allowRequest, tooMany } from "@/lib/limits";
 import { logger } from "@/lib/logger";
 import { pipelineQueue } from "@/lib/pipeline-queue";
 
@@ -17,6 +19,8 @@ export async function POST(req: Request) {
   const secret = env().CRISP_HOOK_SECRET;
   if (!secret) return json({ ok: false, error: "Crisp hooks are not configured." }, 503);
 
+  // Generous (one address carries many customers' hooks), but a flood from one address stops here.
+  if (!(await allowRequest(`crisp-hook:${ipFromHeaders(req.headers)}`, 6000, 60))) return tooMany();
   const declared = Number(req.headers.get("content-length") ?? 0);
   if (declared > MAX_BODY_BYTES) return json({ ok: false }, 413);
   const raw = await req.text();

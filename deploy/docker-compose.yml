@@ -10,6 +10,10 @@ x-hardened: &hardened
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
   tmpfs: ["/tmp"]
+  # Logs rotate by size, so they cannot fill the disk or live forever.
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
 
 services:
   postgres:
@@ -48,7 +52,8 @@ services:
   migrate:
     <<: *hardened
     restart: "no"
-    image: triagefox/worker:local
+    image: ${WORKER_IMAGE:-triagefox/worker:local}
+    pull_policy: ${TRIAGEFOX_PULL:-build}
     build: { context: .., dockerfile: deploy/Dockerfile, target: worker }
     command: ["node", "dist/migrate.js"]
     environment:
@@ -59,7 +64,8 @@ services:
 
   worker:
     <<: *hardened
-    image: triagefox/worker:local
+    image: ${WORKER_IMAGE:-triagefox/worker:local}
+    pull_policy: ${TRIAGEFOX_PULL:-build}
     build: { context: .., dockerfile: deploy/Dockerfile, target: worker }
     environment:
       NODE_ENV: production
@@ -80,6 +86,14 @@ services:
       CRISP_PLUGIN_ID: ${CRISP_PLUGIN_ID:-}
       CRISP_PLUGIN_KEY: ${CRISP_PLUGIN_KEY:-}
       CRISP_PLUGIN_UUID: ${CRISP_PLUGIN_UUID:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      MAIL_FROM: ${MAIL_FROM:-TriageFox <hello@localhost>}
+      ALERT_EMAIL: ${ALERT_EMAIL:-}
+      SLACK_ALERTS_WEBHOOK_URL: ${SLACK_ALERTS_WEBHOOK_URL:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -88,7 +102,8 @@ services:
 
   web:
     <<: *hardened
-    image: triagefox/web:local
+    image: ${WEB_IMAGE:-triagefox/web:local}
+    pull_policy: ${TRIAGEFOX_PULL:-build}
     build: { context: .., dockerfile: deploy/Dockerfile, target: web }
     tmpfs: ["/tmp", "/app/apps/web/.next/cache"]
     environment:

@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
           If an account exists for that email, we sent a reset link. It's valid for one hour.
         </p>
       ) : (
-        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        <form method="post" onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" autoComplete="email" required />

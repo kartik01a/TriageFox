@@ -131,3 +131,22 @@ export function CreateAutomationButton({ label = "Continue" }: { label?: string 
     </div>
   );
 }
+
+export function RetryAllButton({ count }: { count: number }) {
+  const router = useRouter();
+  const [state, setState] = useState<"idle" | "busy" | "sent">("idle");
+  return (
+    <Button
+      size="sm"
+      disabled={state !== "idle"}
+      onClick={async () => {
+        setState("busy");
+        const r = await call("/api/tickets/retry-all", "POST");
+        setState(r.ok ? "sent" : "idle");
+        router.refresh();
+      }}
+    >
+      {state === "sent" ? "Sending again…" : `Try all ${count} again`}
+    </Button>
+  );
+}

@@ -98,7 +98,7 @@ What counts as a conversation? · Does it work with my Jira setup? · What does 
 ### 12. Footer
 Product · Docs · GitHub · Changelog · Privacy · Terms · Contact · "Made in India 🇮🇳 by [name]".
 
-**Pre-launch (landing v0, Phase 1):** hero + three feature cards + **waitlist form**, so marketing can start early.
+**As built (Phase 10):** all twelve sections above, except that the nav has no live "GitHub ★" while the repository is private (the count appears automatically once it is public), the pricing preview shows up to three public plans from the database, and the hero's second loop variant ("no ticket needed") is shown by the first feature card instead. There is no waitlist: the call to action is "Start free trial" (trial length read from the settings). Contact details come from `apps/web/src/lib/site.ts`.
 
 ---
 

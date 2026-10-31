@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/kartik01a/TriageFox/security/advisories/new
+    about: Please do not open a public issue for security problems.
+  - name: Ask a question or share an idea
+    url: https://github.com/kartik01a/TriageFox/discussions
+    about: Questions, ideas and show-and-tell go to Discussions.

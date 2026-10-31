@@ -15,6 +15,7 @@ One file per significant decision: `NNNN-short-name.md`. Don't edit an accepted 
 | [0009](0009-config-in-db-admin-routes.md) | Plans, trial and platform settings in the DB, managed via admin routes | Accepted |
 | [0010](0010-security-architecture.md) | Security architecture: sealed secrets, no transcripts, Cloudflare | Accepted |
 | [0011](0011-own-support-admin-inbox.md) | Own support via Crisp, triaged into an admin inbox | Accepted |
+| [0012](0012-seven-day-trial.md) | The free trial is 7 days | Accepted |
 
 ## Template
 

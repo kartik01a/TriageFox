@@ -4,7 +4,7 @@ TriageFox handles other teams' Jira, Trello and Crisp access, so we take securit
 
 ## Reporting a vulnerability
 
-Please **do not open a public issue**. Email **security@triagefox.com** (until the domain is live, use GitHub's private "Report a vulnerability" button on this repository).
+Please **do not open a public issue**. Use GitHub's private **"Report a vulnerability"** button on this repository, or email **kartiksinghbisht1@gmail.com** <!-- TODO(owner): change to security@triagefox.com once the domain is live -->.
 
 Include what you found, how to reproduce it, and the impact you expect. We aim to reply within 48 hours and to fix confirmed issues quickly. We'll credit you in the changelog if you'd like.
 

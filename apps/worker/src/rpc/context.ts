@@ -15,6 +15,13 @@ export interface Ctx {
   redis: Redis;
   /** Injected in tests; defaults to the global fetch. */
   fetch?: FetchLike;
+  /** Called once when a connection turns `revoked` (the owner is emailed so nothing fails silently). */
+  onRevoked?: (c: {
+    orgId: string;
+    id: string;
+    provider: string;
+    detail: string | null;
+  }) => Promise<void>;
   log: {
     info(o: object, m: string): void;
     warn(o: object, m: string): void;
@@ -69,12 +76,31 @@ export async function updateConnection(
   c: Pick<Connection, "orgId" | "id">,
   patch: Partial<typeof schema.connections.$inferInsert>,
 ) {
+  const [before] =
+    patch.status === "revoked"
+      ? await withOrg(ctx.db, c.orgId, (tx) =>
+          tx
+            .select({ status: schema.connections.status, provider: schema.connections.provider })
+            .from(schema.connections)
+            .where(and(eq(schema.connections.id, c.id), eq(schema.connections.orgId, c.orgId))),
+        )
+      : [];
   await withOrg(ctx.db, c.orgId, (tx) =>
     tx
       .update(schema.connections)
       .set(patch)
       .where(and(eq(schema.connections.id, c.id), eq(schema.connections.orgId, c.orgId))),
   );
+  // Only the first time: a connection that is already revoked does not email again.
+  if (before && before.status !== "revoked")
+    await ctx
+      .onRevoked?.({
+        orgId: c.orgId,
+        id: c.id,
+        provider: before.provider,
+        detail: patch.statusDetail ?? null,
+      })
+      .catch((err) => ctx.log.warn({ err: (err as Error).message }, "revocation notice failed"));
 }
 
 export async function deleteConnection(ctx: Ctx, c: Pick<Connection, "orgId" | "id">) {

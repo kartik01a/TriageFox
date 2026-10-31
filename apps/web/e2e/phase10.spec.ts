@@ -1,0 +1,150 @@
+import { expect, test } from "@playwright/test";
+import { eq, schema } from "@triagefox/db";
+import { closeOwnerDb, ownerDb } from "./db";
+import { newUser, signUpWithWorkspace } from "./helpers";
+
+test.afterAll(async () => {
+  await ownerDb().delete(schema.platformSettings).where(eq(schema.platformSettings.key, "trial"));
+  await closeOwnerDb();
+});
+
+test("the landing page sells the product and starts a free trial, with no waitlist anywhere", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Perfect tickets out");
+  for (const name of [
+    "Stop copy-pasting bugs from chat into your tracker",
+    "Less copy-paste. Nothing gets lost.",
+    "Five minutes to set up",
+    "You stay in control",
+    "Self-host free forever, or let us host it",
+    "Questions",
+  ])
+    await expect(page.getByRole("heading", { name })).toBeVisible();
+  // Six feature cards, each with its own small animation.
+  for (const title of [
+    "Understands the chat",
+    "Priority 1–5 by clear rules",
+    "Screenshots attached",
+    "Keeps the same ticket updated",
+    "Merges duplicates",
+    "Never invents due dates",
+  ])
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.getByText(/waitlist/i)).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Start free trial" }).first()).toHaveAttribute(
+    "href",
+    "/signup",
+  );
+  // The before/after slider moves.
+  const slider = page.getByRole("slider", { name: "Drag to compare" });
+  await slider.fill("80");
+  await expect(slider).toHaveValue("80");
+  // The FAQ opens.
+  await page.getByText("What does the AI see?").click();
+  await expect(page.getByText(/removed before anything is sent/)).toBeVisible();
+});
+
+test("the legal, security and guide pages exist, name the operator and link to each other", async ({
+  page,
+}) => {
+  await page.goto("/legal/privacy");
+  await expect(page.getByRole("heading", { level: 1, name: "Privacy policy" })).toBeVisible();
+  await expect(page.getByText("Kartik Singh Bisht").first()).toBeVisible();
+  await expect(page.getByText(/do not store the chat transcripts/)).toBeVisible();
+  await expect(page.getByText("Digital Personal Data Protection Act")).toBeVisible();
+
+  await page.goto("/legal/terms");
+  await expect(page.getByRole("heading", { level: 1, name: "Terms of service" })).toBeVisible();
+  await expect(page.getByText(/governed by the laws of India/)).toBeVisible();
+  await expect(page.getByText("Payments are non-refundable")).toBeVisible();
+
+  await page.goto("/legal/subprocessors");
+  await expect(page.getByRole("cell", { name: "OpenAI" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Dodo Payments" })).toBeVisible();
+
+  await page.goto("/security");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "Your data, handled carefully",
+  );
+  await expect(page.getByText(/cannot read them back/)).toBeVisible();
+
+  await page.goto("/integrations/crisp-to-jira");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Crisp to Jira");
+  expect(await page.locator('script[type="application/ld+json"]').first().textContent()).toContain(
+    "FAQPage",
+  );
+  await page.getByRole("main").getByRole("link", { name: "Crisp to Trello" }).click();
+  await expect(page).toHaveURL(/crisp-to-trello/);
+
+  // The footer carries the legal links on every public page.
+  await expect(page.getByRole("link", { name: "Privacy" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Terms" }).first()).toBeVisible();
+});
+
+test("search engines get a sitemap and a robots file that keeps the product pages private", async ({
+  request,
+}) => {
+  const robots = await (await request.get("/robots.txt")).text();
+  expect(robots).toContain("Disallow: /app");
+  expect(robots).toContain("Disallow: /admin");
+  expect(robots).toContain("Sitemap:");
+  const sitemap = await (await request.get("/sitemap.xml")).text();
+  for (const p of ["/pricing", "/legal/privacy", "/integrations/crisp-to-trello"])
+    expect(sitemap).toContain(p);
+  expect(sitemap).not.toContain("/app");
+  expect((await request.get("/icon.svg")).status()).toBe(200);
+  expect((await request.get("/opengraph-image")).headers()["content-type"]).toBe("image/png");
+});
+
+test("the trial length shown to visitors comes from the settings, not from the page", async ({
+  page,
+}) => {
+  await page.goto("/pricing");
+  await expect(page.getByText(/Try it free for 7 days/)).toBeVisible();
+  await ownerDb()
+    .insert(schema.platformSettings)
+    .values({
+      key: "trial",
+      value: { days: 9, conversationCap: 50, cardRequired: false, unlimitedWithOwnKey: true },
+    })
+    .onConflictDoUpdate({
+      target: schema.platformSettings.key,
+      set: {
+        value: { days: 9, conversationCap: 50, cardRequired: false, unlimitedWithOwnKey: true },
+      },
+    });
+  await page.goto("/pricing");
+  await expect(page.getByText(/Try it free for 9 days/)).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByText(/9-day free trial, no card needed/).first()).toBeVisible();
+});
+
+test("sign-in and sign-up forms can never put a password in the address bar", async ({ page }) => {
+  for (const path of ["/login", "/signup", "/forgot-password"]) {
+    await page.goto(path);
+    expect(await page.locator("form").first().getAttribute("method")).toBe("post");
+  }
+});
+
+test("a flood of changes from one workspace is slowed down, and other workspaces are unaffected", async ({
+  browser,
+}) => {
+  const a = await (await browser.newContext()).newPage();
+  const b = await (await browser.newContext()).newPage();
+  await signUpWithWorkspace(a, newUser("Flood"), `Flood ${Date.now()}`);
+  await signUpWithWorkspace(b, newUser("Calm"), `Calm ${Date.now()}`);
+  const hit = (p: typeof a) =>
+    p.request
+      .post("/api/automation", { headers: { origin: "http://localhost:3000" } })
+      .then((r) => r.status());
+  const statuses: number[] = [];
+  for (let i = 0; i < 320; i += 40)
+    statuses.push(...(await Promise.all(Array.from({ length: 40 }, () => hit(a)))));
+  expect(statuses.filter((s) => s === 429).length).toBeGreaterThan(0);
+  expect(statuses.slice(0, 250).every((s) => s === 400)).toBe(true); // "Connect Crisp first", not limited yet
+  expect(await hit(b)).toBe(400); // the other workspace still gets normal answers
+  await a.close();
+  await b.close();
+});

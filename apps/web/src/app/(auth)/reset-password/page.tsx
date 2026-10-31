@@ -41,7 +41,7 @@ function ResetForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-6 space-y-4">
+    <form method="post" onSubmit={onSubmit} className="mt-6 space-y-4">
       <div>
         <Label htmlFor="password">New password</Label>
         <Input

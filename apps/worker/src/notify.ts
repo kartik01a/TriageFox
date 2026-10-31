@@ -1,6 +1,7 @@
 import { and, type Db, eq, inArray, schema } from "@triagefox/db";
 import { createMailer, emailLayout } from "@triagefox/mail";
 import type { WorkerEnv } from "@triagefox/shared";
+import type { Redis } from "ioredis";
 import type { PipelineLogger } from "./pipeline/deps";
 
 type Config = Pick<
@@ -23,7 +24,12 @@ export interface Notifier {
     mail: { subject: string; heading: string; body: string; cta?: { label: string; path: string } },
   ): Promise<void>;
   /** Urgent platform alert: email to ALERT_EMAIL and a Slack message, whichever are configured. */
-  alert(a: { subject: string; text: string }): Promise<void>;
+  alert(a: {
+    subject: string;
+    text: string;
+    dedupeKey?: string;
+    dedupeSeconds?: number;
+  }): Promise<void>;
 }
 
 export function createNotifier(deps: {
@@ -31,6 +37,8 @@ export function createNotifier(deps: {
   config: Config;
   log: PipelineLogger;
   fetch?: typeof fetch;
+  /** With a Redis connection, alerts that carry a dedupeKey are sent at most once per dedupeSeconds. */
+  redis?: Redis;
   send?: (mail: { to: string; subject: string; text: string; html: string }) => Promise<void>;
 }): Notifier {
   const { config, log } = deps;
@@ -76,6 +84,16 @@ export function createNotifier(deps: {
         });
     },
     async alert(a) {
+      if (a.dedupeKey && deps.redis) {
+        const first = await deps.redis.set(
+          `alert:${a.dedupeKey}`,
+          "1",
+          "EX",
+          a.dedupeSeconds ?? 3600,
+          "NX",
+        );
+        if (first === null) return;
+      }
       if (config.ALERT_EMAIL)
         await mail(config.ALERT_EMAIL, a.subject, { heading: a.subject, body: a.text });
       if (config.SLACK_ALERTS_WEBHOOK_URL) {
@@ -96,5 +114,21 @@ export function createNotifier(deps: {
           "alert not sent: ALERT_EMAIL and SLACK_ALERTS_WEBHOOK_URL are not set",
         );
     },
+  };
+}
+
+const PROVIDER_NAMES: Record<string, string> = { crisp: "Crisp", trello: "Trello", jira: "Jira" };
+
+/** The email a workspace owner gets when a connection stops working, with what to do about it. */
+export function revokedNotice(provider: string) {
+  const name = PROVIDER_NAMES[provider] ?? provider;
+  return {
+    subject: `${name} needs to be reconnected`,
+    heading: `${name} stopped accepting TriageFox`,
+    body:
+      provider === "crisp"
+        ? "TriageFox can no longer read your Crisp conversations (the plugin may have been uninstalled). New chats are not being analysed until you reinstall the plugin and link the website again."
+        : `${name} no longer accepts the access TriageFox was given (it may have been revoked). Tickets are paused: nothing is lost, they are kept and the ones that did not arrive can be sent again.\n\nReconnect ${name} on the Connections page, then press “Try all again” on the Automation page.`,
+    cta: { label: "Reconnect", path: "/app/connections" },
   };
 }

@@ -94,3 +94,9 @@
 | Admin asks for /admin without two-factor | 404, same as anyone else |
 | Our own support chat when our own plan is over a limit | Never limited: the support automation skips billing |
 | Chat typed with someone else's email in the public widget | Inbox shows "unverified: check before acting" |
+| Trello or Jira revokes access mid-run | Tickets in flight fail without retrying; the connection turns "Reconnect needed"; the owner gets one email; after reconnecting, *Try all again* sends what did not arrive; nothing is created twice |
+| A provider answers 429 with Retry-After | The next attempt waits exactly that long (up to an hour) instead of our own schedule |
+| A job runs out of retries | One email and one Slack message per hour per kind of job to the operator |
+| The platform OpenAI key is rejected or out of credit | The affected conversations wait; the operator is alerted (once per 30 minutes) |
+| One workspace floods the API | Answered 429 after 300 changes a minute; other workspaces are unaffected; Redis down means no limiting rather than an outage |
+| JavaScript fails to load on a sign-in page | The form posts (not GET), so a password can never end up in the address bar |

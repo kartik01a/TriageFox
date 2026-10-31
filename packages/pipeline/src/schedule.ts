@@ -6,7 +6,7 @@ export const evaluateJobId = (threadId: string) => `evaluate_${threadId}`;
 /** Retry with growing delays: Crisp rate limits and short outages are normal. */
 const JOB_OPTIONS = {
   attempts: 5,
-  backoff: { type: "exponential", delay: 10_000 },
+  backoff: { type: "custom" },
   // Finished jobs are removed so the same job id can be used for the next evaluation of this thread.
   // Failures are recorded on the thread itself (threads.last_error) by the worker.
   removeOnComplete: true,
@@ -55,7 +55,7 @@ export function scheduleDelivery(queue: Queue, target: DeliverPayload) {
   return queue.add(JOBS.deliver, target, {
     jobId: deliverJobId(target),
     attempts: 5,
-    backoff: { type: "exponential", delay: 15_000 },
+    backoff: { type: "custom" },
     removeOnComplete: true,
     removeOnFail: true,
   });
@@ -72,7 +72,7 @@ export function scheduleUpdate(queue: Queue, target: UpdatePayload) {
   return queue.add(JOBS.update, target, {
     jobId: updateJobId(target),
     attempts: 8,
-    backoff: { type: "exponential", delay: 15_000 },
+    backoff: { type: "custom" },
     removeOnComplete: true,
     removeOnFail: true,
   });

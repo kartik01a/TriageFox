@@ -1,18 +1,20 @@
-import { listPlans } from "@triagefox/billing";
+import { getSettings, listPlans } from "@triagefox/billing";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Wordmark } from "@/components/fox-logo";
 import { IntervalAndCurrencySwitch, PlanCard, type PlanView } from "@/components/pricing-grid";
+import { SiteFooter } from "@/components/site/site-footer";
+import { SiteHeader } from "@/components/site/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { billingEnabled, currencyFor } from "@/lib/billing";
 import { db } from "@/lib/db";
+import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Simple plans for turning customer chats into Trello and Jira tickets. 14-day free trial, no card.",
+    "Simple plans for turning customer chats into Trello and Jira tickets. Free trial, no card needed.",
 };
 
 export default async function PricingPage({
@@ -24,7 +26,15 @@ export default async function PricingPage({
   const q = await searchParams;
   const interval = q.interval === "monthly" ? "monthly" : "yearly";
   const currency = currencyFor((await headers()).get("cf-ipcountry"), q.currency);
-  const plans = await listPlans(db(), { publicOnly: true });
+  const [plans, settings] = await Promise.all([
+    listPlans(db(), { publicOnly: true }),
+    getSettings(db()),
+  ]);
+  const trialDays = settings.trial.days;
+  const biggest = Math.max(
+    0,
+    ...plans.filter((p) => !p.byokRequired).map((p) => p.conversationLimit ?? 0),
+  );
   const views: PlanView[] = plans.map((p) => ({
     id: p.id,
     name: p.name,
@@ -40,22 +50,13 @@ export default async function PricingPage({
 
   return (
     <>
-      <header className="border-b border-border/60">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" aria-label="TriageFox home">
-            <Wordmark />
-          </Link>
-          <Link href="/login" className={buttonVariants({ variant: "outline", size: "sm" })}>
-            Sign in
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
       <main className="mx-auto max-w-6xl space-y-10 px-4 py-12 sm:px-6">
         <div className="space-y-3 text-center">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Simple pricing</h1>
           <p className="mx-auto max-w-xl text-muted-foreground">
-            Try it free for 14 days, no card needed. Every plan includes every feature; plans differ
-            only in volume, inboxes and support.
+            Try it free for {trialDays} days, no card needed. Every plan includes every feature;
+            plans differ only in volume, inboxes and support.
           </p>
           <div className="flex justify-center">
             <IntervalAndCurrencySwitch base="/pricing" interval={interval} currency={currency} />
@@ -92,8 +93,9 @@ export default async function PricingPage({
             Questions
           </h2>
           <p>
-            <strong>Is there a free trial?</strong> Yes: 14 days, no card, with a generous number of
-            conversations. Use your own OpenAI key and the trial has no conversation limit.
+            <strong>Is there a free trial?</strong> Yes: {trialDays} days, no card, with a generous
+            number of conversations. Use your own OpenAI key and the trial has no conversation
+            limit.
           </p>
           <p>
             <strong>What counts as a conversation?</strong> A chat counts once it reaches the AI.
@@ -110,8 +112,15 @@ export default async function PricingPage({
             says otherwise.
           </p>
           <p>
-            <strong>Need more than 5,000 conversations?</strong> Contact us for a custom plan.
-            Prefer to run it yourself? TriageFox is open source and free to self-host.
+            <strong>
+              Need more{biggest > 0 ? ` than ${biggest.toLocaleString("en-US")}` : ""}{" "}
+              conversations?
+            </strong>{" "}
+            <a href={`mailto:${SITE.contactEmail}`} className="text-primary underline">
+              Contact us
+            </a>{" "}
+            for a custom plan. Prefer to run it yourself? TriageFox is open source and free to
+            self-host.
           </p>
           <p className="text-xs text-muted-foreground">
             Prices exclude tax where applicable. In India, prices are in rupees (UPI and Indian
@@ -120,6 +129,7 @@ export default async function PricingPage({
           </p>
         </section>
       </main>
+      <SiteFooter />
     </>
   );
 }

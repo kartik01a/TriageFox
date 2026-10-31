@@ -32,7 +32,7 @@ export function TwoFactorForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+    <form method="post" onSubmit={onSubmit} className="space-y-4" noValidate>
       <div>
         <Label htmlFor="code">{backup ? "Backup code" : "6-digit code"}</Label>
         <Input

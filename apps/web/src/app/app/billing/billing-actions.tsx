@@ -109,7 +109,7 @@ export function RedeemForm() {
     } else setMsg({ ok: false, text: r.error ?? "That code didn't work." });
   }
   return (
-    <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
+    <form method="post" onSubmit={submit} className="flex flex-wrap items-end gap-3">
       <div className="min-w-56 flex-1">
         <Label htmlFor="invite">Invite code</Label>
         <Input id="invite" name="code" autoComplete="off" required />

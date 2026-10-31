@@ -3,7 +3,7 @@ import { PASSWORD, signUp } from "./helpers";
 import { waitForLink } from "./mail";
 
 const stamp = Date.now();
-// Each run uses its own client address so the waitlist rate limit never trips repeated runs.
+// Each run uses its own client address so per-address rate limits never trip repeated runs.
 const clientIp = `10.${stamp % 250}.${(stamp >> 8) % 250}.${(stamp >> 4) % 250}`;
 test.use({ extraHTTPHeaders: { "x-forwarded-for": clientIp } });
 const owner = { name: "Olivia Owner", email: `owner-${stamp}@example.test` };
@@ -12,21 +12,18 @@ let realInvitationPath = "";
 
 test.describe.configure({ mode: "serial" });
 
-test("landing page shows the product and the waitlist works", async ({ page, request }) => {
+test("landing page shows the product and starts a free trial, with no waitlist", async ({
+  page,
+  request,
+}) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Perfect tickets out");
   await expect(page.getByRole("heading", { name: "Understands the chat" })).toBeVisible();
-
-  const email = `wait-${stamp}@example.test`;
-  await page.locator("#waitlist-email").first().fill(email);
-  await page.getByRole("button", { name: "Join the waitlist" }).first().click();
-  await expect(page.getByText("You're on the list").first()).toBeVisible();
-
-  // Duplicate sign-up gets the same answer (no email enumeration); a bad email is rejected.
-  const dup = await request.post("/api/waitlist", { data: { email } });
-  expect((await dup.json()).ok).toBe(true);
-  const bad = await request.post("/api/waitlist", { data: { email: "nope" } });
-  expect(bad.status()).toBe(400);
+  await expect(page.getByText("Join the waitlist")).toHaveCount(0);
+  await page.getByRole("link", { name: "Start free trial" }).first().click();
+  await expect(page).toHaveURL(/\/signup/);
+  // The old waitlist endpoint is gone.
+  expect((await request.post("/api/waitlist", { data: { email: "a@b.co" } })).status()).toBe(404);
 });
 
 test("security headers and CSP nonce are set", async ({ request }) => {

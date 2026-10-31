@@ -1,5 +1,5 @@
 /**
- * Small in-memory sliding-window limiter for public endpoints (e.g. the waitlist form).
+ * Small in-memory sliding-window limiter for public endpoints (e.g. invite-code and API-key attempts).
  * Cloudflare rules are the main line of defence in production (docs/security.md §9); this protects
  * a single instance and local development. Not shared between processes.
  */

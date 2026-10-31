@@ -56,7 +56,7 @@ export function SignupForm({ next }: { next: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+    <form method="post" onSubmit={onSubmit} className="space-y-4" noValidate>
       <div>
         <Label htmlFor="name">Your name</Label>
         <Input id="name" name="name" autoComplete="name" required />

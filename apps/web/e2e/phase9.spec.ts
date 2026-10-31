@@ -79,7 +79,7 @@ test.afterAll(async () => {
 test("a new workspace starts a free trial and sees its usage", async () => {
   await page.goto("/app/billing");
   await expect(page.getByText("Free trial").first()).toBeVisible();
-  await expect(page.getByText(/14 days left/)).toBeVisible();
+  await expect(page.getByText(/7 days left/)).toBeVisible();
   await expect(page.getByText("0 / 50")).toBeVisible();
   await expect(page.getByRole("link", { name: "Billing" }).first()).toBeVisible();
 });

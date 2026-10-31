@@ -48,11 +48,19 @@ fi
 
 say ""
 say "Building the images (the first time takes a few minutes)..."
-# Plain docker build: Compose would refuse to start before deploy/.env exists.
-docker build -q -f Dockerfile --target worker -t triagefox/worker:local .. >/dev/null
+# Plain docker commands: Compose would refuse to start before deploy/.env exists.
+# With WORKER_IMAGE set (a published image) nothing is built here.
+WORKER_IMAGE="${WORKER_IMAGE:-}"
+if [ -n "$WORKER_IMAGE" ]; then
+  docker pull -q "$WORKER_IMAGE" >/dev/null
+  KEYS_IMAGE="$WORKER_IMAGE"
+else
+  docker build -q -f Dockerfile --target worker -t triagefox/worker:local .. >/dev/null
+  KEYS_IMAGE="triagefox/worker:local"
+fi
 
 say "Generating secrets..."
-SECRETS="$(docker run --rm --entrypoint node triagefox/worker:local dist/keys.js)"
+SECRETS="$(docker run --rm --entrypoint node "$KEYS_IMAGE" dist/keys.js)"
 [ -n "$SECRETS" ] || die "Could not generate the encryption keys."
 
 umask 077
@@ -67,6 +75,11 @@ set_var SITE_ADDRESS "$DOMAIN"
 set_var APP_URL "$APP_URL"
 set_var HTTP_PORT "$HTTP_PORT"
 set_var HTTPS_PORT "$HTTPS_PORT"
+if [ -n "$WORKER_IMAGE" ] && [ -n "${WEB_IMAGE:-}" ]; then
+  set_var WORKER_IMAGE "$WORKER_IMAGE"
+  set_var WEB_IMAGE "$WEB_IMAGE"
+  set_var TRIAGEFOX_PULL always
+fi
 set_var POSTGRES_PASSWORD "$(openssl rand -hex 24)"
 set_var APP_DB_PASSWORD "$(openssl rand -hex 24)"
 set_var REDIS_PASSWORD "$(openssl rand -hex 24)"

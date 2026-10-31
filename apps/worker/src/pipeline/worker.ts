@@ -20,6 +20,13 @@ export interface PipelineWorkerOptions {
   retentionDays?: number;
 }
 
+/** Exponential by default (15 s, 30 s, 60 s…, capped at 15 min); the provider's Retry-After when it sent one. */
+export function retryDelayMs(attempts: number, err?: Error & { retryAfterSec?: number }) {
+  const asked = err?.retryAfterSec;
+  if (typeof asked === "number" && asked > 0) return Math.min(asked, 3600) * 1000 + 500;
+  return Math.min(15 * 60_000, 15_000 * 2 ** Math.max(0, attempts - 1));
+}
+
 export const RECONCILE_EVERY_MS = 10 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -62,13 +69,30 @@ export function startPipelineWorker(deps: PipelineDeps, opts: PipelineWorkerOpti
           throw new Error(`Unknown job: ${job.name}`);
       }
     },
-    { connection: deps.redis, concurrency: opts.concurrency ?? 5 },
+    {
+      connection: deps.redis,
+      concurrency: opts.concurrency ?? 5,
+      // A provider's Retry-After wins over our own schedule: hammering a rate-limited API only makes it longer.
+      settings: {
+        backoffStrategy: (attempts: number, _type?: string, err?: Error) =>
+          retryDelayMs(attempts, err),
+      },
+    },
   );
 
   // A job that used up its retries leaves a visible trace on the thread (the job itself is removed).
   worker.on("failed", (job, err) => {
     deps.log.error({ jobId: job?.id, name: job?.name, err: err.message }, "pipeline job failed");
     const finalAttempt = job && job.attemptsMade >= (job.opts.attempts ?? 1);
+    // A job that ran out of retries is a problem somebody should hear about, once an hour per kind of job.
+    if (finalAttempt && job && err.name !== "UnrecoverableError")
+      void deps
+        .alert?.({
+          key: `job-failed:${job.name}`,
+          subject: `TriageFox: ${job.name} jobs are failing`,
+          text: `A ${job.name} job ran out of retries: ${err.message.slice(0, 200)}`,
+        })
+        .catch(() => undefined);
     const parsed = job?.name === JOBS.evaluate ? evaluatePayload.safeParse(job.data) : null;
     if (parsed?.success && (finalAttempt || err.name === "UnrecoverableError")) {
       void withOrg(deps.db, parsed.data.orgId, (tx) =>

@@ -54,6 +54,13 @@ Anything that needs a customer's token runs in the worker, so `pnpm dev` (web + 
 1. `pnpm infra:up`, `pnpm dev` (the worker must run too; `pnpm dev` starts it); sign in and open **Setup** (`/app/setup`). It walks through connecting Crisp, Trello/Jira, choosing the board/project, settings, a dry run on your last chats, and the on switch. (`pnpm db:dev-automation <orgId>` still works as a shortcut for scripts.)
 2. Chat as a visitor in Crisp (a screenshot is a good test), wait for the quiet window (3 min; resolving the chat runs it at once) and watch the card/issue appear.
 
+## Pre-launch checks (run by hand)
+- **Dependencies:** `pnpm audit --prod` (CI fails on high or critical).
+- **Secrets in history:** `docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source /repo --redact --no-banner`.
+- **Lighthouse** (Lighthouse is a pinned dev dependency): build and start the production server (`pnpm --filter @triagefox/web build`, then `next start` with the `.env` values exported), then `CHROME_PATH=<a Chrome or Chromium binary> pnpm exec lighthouse http://localhost:3100/ --only-categories=performance,accessibility,best-practices,seo --chrome-flags="--headless=new --no-sandbox"`. Playwright's Chromium works (`~/Library/Caches/ms-playwright/…`).
+- **OWASP ZAP baseline:** `docker run --rm -v /tmp:/zap/wrk ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://host.docker.internal:3100 -r zap-report.html -I`.
+- **Self-host stack:** `./deploy/smoke-test.sh` (also run in CI).
+
 ## Tests
 - End-to-end specs sign up real users; the sign-up route allows 5 per minute per IP, so when running the whole Playwright suite right after other specs a sign-up can be refused. Re-run the failing spec on its own.
 - Unit/integration: Vitest per package (db tests need `pnpm infra:up`).

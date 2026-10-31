@@ -50,7 +50,7 @@ export function JsonEditor({
     if (r.ok) router.refresh();
   }
   return (
-    <form onSubmit={save} className="space-y-1">
+    <form method="post" onSubmit={save} className="space-y-1">
       <label className="font-medium">
         {label}
         <textarea
@@ -93,7 +93,7 @@ export function WorkspaceActions({
     if (r.ok) router.refresh();
   }
   return (
-    <form onSubmit={run} className="flex flex-wrap items-end gap-2">
+    <form method="post" onSubmit={run} className="flex flex-wrap items-end gap-2">
       <select
         value={action}
         onChange={(e) => setAction(e.target.value)}
@@ -172,7 +172,7 @@ export function InviteCodeForm({ plans }: { plans: { id: string; name: string }[
     } else setMsg(r.error ?? "Failed.");
   }
   return (
-    <form onSubmit={create} className="space-y-2">
+    <form method="post" onSubmit={create} className="space-y-2">
       <div className="flex flex-wrap gap-2">
         <input
           name="email"
@@ -253,6 +253,7 @@ export function InboxItemActions({
         Approved to quote
       </label>
       <form
+        method="post"
         onSubmit={(e) => {
           e.preventDefault();
           const f = new FormData(e.currentTarget);
@@ -290,7 +291,7 @@ export function SupportAutomationForm() {
     setMsg(r.ok ? "Saved." : (r.error ?? "Failed."));
   }
   return (
-    <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
+    <form method="post" onSubmit={submit} className="flex flex-wrap items-end gap-2">
       <input
         name="orgId"
         required

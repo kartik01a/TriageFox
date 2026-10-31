@@ -79,6 +79,7 @@ export function StepUpProvider({ email, children }: { email: string; children: R
         aria-labelledby="stepup-title"
       >
         <form
+          method="post"
           className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
