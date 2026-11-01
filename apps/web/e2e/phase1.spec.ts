@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { PASSWORD, signUp } from "./helpers";
+import { BASE_RE, PASSWORD, signUp } from "./helpers";
 import { waitForLink } from "./mail";
 
 const stamp = Date.now();
@@ -59,7 +59,7 @@ test("sign up, verify email, create a workspace, invite and accept", async ({ pa
   // 3. Teammate follows the emailed link, signs up, and accepts.
   const inviteLink = await waitForLink(
     teammate.email,
-    /http:\/\/localhost:3000\/accept-invitation\/\S+/,
+    new RegExp(`${BASE_RE}/accept-invitation/\\S+`),
   );
   realInvitationPath = new URL(inviteLink).pathname;
   const ctx = await browser.newContext();

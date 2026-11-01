@@ -23,7 +23,7 @@ export default defineConfig({
   // Reuses a running `pnpm dev`; otherwise starts one. Needs `pnpm infra:up` and `pnpm db:migrate`.
   webServer: {
     command: "pnpm dev",
-    url: "http://localhost:3000",
+    url: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     reuseExistingServer: true,
     env: {
       E2E_DISABLE_AUTH_RATE_LIMIT: "true",

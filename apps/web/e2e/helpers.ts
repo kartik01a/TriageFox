@@ -3,6 +3,8 @@ import { waitForLink } from "./mail";
 
 export const PASSWORD = "correct-horse-battery";
 export const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+/** BASE escaped for use inside a regular expression (links in emails start with it). */
+export const BASE_RE = BASE.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 export interface TestUser {
   name: string;
@@ -22,7 +24,7 @@ export async function signUp(page: Page, user: TestUser, next?: string) {
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible();
-  const link = await waitForLink(user.email, /http:\/\/localhost:3000\/api\/auth\/verify-email\S+/);
+  const link = await waitForLink(user.email, new RegExp(`${BASE_RE}/api/auth/verify-email\\S+`));
   await page.goto(link);
 }
 
@@ -46,6 +48,6 @@ export async function inviteMember(
   await ownerPage.getByLabel("Role").selectOption(role);
   await ownerPage.getByRole("button", { name: "Send invitation" }).click();
   await expect(ownerPage.getByText("Invitation sent.")).toBeVisible();
-  const link = await waitForLink(inviteeEmail, /http:\/\/localhost:3000\/accept-invitation\/\S+/);
+  const link = await waitForLink(inviteeEmail, new RegExp(`${BASE_RE}/accept-invitation/\\S+`));
   return new URL(link).pathname;
 }

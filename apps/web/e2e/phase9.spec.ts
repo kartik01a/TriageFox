@@ -3,10 +3,10 @@ import { expect, type Page, test } from "@playwright/test";
 import { FakeProvider } from "@triagefox/billing";
 import { eq, schema } from "@triagefox/db";
 import { closeOwnerDb, ownerDb } from "./db";
-import { inviteMember, newUser, signUp, signUpWithWorkspace } from "./helpers";
+import { BASE, inviteMember, newUser, signUp, signUpWithWorkspace } from "./helpers";
 
 const ADMIN_EMAIL = "e2e-admin@example.test";
-const ORIGIN = "http://localhost:3000";
+const ORIGIN = BASE;
 const fake = new FakeProvider();
 const db = () => ownerDb();
 
@@ -255,6 +255,30 @@ test("admin: settings are validated, saved, and audited", async () => {
     .where(eq(schema.adminAuditLog.action, "settings.updated"));
   expect(log.some((l) => l.target === "reminders" && l.adminEmail === ADMIN_EMAIL)).toBe(true);
   await db().delete(schema.platformSettings).where(eq(schema.platformSettings.key, "reminders"));
+});
+
+test("admin: every admin page renders, and a setting can be edited with plain fields", async () => {
+  for (const path of [
+    "/admin",
+    "/admin/plans",
+    "/admin/settings",
+    "/admin/workspaces",
+    "/admin/invite-codes",
+    "/admin/usage",
+    "/admin/inbox",
+  ])
+    expect((await admin.goto(path))?.status(), path).toBe(200);
+  await admin.goto("/admin/settings");
+  await expect(admin.getByRole("heading", { name: "Free trial" })).toBeVisible();
+  await admin.getByLabel("Past due days").fill("9");
+  await admin.getByRole("button", { name: /Save grace/i }).click();
+  await expect(admin.getByText("Saved.")).toBeVisible();
+  const [row] = await db()
+    .select()
+    .from(schema.platformSettings)
+    .where(eq(schema.platformSettings.key, "grace"));
+  expect(row?.value).toEqual({ pastDueDays: 9 });
+  await db().delete(schema.platformSettings).where(eq(schema.platformSettings.key, "grace"));
 });
 
 test("admin: an invite code works once for the right person; the code is never stored", async () => {

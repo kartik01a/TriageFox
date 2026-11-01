@@ -3,7 +3,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { keyringFromEnv, type PrivateKeyring, sealSecret } from "@triagefox/crypto";
 import { eq, schema } from "@triagefox/db";
 import { closeOwnerDb, ownerDb } from "./db";
-import { newUser, signUpWithWorkspace } from "./helpers";
+import { BASE, newUser, signUpWithWorkspace } from "./helpers";
 
 const env = process.env;
 const keyring = (): PrivateKeyring =>
@@ -201,7 +201,7 @@ test("review queue: dismiss, and a second click cannot act twice", async () => {
 
   const again = await page.request.post(`/api/review/${id}`, {
     data: { action: "create" },
-    headers: { origin: "http://localhost:3000" },
+    headers: { origin: BASE },
   });
   expect(again.status()).toBe(409);
 });
@@ -298,7 +298,7 @@ test("a workspace that requires 2FA closes the app until it is set up", async ()
   await expect(page.getByText("This workspace requires two-factor sign-in.")).toBeVisible();
   // API calls are refused too, not just pages.
   const res = await page.request.post(`/api/automation`, {
-    headers: { origin: "http://localhost:3000" },
+    headers: { origin: BASE },
   });
   expect(res.status()).toBe(403);
   expect((await res.json()).code).toBe("two_factor_required");
@@ -315,7 +315,7 @@ test("sensitive actions ask for the password again after a while", async () => {
   // Better Auth caches the session in a cookie for a few minutes; drop it so the server reads the aged row.
   await page.context().clearCookies({ name: /session_data/ });
   const res = await page.request.delete(`/api/connections/${trelloConnId}`, {
-    headers: { origin: "http://localhost:3000" },
+    headers: { origin: BASE },
   });
   expect(res.status()).toBe(403);
   expect((await res.json()).code).toBe("step_up_required");

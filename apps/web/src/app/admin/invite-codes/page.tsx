@@ -2,6 +2,7 @@ import { listPlans } from "@triagefox/billing";
 import { desc, schema } from "@triagefox/db";
 import { db } from "@/lib/db";
 import { InviteCodeForm } from "../admin-forms";
+import { Badge, PageHeader, Panel, Table } from "../admin-ui";
 
 export default async function InviteCodesPage() {
   const [plans, codes] = await Promise.all([
@@ -9,32 +10,50 @@ export default async function InviteCodesPage() {
     db().select().from(schema.inviteCodes).orderBy(desc(schema.inviteCodes.createdAt)).limit(100),
   ]);
   return (
-    <div className="space-y-6">
-      <p className="text-muted-foreground">
-        A code is single-use, tied to one email address and valid for 7 days. Only a hash is stored:
-        the code is shown once, here, when you create it. Send it to the person yourself.
-      </p>
-      <InviteCodeForm plans={plans.map((p) => ({ id: p.id, name: p.name }))} />
-      <table className="w-full border-collapse text-left">
+    <>
+      <PageHeader title="Invite codes">
+        A code gives free access, is single-use, tied to one email address and valid for 7 days.
+        Only a hash is stored: the code is shown once, here, when you create it. Send it to the
+        person yourself.
+      </PageHeader>
+      <Panel title="Create a code">
+        <InviteCodeForm plans={plans.map((p) => ({ id: p.id, name: p.name }))} />
+      </Panel>
+      <Table>
         <thead>
-          <tr className="border-b border-border">
-            <th className="py-1 pr-3">Email</th>
-            <th className="pr-3">Months</th>
-            <th className="pr-3">Expires</th>
+          <tr>
+            <th>Email</th>
+            <th>Months</th>
+            <th>Expires</th>
             <th>Status</th>
           </tr>
         </thead>
         <tbody>
+          {codes.length === 0 && (
+            <tr>
+              <td colSpan={4} className="text-muted-foreground">
+                No codes yet.
+              </td>
+            </tr>
+          )}
           {codes.map((c) => (
-            <tr key={c.id} className="border-b border-border/50">
-              <td className="py-1 pr-3">{c.email}</td>
-              <td className="pr-3">{c.months}</td>
-              <td className="pr-3">{c.expiresAt.toLocaleDateString()}</td>
-              <td>{c.usedAt ? "used" : c.expiresAt < new Date() ? "expired" : "open"}</td>
+            <tr key={c.id}>
+              <td>{c.email}</td>
+              <td>{c.months}</td>
+              <td>{c.expiresAt.toLocaleDateString()}</td>
+              <td>
+                {c.usedAt ? (
+                  <Badge tone="good">used</Badge>
+                ) : c.expiresAt < new Date() ? (
+                  <Badge>expired</Badge>
+                ) : (
+                  <Badge tone="brand">open</Badge>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
-      </table>
-    </div>
+      </Table>
+    </>
   );
 }

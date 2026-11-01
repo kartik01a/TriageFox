@@ -1,7 +1,10 @@
 import { listPlans } from "@triagefox/billing";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { listWorkspaces } from "@/lib/admin-data";
 import { db } from "@/lib/db";
 import { WorkspaceActions } from "../admin-forms";
+import { PageHeader, Table } from "../admin-ui";
 
 export default async function WorkspacesPage({
   searchParams,
@@ -11,50 +14,62 @@ export default async function WorkspacesPage({
   const { q } = await searchParams;
   const [rows, plans] = await Promise.all([listWorkspaces(q), listPlans(db())]);
   return (
-    <div className="space-y-4">
+    <>
+      <PageHeader title="Workspaces">
+        Every workspace, its plan and usage. Actions are recorded in the audit log.
+      </PageHeader>
       <form className="flex gap-2">
-        <input
+        <Input
           name="q"
           defaultValue={q}
           placeholder="Search by name"
-          className="rounded border border-input bg-card px-2 py-1"
+          className="max-w-xs"
           aria-label="Search"
         />
-        <button type="submit" className="rounded border border-input px-3 py-1">
+        <Button type="submit" variant="outline">
           Search
-        </button>
+        </Button>
       </form>
-      <table className="w-full border-collapse text-left">
+      <Table>
         <thead>
-          <tr className="border-b border-border">
-            <th className="py-1 pr-3">Workspace</th>
-            <th className="pr-3">Owner</th>
-            <th className="pr-3">Plan</th>
-            <th className="pr-3">Usage</th>
+          <tr>
+            <th>Workspace</th>
+            <th>Owner</th>
+            <th>Plan</th>
+            <th>Usage</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((w) => (
-            <tr key={w.id} className="border-b border-border/50 align-top">
-              <td className="py-2 pr-3">
-                {w.name}
-                <br />
-                <code className="text-xs">{w.id}</code>
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={5} className="text-muted-foreground">
+                No workspaces found.
               </td>
-              <td className="pr-3">{w.ownerEmail}</td>
-              <td className="pr-3">
+            </tr>
+          )}
+          {rows.map((w) => (
+            <tr key={w.id}>
+              <td>
+                <span className="font-medium">{w.name}</span>
+                <br />
+                <code className="text-xs text-muted-foreground">{w.id}</code>
+              </td>
+              <td>{w.ownerEmail}</td>
+              <td>
                 {w.summary.planName ?? "-"}
                 <br />
-                {w.summary.status}
-                {w.summary.trialDaysLeft !== null ? `, ${w.summary.trialDaysLeft} days left` : ""}
-                {w.summary.compUntil ? `, until ${w.summary.compUntil.toLocaleDateString()}` : ""}
+                <span className="text-xs text-muted-foreground">
+                  {w.summary.status}
+                  {w.summary.trialDaysLeft !== null ? `, ${w.summary.trialDaysLeft} days left` : ""}
+                  {w.summary.compUntil ? `, until ${w.summary.compUntil.toLocaleDateString()}` : ""}
+                </span>
               </td>
-              <td className="pr-3">
+              <td className="tabular-nums">
                 {w.summary.used}
                 {w.summary.limit !== null ? ` / ${w.summary.limit}` : ""}
               </td>
-              <td className="py-2">
+              <td>
                 <WorkspaceActions
                   id={w.id}
                   plans={plans.map((p) => ({ id: p.id, name: p.name }))}
@@ -63,7 +78,7 @@ export default async function WorkspacesPage({
             </tr>
           ))}
         </tbody>
-      </table>
-    </div>
+      </Table>
+    </>
   );
 }

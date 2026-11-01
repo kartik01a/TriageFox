@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { and, eq, schema } from "@triagefox/db";
 import { closeOwnerDb, ownerDb } from "./db";
-import { newUser, signUpWithWorkspace } from "./helpers";
+import { BASE, newUser, signUpWithWorkspace } from "./helpers";
 
 test.afterAll(async () => {
   await ownerDb().delete(schema.platformSettings).where(eq(schema.platformSettings.key, "trial"));
@@ -136,9 +136,7 @@ test("a flood of changes from one workspace is slowed down, and other workspaces
   await signUpWithWorkspace(a, newUser("Flood"), `Flood ${Date.now()}`);
   await signUpWithWorkspace(b, newUser("Calm"), `Calm ${Date.now()}`);
   const hit = (p: typeof a) =>
-    p.request
-      .post("/api/automation", { headers: { origin: "http://localhost:3000" } })
-      .then((r) => r.status());
+    p.request.post("/api/automation", { headers: { origin: BASE } }).then((r) => r.status());
   const statuses: number[] = [];
   for (let i = 0; i < 320; i += 40)
     statuses.push(...(await Promise.all(Array.from({ length: 40 }, () => hit(a)))));

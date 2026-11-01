@@ -9,6 +9,8 @@ if (process.env.NODE_ENV !== "production" && existsSync(rootEnv)) process.loadEn
 
 const config: NextConfig = {
   // Self-contained server for the Docker image; the file tracer needs the repo root to find workspace packages.
+  // Lets a second dev server run beside yours (the browser tests use one with their own settings).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   output: "standalone",
   outputFileTracingRoot: join(import.meta.dirname, "..", ".."),
   transpilePackages: ["@triagefox/shared", "@triagefox/crypto", "@triagefox/db"],

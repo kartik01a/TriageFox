@@ -1,37 +1,48 @@
 import { getSettings, type PlatformSettingKey } from "@triagefox/billing";
 import { db } from "@/lib/db";
-import { JsonEditor } from "../admin-forms";
+import { SettingForm } from "../admin-forms";
+import { PageHeader, Panel } from "../admin-ui";
 
-const HELP: Record<PlatformSettingKey, string> = {
-  trial: "Trial: days, conversation cap, card required, unlimited with own key.",
-  budgets: "AI budgets in USD per month: for all trials together, and the platform as a whole.",
-  grace: "Days a failed payment keeps working before conversations pause.",
-  reminders: "Days before a monthly / yearly renewal that the reminder email is sent.",
-  support:
-    "Support automation: categories captured, categories that raise an urgent alert, and the bug priority that does too.",
-  signupEnabled: "true or false: whether new people can sign up.",
+const SECTIONS: Record<PlatformSettingKey, { title: string; help: string }> = {
+  signupEnabled: {
+    title: "Sign-ups",
+    help: "Switch off to stop new people from creating accounts.",
+  },
+  trial: {
+    title: "Free trial",
+    help: "How long a new workspace can try TriageFox, and how many conversations it gets.",
+  },
+  budgets: {
+    title: "AI budgets (USD per month)",
+    help: "A ceiling for all trials together and for the platform as a whole. Beyond it, trials need their own OpenAI key.",
+  },
+  grace: {
+    title: "Failed payments",
+    help: "Days a failed payment keeps working before new conversations pause.",
+  },
+  reminders: {
+    title: "Renewal reminders",
+    help: "How many days before a monthly or yearly renewal the reminder email goes out.",
+  },
+  support: {
+    title: "Our own support automation",
+    help: "Which kinds of customer messages become inbox items, which raise an urgent alert, and the bug priority that does too.",
+  },
 };
 
 export default async function SettingsPage() {
   const settings = await getSettings(db());
   return (
-    <div className="space-y-6">
-      <p className="text-muted-foreground">
+    <>
+      <PageHeader title="Settings">
         Changes apply immediately and are recorded in the audit log.
-      </p>
-      {(Object.keys(HELP) as PlatformSettingKey[]).map((key) => (
-        <section key={key} className="space-y-1">
-          <h2 className="font-semibold">{key}</h2>
-          <p className="text-muted-foreground">{HELP[key]}</p>
-          <JsonEditor
-            url="/api/admin/settings"
-            method="PUT"
-            initial={settings[key]}
-            wrap={(value) => ({ key, value })}
-            label={`Value of ${key}`}
-          />
-        </section>
+      </PageHeader>
+      {(Object.keys(SECTIONS) as PlatformSettingKey[]).map((key) => (
+        <Panel key={key} title={SECTIONS[key].title}>
+          <p className="-mt-1 text-muted-foreground">{SECTIONS[key].help}</p>
+          <SettingForm settingKey={key} initial={settings[key]} />
+        </Panel>
       ))}
-    </div>
+    </>
   );
 }
