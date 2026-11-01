@@ -1,11 +1,11 @@
-import { desc, eq, schema, withOrg } from "@triagefox/db";
+import { and, desc, eq, schema, withOrg } from "@triagefox/db";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Card } from "@/components/ui/card";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
-import { Require2faSwitch, SessionList, TwoFactorPanel } from "./security-panels";
+import { Require2faSwitch, SessionList, SetPasswordPanel, TwoFactorPanel } from "./security-panels";
 
 export const metadata: Metadata = { title: "Security" };
 
@@ -38,6 +38,13 @@ export default async function SecurityPage({
     allowWithoutTwoFactor: true,
   });
   const { required } = await searchParams;
+  const [credential] = await db()
+    .select({ id: schema.account.id })
+    .from(schema.account)
+    .where(
+      and(eq(schema.account.userId, session.user.id), eq(schema.account.providerId, "credential")),
+    )
+    .limit(1);
   const sessions = await getAuth().api.listSessions({ headers: await headers() });
   const audit = canManage
     ? await withOrg(db(), workspace.id, (tx) =>
@@ -73,7 +80,11 @@ export default async function SecurityPage({
           Two-factor sign-in
         </h2>
         <Card>
-          <TwoFactorPanel enabled={session.user.twoFactorEnabled === true} />
+          {credential ? (
+            <TwoFactorPanel enabled={session.user.twoFactorEnabled === true} />
+          ) : (
+            <SetPasswordPanel />
+          )}
         </Card>
       </section>
 

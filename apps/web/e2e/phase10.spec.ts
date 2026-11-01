@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { eq, schema } from "@triagefox/db";
+import { and, eq, schema } from "@triagefox/db";
 import { closeOwnerDb, ownerDb } from "./db";
 import { newUser, signUpWithWorkspace } from "./helpers";
 
@@ -173,4 +173,24 @@ test("Continue with Google shows on sign-in and sign-up only when Google is conf
     await page.goto(path);
     await expect(page.getByRole("button", { name: /with Google/ })).toHaveCount(on ? 1 : 0);
   }
+});
+
+test("someone who signed in with Google (no password) can add one, then set up two-factor", async ({
+  page,
+}) => {
+  const user = newUser("nopw");
+  await signUpWithWorkspace(page, user, "No Password Co");
+  // Make this account look like a Google sign-up: no password sign-in method.
+  const row = await ownerDb().query.user.findFirst({ where: eq(schema.user.email, user.email) });
+  await ownerDb()
+    .delete(schema.account)
+    .where(
+      and(eq(schema.account.userId, row?.id ?? ""), eq(schema.account.providerId, "credential")),
+    );
+  await page.goto("/app/settings/security");
+  await expect(page.getByText("has no password yet")).toBeVisible();
+  await page.getByLabel("New password").fill("a-brand-new-password");
+  await page.getByLabel("Repeat it").fill("a-brand-new-password");
+  await page.getByRole("button", { name: "Set password" }).click();
+  await expect(page.getByRole("button", { name: "Set up two-factor" })).toBeVisible();
 });

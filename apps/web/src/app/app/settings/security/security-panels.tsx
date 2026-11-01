@@ -8,6 +8,64 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
+/** Google sign-ups have no password; two-factor setup asks for one, so they add it here first. */
+export function SetPasswordPanel() {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const newPassword = String(form.get("newPassword"));
+    if (newPassword.length < 10) return setError("Use at least 10 characters.");
+    if (newPassword !== String(form.get("confirm"))) return setError("The two passwords differ.");
+    setBusy(true);
+    setError(null);
+    const res = await fetch("/api/security/set-password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ newPassword }),
+    });
+    setBusy(false);
+    if (!res.ok) return setError("Could not set the password. Try again in a minute.");
+    router.refresh();
+  }
+
+  return (
+    <form method="post" onSubmit={submit} className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        You signed in with Google, so this account has no password yet. Add one: it is needed to
+        turn two-factor sign-in on or off. You can still sign in with Google.
+      </p>
+      <div className="max-w-xs space-y-3">
+        <div>
+          <Label htmlFor="newPassword">New password</Label>
+          <Input
+            id="newPassword"
+            name="newPassword"
+            type="password"
+            autoComplete="new-password"
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="confirm">Repeat it</Label>
+          <Input id="confirm" name="confirm" type="password" autoComplete="new-password" required />
+        </div>
+      </div>
+      {error && (
+        <p className="text-sm text-danger" role="alert">
+          {error}
+        </p>
+      )}
+      <Button type="submit" disabled={busy}>
+        {busy ? "Saving…" : "Set password"}
+      </Button>
+    </form>
+  );
+}
+
 export function TwoFactorPanel({ enabled }: { enabled: boolean }) {
   const router = useRouter();
   const [setup, setSetup] = useState<{ uri: string; codes: string[] } | null>(null);
@@ -23,8 +81,7 @@ export function TwoFactorPanel({ enabled }: { enabled: boolean }) {
       password: String(new FormData(e.currentTarget).get("password")),
     });
     setBusy(false);
-    if (err || !data)
-      return setError("That password isn't right. (Google sign-in? Set a password first.)");
+    if (err || !data) return setError("That password isn't right.");
     if (data.method !== "totp")
       return setError("Authenticator apps aren't available for this account.");
     setSetup({ uri: data.totpURI, codes: data.backupCodes });
