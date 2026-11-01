@@ -204,6 +204,8 @@ test("the security page still opens when the sign-in is older than 15 minutes", 
     .update(schema.session)
     .set({ createdAt: hourAgo, updatedAt: hourAgo })
     .where(eq(schema.session.userId, row?.id ?? ""));
+  // Drop the short-lived session cache cookie so the server reads the (now old) session from the database.
+  await page.context().clearCookies({ name: /session_data/ });
   const res = await page.goto("/app/settings/security");
   expect(res?.status()).toBe(200);
   await expect(page.getByRole("heading", { name: "Where you're signed in" })).toBeVisible();
