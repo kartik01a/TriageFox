@@ -4,7 +4,7 @@
 #   docker build -f deploy/Dockerfile --target worker -t triagefox/worker .
 # The worker image also contains the database migration tool and the secret generator.
 
-FROM node:22-bookworm-slim AS base
+FROM node:26-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
@@ -23,7 +23,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm --filter @triagefox/worker deploy --prod --legacy /out/worker
 
 # ---- worker: the only container that holds the private key -----------------------------------
-FROM node:22-bookworm-slim AS worker
+FROM node:26-bookworm-slim AS worker
 ENV NODE_ENV=production
 ENV MIGRATIONS_DIR=/app/drizzle
 WORKDIR /app
@@ -34,7 +34,7 @@ USER node
 CMD ["node", "dist/index.js"]
 
 # ---- web: Next.js standalone server (public keys only) --------------------------------------
-FROM node:22-bookworm-slim AS web
+FROM node:26-bookworm-slim AS web
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
