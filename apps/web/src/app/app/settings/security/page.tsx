@@ -1,8 +1,6 @@
-import { and, desc, eq, schema, withOrg } from "@triagefox/db";
+import { and, desc, eq, gt, schema, withOrg } from "@triagefox/db";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { Card } from "@/components/ui/card";
-import { getAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
 import { Require2faSwitch, SessionList, SetPasswordPanel, TwoFactorPanel } from "./security-panels";
@@ -45,7 +43,20 @@ export default async function SecurityPage({
       and(eq(schema.account.userId, session.user.id), eq(schema.account.providerId, "credential")),
     )
     .limit(1);
-  const sessions = await getAuth().api.listSessions({ headers: await headers() });
+  // Read the person's own sessions directly: Better Auth's list endpoint insists on a sign-in from the last
+  // 15 minutes, which made this whole page fail for anyone who had been signed in for a while.
+  const sessions = await db()
+    .select({
+      token: schema.session.token,
+      userAgent: schema.session.userAgent,
+      ipAddress: schema.session.ipAddress,
+      createdAt: schema.session.createdAt,
+    })
+    .from(schema.session)
+    .where(
+      and(eq(schema.session.userId, session.user.id), gt(schema.session.expiresAt, new Date())),
+    )
+    .orderBy(desc(schema.session.createdAt));
   const audit = canManage
     ? await withOrg(db(), workspace.id, (tx) =>
         tx

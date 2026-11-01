@@ -192,3 +192,20 @@ test("someone who signed in with Google (no password) can add one, then set up t
   await page.getByRole("button", { name: "Set password" }).click();
   await expect(page.getByRole("button", { name: "Set up two-factor" })).toBeVisible();
 });
+
+test("the security page still opens when the sign-in is older than 15 minutes", async ({
+  page,
+}) => {
+  const user = newUser("oldsession");
+  await signUpWithWorkspace(page, user, "Old Session Co");
+  const row = await ownerDb().query.user.findFirst({ where: eq(schema.user.email, user.email) });
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  await ownerDb()
+    .update(schema.session)
+    .set({ createdAt: hourAgo, updatedAt: hourAgo })
+    .where(eq(schema.session.userId, row?.id ?? ""));
+  const res = await page.goto("/app/settings/security");
+  expect(res?.status()).toBe(200);
+  await expect(page.getByRole("heading", { name: "Where you're signed in" })).toBeVisible();
+  await expect(page.getByText("This device")).toBeVisible();
+});
