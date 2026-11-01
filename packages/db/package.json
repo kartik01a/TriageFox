@@ -15,6 +15,7 @@
     "generate": "drizzle-kit generate",
     "migrate": "tsx --env-file=../../.env src/migrate.ts",
     "seed": "tsx --env-file=../../.env src/seed.ts",
+    "dodo-products": "tsx --env-file=../../.env src/dodo-products.ts",
     "dev-automation": "tsx --env-file=../../.env src/dev-automation.ts"
   },
   "dependencies": {

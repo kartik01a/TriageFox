@@ -47,3 +47,7 @@ Google vouches for the email address, so these users skip the confirmation email
 
 ## OpenAI
 Customers bring their own key under *AI key*; for the platform's own AI set `OPENAI_API_KEY` where the worker reads it (Phase 4). Models are configured with `AI_MODEL_DEFAULT`, `AI_MODEL_ESCALATION`, `AI_MODEL_EMBEDDING`.
+
+### Creating the Dodo products with a script (instead of by hand)
+With `DODO_API_KEY` and `DODO_ENV=test` in `.env` and the plans seeded (`pnpm db:seed`):
+`pnpm db:dodo-products` shows what it would create (dry run); `pnpm db:dodo-products -- --apply` creates the subscription products (3 main plans × monthly/yearly × USD/INR), skips ones that already exist by name, saves the ids to `docs/private/dodo-products.test.json` and links them to the plans. Add `--all` for the own-key plans and `--publish` to make plans public. Live mode needs `--allow-live`.
