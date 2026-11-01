@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/fox-logo";
 import { buttonVariants } from "@/components/ui/button";
+import { getSession } from "@/lib/session";
 import { SITE } from "@/lib/site";
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const signedIn = !!(await getSession());
   return (
     <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur">
       <nav
@@ -33,12 +35,20 @@ export function SiteHeader() {
           </a>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/login" className={buttonVariants({ variant: "ghost", size: "sm" })}>
-            Sign in
-          </Link>
-          <Link href="/signup" className={buttonVariants({ size: "sm" })}>
-            Start free trial
-          </Link>
+          {signedIn ? (
+            <Link href="/app" className={buttonVariants({ size: "sm" })}>
+              Open your workspace
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+                Sign in
+              </Link>
+              <Link href="/signup" className={buttonVariants({ size: "sm" })}>
+                Start free trial
+              </Link>
+            </>
+          )}
         </div>
       </nav>
     </header>

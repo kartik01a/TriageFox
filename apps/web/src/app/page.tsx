@@ -107,8 +107,11 @@ const faq = [
 ];
 
 export default async function Home() {
+  const signedIn = !!(await getSession());
+  // Someone who is already signed in has no use for the sign-in page's sales pitch: send them to their workspace.
+  if (signedIn) redirect("/app");
   // A self-hosted install has no marketing site: go straight to the product.
-  if (env().APP_MODE === "selfhost") redirect((await getSession()) ? "/app" : "/login");
+  if (env().APP_MODE === "selfhost") redirect("/login");
 
   const [settings, plans] = await Promise.all([
     getSettings(db()),

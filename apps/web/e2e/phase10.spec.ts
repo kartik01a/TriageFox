@@ -211,3 +211,16 @@ test("the security page still opens when the sign-in is older than 15 minutes", 
   await expect(page.getByRole("heading", { name: "Where you're signed in" })).toBeVisible();
   await expect(page.getByText("This device")).toBeVisible();
 });
+
+test("signed-in people skip the landing page, and public pages offer them their workspace", async ({
+  page,
+}) => {
+  await signUpWithWorkspace(page, newUser("home"), "Home Redirect Co");
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/app$/);
+  await page.goto("/pricing");
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await expect(nav.getByRole("link", { name: "Open your workspace" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Sign in" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Start free trial" })).toHaveCount(0);
+});
