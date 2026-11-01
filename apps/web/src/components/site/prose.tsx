@@ -24,7 +24,7 @@ export async function ProsePage({
             "[&_h2]:mt-10 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight",
             "[&_h3]:mt-6 [&_h3]:font-semibold",
             "[&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:space-y-1.5 [&_ol]:pl-6",
-            "[&_a]:text-primary [&_a]:underline [&_strong]:font-semibold",
+            "[&_a:not([data-button])]:text-primary [&_a:not([data-button])]:underline [&_strong]:font-semibold",
             "[&_table]:w-full [&_table]:border-collapse [&_table]:text-sm [&_th]:border-b [&_th]:border-border [&_th]:py-2 [&_th]:text-left [&_td]:border-b [&_td]:border-border/60 [&_td]:py-2 [&_td]:pr-3 [&_td]:align-top",
           ].join(" ")}
         >

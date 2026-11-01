@@ -65,7 +65,7 @@ export default async function PricingPage({
 
         {views.length === 0 ? (
           <p className="text-center text-muted-foreground">
-            Plans are coming soon. Join the waitlist on the home page.
+            The plans will be listed here shortly. You can already start your free trial.
           </p>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

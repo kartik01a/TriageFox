@@ -148,3 +148,29 @@ test("a flood of changes from one workspace is slowed down, and other workspaces
   await a.close();
   await b.close();
 });
+
+test("the top menu has one Docs link that opens in a new tab, and guide buttons show their text", async ({
+  page,
+}) => {
+  await page.goto("/integrations/crisp-to-jira");
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await expect(nav.getByRole("link", { name: "Docs" })).toHaveAttribute("target", "_blank");
+  await expect(nav.getByRole("link", { name: /GitHub/ })).toHaveCount(0);
+  const cta = page.getByRole("main").getByRole("link", { name: "Start free trial" });
+  // Dark text on the orange button, not orange-on-orange.
+  const [text, bg] = await cta.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return [s.color, s.backgroundColor];
+  });
+  expect(text).not.toBe(bg);
+});
+
+test("Continue with Google shows on sign-in and sign-up only when Google is configured", async ({
+  page,
+}) => {
+  const on = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+  for (const path of ["/signup", "/login"]) {
+    await page.goto(path);
+    await expect(page.getByRole("button", { name: /with Google/ })).toHaveCount(on ? 1 : 0);
+  }
+});

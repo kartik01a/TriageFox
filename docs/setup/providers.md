@@ -38,5 +38,12 @@ Running your own copy? The whole install is in [../self-hosting.md](../self-host
 6. Test once with Dodo's test cards: buy a plan, check *Billing* turns to Active, cancel in the portal, check it shows the end date.
 7. Admins: set `PLATFORM_ADMIN_EMAILS` and turn on two-factor for that account. Alerts: `ALERT_EMAIL` and an optional Slack incoming webhook in `SLACK_ALERTS_WEBHOOK_URL`. Own support identity: `CRISP_IDENTITY_SECRET` from the TriageFox Support website's settings.
 
+## Google sign-in (optional)
+1. https://console.cloud.google.com → create a project → *APIs & Services* → *OAuth consent screen* (External; app name TriageFox; your email).
+2. *Credentials* → *Create credentials* → *OAuth client ID* → type **Web application**.
+3. Authorised redirect URI: **`APP_URL/api/auth/callback/google`** (for local testing `http://localhost:3000/api/auth/callback/google`).
+4. Copy the client id and secret into `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` and restart. The "Continue with Google" button then appears on sign-in and sign-up; without both values it stays hidden.
+Google vouches for the email address, so these users skip the confirmation email. The same sign-up rules apply (closed sign-ups, invitation-only self-host).
+
 ## OpenAI
 Customers bring their own key under *AI key*; for the platform's own AI set `OPENAI_API_KEY` where the worker reads it (Phase 4). Models are configured with `AI_MODEL_DEFAULT`, `AI_MODEL_ESCALATION`, `AI_MODEL_EMBEDDING`.

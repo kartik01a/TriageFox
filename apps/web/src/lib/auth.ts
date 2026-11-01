@@ -66,6 +66,13 @@ function createAuth() {
       },
     },
 
+    // "Continue with Google" appears only when the operator has set both Google values (docs/setup/providers.md).
+    // Google vouches for the email address, so these users skip the confirmation email.
+    socialProviders:
+      e.GOOGLE_CLIENT_ID && e.GOOGLE_CLIENT_SECRET
+        ? { google: { clientId: e.GOOGLE_CLIENT_ID, clientSecret: e.GOOGLE_CLIENT_SECRET } }
+        : {},
+
     emailVerification: {
       sendOnSignUp: true,
       autoSignInAfterVerification: true,

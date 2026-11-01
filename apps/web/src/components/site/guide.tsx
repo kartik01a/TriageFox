@@ -63,7 +63,7 @@ export async function Guide({ slug, title, description, tool, mapping, setup, fa
         ))}
       </ol>
       <p>
-        <Link href="/signup" className={buttonVariants({ size: "md" })}>
+        <Link href="/signup" data-button className={buttonVariants({ size: "md" })}>
           Start free trial
         </Link>
       </p>

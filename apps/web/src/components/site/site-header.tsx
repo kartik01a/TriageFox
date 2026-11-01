@@ -3,24 +3,7 @@ import { Wordmark } from "@/components/fox-logo";
 import { buttonVariants } from "@/components/ui/button";
 import { SITE } from "@/lib/site";
 
-/** Cached an hour: the star count is decoration and must never slow a page down or break it. */
-async function stars(): Promise<number | null> {
-  try {
-    const res = await fetch("https://api.github.com/repos/kartik01a/TriageFox", {
-      next: { revalidate: 3600 },
-      signal: AbortSignal.timeout(2500),
-      headers: { accept: "application/vnd.github+json" },
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { stargazers_count?: number };
-    return typeof json.stargazers_count === "number" ? json.stargazers_count : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function SiteHeader() {
-  const count = await stars();
+export function SiteHeader() {
   return (
     <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur">
       <nav
@@ -40,11 +23,13 @@ export async function SiteHeader() {
           <Link href="/integrations" className="hover:text-foreground">
             Integrations
           </Link>
-          <a href={`${SITE.repoUrl}#readme`} className="hover:text-foreground" rel="noopener">
+          <a
+            href={`${SITE.repoUrl}/tree/main/docs`}
+            className="hover:text-foreground"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Docs
-          </a>
-          <a href={SITE.repoUrl} className="hover:text-foreground" rel="noopener">
-            GitHub{count !== null ? ` ★ ${count.toLocaleString("en-US")}` : ""}
           </a>
         </div>
         <div className="flex items-center gap-2">
