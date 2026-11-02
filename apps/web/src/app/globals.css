@@ -6,6 +6,11 @@
   --foreground: #111114;
   --card: #ffffff;
   --muted: #f3f3f5;
+  /* Floating surfaces (open dropdown lists): raised above cards. */
+  --popover: #ffffff;
+  --popover-border: #d0d0d8;
+  --popover-hover: #f1f1f4;
+  --popover-shadow: 0 16px 40px rgb(15 15 20 / 0.16), 0 2px 6px rgb(15 15 20 / 0.08);
   --muted-foreground: #62626d;
   --border: #e4e4e9;
   --input: #d6d6dd;
@@ -29,6 +34,10 @@
     --foreground: #f4f4f6;
     --card: #141418;
     --muted: #1b1b21;
+    --popover: #23232b;
+    --popover-border: #44444f;
+    --popover-hover: #31313b;
+    --popover-shadow: 0 18px 48px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.35);
     --muted-foreground: #a1a1ad;
     --border: #2a2a32;
     --input: #3a3a44;
@@ -99,5 +108,51 @@ body {
     background-repeat: no-repeat;
     background-position: right 0.875rem center;
     background-size: 1rem;
+  }
+}
+
+/*
+ * The open list. Browsers that support styleable dropdowns (Chrome and Edge 135+) draw it in our
+ * theme; others keep their native list, which follows the page's light/dark colour scheme.
+ */
+@supports (appearance: base-select) {
+  .tf-select,
+  .tf-select::picker(select) {
+    appearance: base-select;
+  }
+  .tf-select {
+    display: flex;
+    align-items: center;
+  }
+  .tf-select::picker-icon {
+    display: none; /* we draw our own arrow above */
+  }
+  .tf-select::picker(select) {
+    margin-block: 0.25rem;
+    padding: 0.25rem;
+    max-height: 20rem;
+    border: 1px solid var(--popover-border);
+    border-radius: 0.625rem;
+    background: var(--popover);
+    color: var(--foreground);
+    box-shadow: var(--popover-shadow);
+  }
+  .tf-select option {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+  .tf-select option:hover,
+  .tf-select option:focus-visible {
+    background: var(--popover-hover);
+    outline: none;
+  }
+  .tf-select option:checked {
+    color: var(--primary);
+    font-weight: 500;
+  }
+  .tf-select option::checkmark {
+    color: var(--primary);
   }
 }
