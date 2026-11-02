@@ -149,6 +149,11 @@ export async function PUT(req: Request, { params }: Params) {
       .select({ metadata: schema.connections.metadata })
       .from(schema.connections)
       .where(and(eq(schema.connections.id, c.conn.id), eq(schema.connections.orgId, c.orgId)));
+    // Keep the label choice (ADR 0013): Jira labels are site-wide; Trello label ids belong to one board.
+    const prev = (row?.metadata?.defaults ?? {}) as Record<string, unknown>;
+    if (c.conn.provider === "jira" && prev.typeLabels) defaults.typeLabels = prev.typeLabels;
+    if (c.conn.provider === "trello" && prev.labels && prev.boardId === defaults.boardId)
+      defaults.labels = prev.labels;
     await tx
       .update(schema.connections)
       .set({ metadata: { ...(row?.metadata ?? {}), defaults } })

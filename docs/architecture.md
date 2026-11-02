@@ -202,6 +202,12 @@ The web app never holds decrypted credentials. When it needs something only a cu
 - **Releases:** pushing a `v*` tag builds web and worker on native amd64 and arm64 runners and publishes multi-architecture images to GitHub's registry (`.github/workflows/release.yml`); `WEB_IMAGE` / `WORKER_IMAGE` / `TRIAGEFOX_PULL` select them in Compose.
 - **Supply chain:** `pnpm audit --prod --audit-level high` runs in CI; the three moderate build-tool advisories found are fixed with pinned overrides in `pnpm-workspace.yaml`.
 
+### After launch testing (owner's end-to-end test)
+
+- **Attachments:** every file the customer sends (screenshots, documents, voice messages, videos) goes on the ticket (`apps/worker/src/pipeline/files.ts`, requirements §13). The AI's `relevantAttachmentIds` only decides which ticket a file goes on when a chat yields several tickets; unmatched files go on all of them; a new ticket skips files already on another ticket from the same chat; follow-ups and duplicates carry only files sent since the last analysis. Unnamed Crisp files get a readable name with an extension (`voice-message-2026-11-02-0905.webm`).
+- **Label choice (ADR 0013):** `GET/POST/PUT /api/connections/[id]/labels` lists, creates (Trello) and saves the customer's labels via the worker (`trello.listLabels`, `trello.createLabel`, `jira.listLabels`). Saved in `defaults.labels` (Trello: label id or null per level and type) or `defaults.typeLabels` (Jira), copied into `automation_destinations.config` as `labelMap` / `typeLabels`. The worker's `ensureTrelloLabels` uses the choice, falls back to the default labels, and skips a chosen label that has left the board.
+- **Linking Crisp before the plugin is activated:** `pnpm --filter @triagefox/worker dev:crisp-link` (development only) prints the page address Crisp's widget would open, using the development token.
+
 ## Connector interfaces
 
 Details in [integrations/adding-a-connector.md](integrations/adding-a-connector.md). Sources and destinations implement shared `SourceConnector` / `DestinationConnector` interfaces, so new tools plug in without touching the pipeline.

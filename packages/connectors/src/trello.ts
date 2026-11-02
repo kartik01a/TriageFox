@@ -155,7 +155,7 @@ export class TrelloClient {
       name: card.name,
       desc: card.desc,
       due: card.due,
-      idLabels: card.labelIds?.join(","),
+      idLabels: card.labelIds?.length ? card.labelIds.join(",") : undefined,
     });
   }
 

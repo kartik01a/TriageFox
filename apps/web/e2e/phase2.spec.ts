@@ -241,6 +241,39 @@ test("Trello (live): connect, choose a board and list, token never exposed", asy
   await page.getByRole("button", { name: "Save target" }).click();
   await expect(page.getByText("Saved. New cards will be created here.")).toBeVisible();
 
+  // Labels (ADR 0013): create a label on the board, use it for two levels, and "no label" for one.
+  await page.reload();
+  const labelName = `tf-e2e-${Date.now()}`;
+  await page.getByLabel("5 · Critical").selectOption("__new");
+  await page.getByLabel("Name").fill(labelName);
+  await page.getByLabel("Colour").selectOption("red");
+  await page.getByRole("button", { name: "Create on the board" }).click();
+  await expect(page.getByLabel("5 · Critical")).toHaveValue(/^[0-9a-f]{24}$/);
+  const labelId = await page.getByLabel("5 · Critical").inputValue();
+  try {
+    await page.getByLabel("4 · High").selectOption({ label: labelName });
+    await page.getByLabel("1 · Lowest").selectOption("__none");
+    await page.getByRole("button", { name: "Save labels" }).click();
+    await expect(page.getByText("Saved. New tickets will use these labels.")).toBeVisible();
+    const [saved] = await connectionsFor(orgId, "trello");
+    const defaults = saved?.metadata.defaults as { labels?: unknown } | undefined;
+    expect(defaults?.labels).toEqual({
+      priorities: { "5": labelId, "4": labelId, "1": null },
+      types: {},
+    });
+    // A label id that is not on the board is refused.
+    const bad = await page.request.put(`/api/connections/${saved?.id}/labels`, {
+      data: { priorities: { "3": "not-a-label" } },
+      headers: { origin: BASE },
+    });
+    expect(bad.status()).toBe(400);
+  } finally {
+    await fetch(
+      `https://api.trello.com/1/labels/${labelId}?key=${env.TRELLO_API_KEY}&token=${token}`,
+      { method: "DELETE" },
+    );
+  }
+
   await page.goto("/app/connections");
   await expect(page.getByText("TriageFox › To Do")).toBeVisible();
   // Cleanup without revoking: that token is also used by your other tests and scripts.
@@ -314,6 +347,22 @@ test("Jira (live): choose a project, see type and priority mappings, save", asyn
     expect(Object.keys(d?.issueTypeMap ?? {})).toHaveLength(8);
     expect(Object.keys(d?.priorityMap ?? {})).toHaveLength(5);
     expect(JSON.stringify(row?.metadata)).not.toContain(tokens.accessToken);
+
+    // Labels (ADR 0013): a new Jira label for bugs, none for features. Jira labels are only created on use.
+    await page.reload();
+    await page.locator("#label-t-bug").selectOption("__new");
+    await page.getByLabel("Name").fill("has space");
+    await page.getByRole("button", { name: "Add" }).click();
+    await expect(page.getByText("Jira labels can't contain spaces.")).toBeVisible();
+    await page.getByLabel("Name").fill("customer-bug");
+    await page.getByRole("button", { name: "Add" }).click();
+    await expect(page.locator("#label-t-bug")).toHaveValue("customer-bug");
+    await page.locator("#label-t-feature").selectOption("__none");
+    await page.getByRole("button", { name: "Save labels" }).click();
+    await expect(page.getByText("Saved. New tickets will use these labels.")).toBeVisible();
+    const [withLabels] = await connectionsFor(orgId, "jira");
+    const dl = withLabels?.metadata.defaults as { typeLabels?: unknown } | undefined;
+    expect(dl?.typeLabels).toEqual({ bug: "customer-bug", feature: null });
   } finally {
     // Tokens may have been refreshed by the worker: keep the newest refresh token for the next run.
     const [row] = await ownerDb()

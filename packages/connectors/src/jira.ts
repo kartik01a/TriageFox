@@ -275,6 +275,20 @@ export class JiraClient {
     );
   }
 
+  /** Labels already used on this site (Jira labels are site-wide), capped at 1000. */
+  async listLabels(): Promise<string[]> {
+    const out: string[] = [];
+    for (let startAt = 0; startAt < 1000; ) {
+      const page = await this.get<{ values: string[]; isLast?: boolean }>(
+        `/label?maxResults=1000&startAt=${startAt}`,
+      );
+      out.push(...page.values);
+      startAt += page.values.length;
+      if (page.isLast !== false || page.values.length === 0) break;
+    }
+    return out;
+  }
+
   async listProjects(): Promise<JiraProject[]> {
     const out: JiraProject[] = [];
     for (let startAt = 0; startAt < 500; ) {

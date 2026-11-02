@@ -32,3 +32,17 @@ export const PRIORITY_NAMES: Record<Priority, string> = {
   4: "High",
   5: "Critical",
 };
+
+/** Trello's label colours (the plain ones), for labels the customer creates from TriageFox. */
+export const TRELLO_LABEL_COLORS = [
+  "green",
+  "yellow",
+  "orange",
+  "red",
+  "purple",
+  "blue",
+  "sky",
+  "lime",
+  "pink",
+  "black",
+] as const;

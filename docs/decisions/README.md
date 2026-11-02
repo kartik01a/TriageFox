@@ -16,6 +16,7 @@ One file per significant decision: `NNNN-short-name.md`. Don't edit an accepted 
 | [0010](0010-security-architecture.md) | Security architecture: sealed secrets, no transcripts, Cloudflare | Accepted |
 | [0011](0011-own-support-admin-inbox.md) | Own support via Crisp, triaged into an admin inbox | Accepted |
 | [0012](0012-seven-day-trial.md) | The free trial is 7 days | Accepted |
+| [0013](0013-customer-label-mapping.md) | Customers choose the labels on their tickets | Accepted |
 
 ## Template
 

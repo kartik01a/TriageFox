@@ -46,6 +46,8 @@ Five levels, **5 = highest**, each with a name and colour:
 
 Set by a fixed rubric, not gut feel ([ai-triage.md](ai-triage.md#priority-rubric)).
 
+The names and colours above are the **default labels**. Each team can choose its own label for every level and every type on the Trello connection page (several levels may share one, or use none); in Jira, levels map to the project's priorities and types map to labels. The AI always works on the 1–5 scale and the fixed types; only the ticket's labels change ([ADR 0013](decisions/0013-customer-label-mapping.md)).
+
 ## 6. Multiple destinations
 - One automation = one source + any number of destinations. **Every destination gets the same ticket.**
 - If only one destination is connected, only that one is used.

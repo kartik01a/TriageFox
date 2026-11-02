@@ -1,5 +1,5 @@
 import type { connections } from "./schema/connections";
-import type { DestinationConfig } from "./schema/tickets";
+import type { DestinationConfig, LabelMap } from "./schema/tickets";
 
 type Connection = typeof connections.$inferSelect;
 
@@ -13,7 +13,12 @@ export function destinationConfigFromDefaults(
   const d = c.metadata.defaults as Record<string, unknown> | undefined;
   if (!d) return null;
   if (c.provider === "trello" && d.boardId && d.listId)
-    return { kind: "trello", boardId: String(d.boardId), listId: String(d.listId) };
+    return {
+      kind: "trello",
+      boardId: String(d.boardId),
+      listId: String(d.listId),
+      ...(d.labels ? { labelMap: d.labels as LabelMap } : {}),
+    };
   if (c.provider === "jira" && d.projectKey && d.setupOk)
     return {
       kind: "jira",
@@ -21,6 +26,7 @@ export function destinationConfigFromDefaults(
       projectKey: String(d.projectKey),
       issueTypeMap: d.issueTypeMap as Record<string, string>,
       priorityMap: d.priorityMap as Record<string, string>,
+      ...(d.typeLabels ? { typeLabels: d.typeLabels as Record<string, string | null> } : {}),
     };
   return null;
 }

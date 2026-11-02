@@ -21,7 +21,13 @@ export type DestinationConfig =
       kind: "trello";
       boardId: string;
       listId: string;
+      /** Cache of the default labels' ids on this board (filled by the worker). */
       labelIds?: { types?: Record<string, string>; priorities?: Record<string, string> };
+      /**
+       * The customer's own label choice (ADR 0013): label id, or null for "no label". A level or type
+       * that is missing here gets the default label (P1 Lowest … P5 Critical, Bug, Feature …).
+       */
+      labelMap?: LabelMap;
     }
   | {
       kind: "jira";
@@ -30,7 +36,14 @@ export type DestinationConfig =
       issueTypeMap: Record<string, string>;
       priorityMap: Record<string, string>;
       extraLabels?: string[];
+      /** Jira label per ticket type (ADR 0013): text, or null for none. Missing = the type's own name. */
+      typeLabels?: Record<string, string | null>;
     };
+
+export interface LabelMap {
+  priorities?: Record<string, string | null>;
+  types?: Record<string, string | null>;
+}
 
 /** One place an automation sends tickets to. Rows are created by the Phase 7 wizard (tests/scripts until then). */
 export const automationDestinations = pgTable(

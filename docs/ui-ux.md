@@ -171,6 +171,7 @@ A left-side stepper with progress; every step saves, so users can leave and resu
 
 ## As built in Phase 7
 
+- **Connection page (Trello / Jira):** after the board or project, a **Labels** card: for each priority level (Trello) and each type, a dropdown with *Default: …*, *No label*, the board's or site's labels, and *+ New label…* (Trello: name + colour, created on the board; Jira: a name without spaces). ADR 0013.
 - **Navigation:** Overview · Activity · Review (with a count) · Automation · Connections · Members · AI key · Security. Scrolls sideways on phones.
 - **Setup (`/app/setup`)** is a resumable checklist, not a wizard with its own state: every step is computed from the database (Crisp connected → a ticket tool connected → board/project chosen → ticket settings saved → AI → try it and turn it on). The current step is open, finished steps collapse. "Waiting for Crisp…" refreshes itself every 4 s. The ticket settings step has the **live preview**; saving it completes the step. The last step has the **dry run** ("Try it on my last 10 chats") and the on/off switch.
 - **Overview:** this month's created / updated / merged / skipped, an honest time-saved estimate (10 min per created ticket, 3 per update), problems link, recent activity, connection health.

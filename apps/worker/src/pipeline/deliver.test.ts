@@ -46,6 +46,11 @@ async function world(
     status?: "active" | "pending_review";
     attachmentIds?: string[];
     dueDate?: string;
+    labelMap?: {
+      priorities?: Record<string, string | null>;
+      types?: Record<string, string | null>;
+    };
+    typeLabels?: Record<string, string | null>;
   } = {},
 ) {
   const ins = <T>(fn: (tx: Parameters<Parameters<typeof withOrg>[2]>[0]) => Promise<T>) =>
@@ -120,7 +125,12 @@ async function world(
           orgId,
           automationId: automation?.id ?? "",
           connectionId: conn?.id ?? "",
-          config: { kind: "trello", boardId: "B", listId: "L" },
+          config: {
+            kind: "trello",
+            boardId: "B",
+            listId: "L",
+            ...(opts.labelMap ? { labelMap: opts.labelMap } : {}),
+          },
         })
         .returning(),
     );
@@ -163,6 +173,7 @@ async function world(
             projectKey: "TF",
             issueTypeMap: { bug: "10001" },
             priorityMap: { "4": "2" },
+            ...(opts.typeLabels ? { typeLabels: opts.typeLabels } : {}),
           },
         })
         .returning(),
@@ -285,6 +296,52 @@ describe("Trello delivery", () => {
     expect(net.count("POST", /^\/1\/labels$/)).toBe(0);
   });
 
+  it("uses the labels the customer chose, and no label where they chose none (ADR 0013)", async () => {
+    net.reset();
+    net.routes.push(({ method, url }) => {
+      if (method === "GET" && url.pathname.endsWith("/labels"))
+        return {
+          body: [
+            { id: "high", name: "High", color: "red" },
+            { id: "issue", name: "Issue", color: "blue" },
+          ],
+        };
+      return undefined;
+    }, trelloOk);
+    // Priority 4 (High) -> the board's own "High" label; bug -> "Issue".
+    const w = await world({
+      trello: true,
+      labelMap: { priorities: { "5": "high", "4": "high" }, types: { bug: "issue" } },
+    });
+    await deliver()({ orgId, issueId: w.issue?.id ?? "", destinationId: w.trello?.dest ?? "" });
+    expect(net.count("POST", /^\/1\/labels$/)).toBe(0);
+    const card = JSON.parse(String(net.calls.find((c) => c.url.pathname === "/1/cards")?.body));
+    expect(card.idLabels.split(",").sort()).toEqual(["high", "issue"]);
+
+    // "No label" for priorities, default for types.
+    net.reset();
+    net.routes.push(trelloOk);
+    const w2 = await world({ trello: true, labelMap: { priorities: { "4": null } } });
+    await deliver()({ orgId, issueId: w2.issue?.id ?? "", destinationId: w2.trello?.dest ?? "" });
+    expect(net.count("POST", /^\/1\/labels$/)).toBe(1); // only the default type label
+    const card2 = JSON.parse(String(net.calls.find((c) => c.url.pathname === "/1/cards")?.body));
+    expect(card2.idLabels.split(",")).toHaveLength(1);
+  });
+
+  it("a chosen label deleted from the board is skipped; the card is still created", async () => {
+    net.reset();
+    net.routes.push(trelloOk); // the board has no labels any more
+    const w = await world({
+      trello: true,
+      labelMap: { priorities: { "4": "gone" }, types: { bug: "gone-too" } },
+    });
+    const p = { orgId, issueId: w.issue?.id ?? "", destinationId: w.trello?.dest ?? "" };
+    await deliver()(p);
+    const card = JSON.parse(String(net.calls.find((c) => c.url.pathname === "/1/cards")?.body));
+    expect(card.idLabels ?? "").toBe("");
+    expect(await ticket(p.issueId, p.destinationId)).toMatchObject({ status: "ok" });
+  });
+
   it("uploads screenshots from Crisp storage, links oversize ones, and drops other hosts", async () => {
     net.reset();
     net.routes.push(trelloOk);
@@ -404,6 +461,24 @@ describe("Jira delivery", () => {
       externalKey: "TF-7",
       url: "https://x.atlassian.net/browse/TF-7",
     });
+  });
+
+  it("uses the customer's label for the type, or none (ADR 0013)", async () => {
+    net.reset();
+    net.routes.push(jiraOk);
+    const w = await world({ jira: true, typeLabels: { bug: "customer-bug" } });
+    await deliver()({ orgId, issueId: w.issue?.id ?? "", destinationId: w.jira?.dest ?? "" });
+    const body = (calls: typeof net.calls) =>
+      JSON.parse(
+        String(calls.find((c) => c.method === "POST" && c.url.pathname.endsWith("/issue"))?.body),
+      );
+    expect(body(net.calls).fields.labels).toEqual(["from-chat", "customer-bug"]);
+
+    net.reset();
+    net.routes.push(jiraOk);
+    const w2 = await world({ jira: true, typeLabels: { bug: null } });
+    await deliver()({ orgId, issueId: w2.issue?.id ?? "", destinationId: w2.jira?.dest ?? "" });
+    expect(body(net.calls).fields.labels).toEqual(["from-chat"]);
   });
 
   it("falls back to a label when the project refuses a priority", async () => {

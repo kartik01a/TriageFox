@@ -13,6 +13,7 @@ import {
   fileTools,
   isLinkable,
   type JiraConfig,
+  jiraLabels,
   type TrelloConfig,
 } from "./shared";
 
@@ -136,7 +137,7 @@ export function createDeliver(deps: DeliverDeps) {
             const config = dest.config;
             const { token } = await openCredentials<{ token: string }>(ctx, connection);
             const client = trello(ctx, token);
-            const labelIds = await ensureTrelloLabels(
+            const labels = await ensureTrelloLabels(
               ctx,
               p.orgId,
               client,
@@ -150,7 +151,9 @@ export function createDeliver(deps: DeliverDeps) {
               name: issue.title.slice(0, 250),
               desc: issue.bodyMd.slice(0, 16_000),
               due: dueIso(issue.dueDate),
-              labelIds,
+              labelIds: [...new Set([labels.priority, labels.type])].filter(
+                (id): id is string => !!id,
+              ),
             });
             created = { id: card.id, key: null, url: card.shortUrl ?? card.url };
             afterCreate = async () => {
@@ -193,7 +196,7 @@ export function createDeliver(deps: DeliverDeps) {
               issueTypeId,
               summary: issue.title.slice(0, 250),
               description: markdownToAdf(issue.bodyMd),
-              labels: ["from-chat", issue.type, ...(config.extraLabels ?? [])],
+              labels: jiraLabels(config, issue.type as TicketType),
             });
             const sites =
               (connection.metadata.sites as { id: string; url: string }[] | undefined) ?? [];

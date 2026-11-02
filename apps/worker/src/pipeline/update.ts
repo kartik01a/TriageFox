@@ -15,6 +15,7 @@ import {
   isLinkable,
   type JiraConfig,
   type TrelloConfig,
+  trelloPriorityLabelIds,
 } from "./shared";
 
 export interface UpdateDeps extends DeliverDeps {
@@ -164,7 +165,7 @@ export function createUpdate(deps: UpdateDeps) {
             extras = async () => {
               const cardId = ticket.externalId as string;
               if (update.newPriority) {
-                const [priorityId] = await ensureTrelloLabels(
+                const { priority: priorityId } = await ensureTrelloLabels(
                   ctx,
                   p.orgId,
                   client,
@@ -173,10 +174,11 @@ export function createUpdate(deps: UpdateDeps) {
                   update.newPriority as Priority,
                   issue.type as TicketType,
                 );
-                const old = new Set(Object.values(config.labelIds?.priorities ?? {}));
-                const labels = card.idLabels.filter((id) => !old.has(id));
-                if (priorityId)
-                  await client.updateCard(cardId, { idLabels: [...labels, priorityId] });
+                const old = trelloPriorityLabelIds(config);
+                const labels = card.idLabels.filter((id) => !old.has(id) || id === priorityId);
+                const next = [...new Set([...labels, ...(priorityId ? [priorityId] : [])])];
+                if (next.join() !== card.idLabels.join())
+                  await client.updateCard(cardId, { idLabels: next });
               }
               if (update.newDueDate)
                 await client.updateCard(cardId, { due: dueIso(update.newDueDate) });

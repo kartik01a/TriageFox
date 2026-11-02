@@ -8,6 +8,7 @@ import { getConnectionView } from "@/lib/connections";
 import { requireWorkspace } from "@/lib/workspace";
 import { ConnectionActions } from "../connection-actions";
 import { JiraPicker } from "./jira-picker";
+import { LabelSettings } from "./label-settings";
 import { TrelloPicker } from "./trello-picker";
 
 export const metadata: Metadata = { title: "Connection" };
@@ -88,6 +89,16 @@ export default async function ConnectionPage({
           <JiraPicker id={conn.id} sites={meta.sites ?? []} current={d} />
         </Card>
       )}
+
+      {canManage &&
+        conn.status === "active" &&
+        ((conn.provider === "trello" && d?.boardId) ||
+          (conn.provider === "jira" && d?.projectKey)) && (
+          <Card>
+            <h2 className="mb-1 font-semibold">Labels</h2>
+            <LabelSettings id={conn.id} provider={conn.provider as "trello" | "jira"} />
+          </Card>
+        )}
 
       {canManage && <ConnectionActions id={conn.id} label={title} redirectAfterDelete />}
     </div>

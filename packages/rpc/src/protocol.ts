@@ -22,6 +22,26 @@ export const rpcMethods = {
     input: z.object({ ...orgConn, boardId: z.string().min(1) }),
     output: z.object({ lists: z.array(z.object({ id: z.string(), name: z.string() })) }),
   },
+  "trello.listLabels": {
+    input: z.object({ ...orgConn, boardId: z.string().min(1) }),
+    output: z.object({
+      labels: z.array(z.object({ id: z.string(), name: z.string(), color: z.string().nullable() })),
+    }),
+  },
+  "trello.createLabel": {
+    input: z.object({
+      ...orgConn,
+      boardId: z.string().min(1),
+      name: z.string().trim().min(1).max(100),
+      // Checked against Trello's colour list by the web route.
+      color: z.string().regex(/^[a-z_]{1,20}$/),
+    }),
+    output: z.object({ id: z.string(), name: z.string(), color: z.string().nullable() }),
+  },
+  "jira.listLabels": {
+    input: z.object({ ...orgConn, cloudId: z.string().min(1) }),
+    output: z.object({ labels: z.array(z.string()) }),
+  },
   "jira.complete": {
     input: z.object(orgConn),
     output: z.object({

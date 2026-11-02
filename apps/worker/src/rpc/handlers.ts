@@ -143,6 +143,28 @@ export function createHandlers(ctx: Ctx): RpcHandlers {
       }
     },
 
+    async "trello.listLabels"({ orgId, connectionId, boardId }) {
+      const c = await loadConnection(ctx, orgId, connectionId, "trello");
+      try {
+        const { token } = await openCredentials<{ token: string }>(ctx, c);
+        const labels = await trello(ctx, token).listLabels(boardId);
+        return { labels: labels.map((l) => ({ id: l.id, name: l.name, color: l.color })) };
+      } catch (err) {
+        return failWith(ctx, c, "Trello", err);
+      }
+    },
+
+    async "trello.createLabel"({ orgId, connectionId, boardId, name, color }) {
+      const c = await loadConnection(ctx, orgId, connectionId, "trello");
+      try {
+        const { token } = await openCredentials<{ token: string }>(ctx, c);
+        const l = await trello(ctx, token).createLabel(boardId, name, color);
+        return { id: l.id, name: l.name ?? name, color: l.color ?? null };
+      } catch (err) {
+        return failWith(ctx, c, "Trello", err);
+      }
+    },
+
     // ---- Jira ----------------------------------------------------------------------------
     async "jira.complete"({ orgId, connectionId }) {
       const c = await loadConnection(ctx, orgId, connectionId, "jira");
@@ -184,6 +206,19 @@ export function createHandlers(ctx: Ctx): RpcHandlers {
         const accessToken = await jiraAccessToken(ctx, c);
         return {
           projects: await new JiraClient({ accessToken, cloudId, fetch: ctx.fetch }).listProjects(),
+        };
+      } catch (err) {
+        return failWith(ctx, c, "Jira", err);
+      }
+    },
+
+    async "jira.listLabels"({ orgId, connectionId, cloudId }) {
+      const c = await loadConnection(ctx, orgId, connectionId, "jira");
+      checkJiraSite(c, cloudId);
+      try {
+        const accessToken = await jiraAccessToken(ctx, c);
+        return {
+          labels: await new JiraClient({ accessToken, cloudId, fetch: ctx.fetch }).listLabels(),
         };
       } catch (err) {
         return failWith(ctx, c, "Jira", err);
