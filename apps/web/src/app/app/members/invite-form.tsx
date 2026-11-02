@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { authClient } from "@/lib/auth-client";
 
 export function InviteForm({ organizationId }: { organizationId: string }) {
@@ -47,15 +48,10 @@ export function InviteForm({ organizationId }: { organizationId: string }) {
         </div>
         <div>
           <Label htmlFor="invite-role">Role</Label>
-          <select
-            id="invite-role"
-            name="role"
-            defaultValue="member"
-            className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm"
-          >
+          <Select id="invite-role" name="role" defaultValue="member">
             <option value="member">Member</option>
             <option value="admin">Admin</option>
-          </select>
+          </Select>
         </div>
         <Button type="submit" disabled={busy}>
           {busy ? "Sending…" : "Send invitation"}
