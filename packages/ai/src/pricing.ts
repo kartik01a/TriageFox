@@ -6,6 +6,17 @@ export const PRICES: Record<string, { input: number; cachedInput: number; output
   "gpt-6.1-sol": { input: 2.0, cachedInput: 0.1, output: 10.0 },
 };
 
+/** USD per minute of audio for speech to text (OpenAI list prices, Nov 2026). */
+export const TRANSCRIBE_PRICES_PER_MINUTE: Record<string, number> = {
+  "gpt-transcribe": 0.0045,
+  "gpt-4o-mini-transcribe": 0.003,
+};
+
+/** Cost of transcribing `seconds` of audio. Unknown models cost 0 (and should be added above). */
+export function transcribeCostUsd(model: string, seconds: number): number {
+  return ((TRANSCRIBE_PRICES_PER_MINUTE[model] ?? 0) * Math.max(0, seconds)) / 60;
+}
+
 export const addUsage = (a: Usage, b: Usage): Usage => ({
   inputTokens: a.inputTokens + b.inputTokens,
   cachedInputTokens: a.cachedInputTokens + b.cachedInputTokens,

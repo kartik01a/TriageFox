@@ -488,3 +488,58 @@ describe("embeddings", () => {
     await expect(quota.embed("m", ["a"])).rejects.toMatchObject({ kind: "no_quota" });
   });
 });
+
+describe("speech to text (ADR 0014)", () => {
+  it("OpenAiProvider.transcribe sends the audio as a form and returns text and billed seconds", async () => {
+    const { OpenAiProvider } = await import("./openai");
+    let sent: { url: string; form: FormData; auth: string | null } | undefined;
+    const p = new OpenAiProvider({
+      apiKey: "k",
+      fetch: (async (url: string, init: RequestInit) => {
+        sent = {
+          url,
+          form: init.body as FormData,
+          auth: new Headers(init.headers).get("authorization"),
+        };
+        return new Response(
+          JSON.stringify({
+            text: "The save button crashes",
+            usage: { type: "duration", seconds: 49 },
+          }),
+        );
+      }) as unknown as typeof fetch,
+    });
+    const r = await p.transcribe({
+      model: "gpt-transcribe",
+      audio: new Blob([new Uint8Array([1, 2, 3])], { type: "audio/webm" }),
+      fileName: "voice.webm",
+    });
+    expect(r).toEqual({ text: "The save button crashes", seconds: 49 });
+    expect(sent?.url).toBe("https://api.openai.com/v1/audio/transcriptions");
+    expect(sent?.auth).toBe("Bearer k");
+    expect(sent?.form.get("model")).toBe("gpt-transcribe");
+    expect((sent?.form.get("file") as File | undefined)?.name).toBe("voice.webm");
+
+    const quota = new OpenAiProvider({
+      apiKey: "k",
+      fetch: (async () =>
+        new Response(JSON.stringify({ error: { code: "insufficient_quota" } }), {
+          status: 429,
+        })) as typeof fetch,
+    });
+    await expect(
+      quota.transcribe({ model: "m", audio: new Blob([]), fileName: "a.webm" }),
+    ).rejects.toMatchObject({ kind: "no_quota" });
+  });
+
+  it("prices audio per minute; unknown models cost nothing", async () => {
+    const { transcribeCostUsd } = await import("./pricing");
+    expect(transcribeCostUsd("gpt-transcribe", 120)).toBeCloseTo(0.009);
+    expect(transcribeCostUsd("other", 120)).toBe(0);
+  });
+
+  it("the prompt tells the model how transcribed voice messages look", async () => {
+    const { SYSTEM_PROMPT } = await import("./prompt");
+    expect(SYSTEM_PROMPT).toContain("(voice message, transcribed)");
+  });
+});

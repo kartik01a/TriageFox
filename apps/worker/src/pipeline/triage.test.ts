@@ -23,6 +23,7 @@ const config = {
   AI_MODEL_DEFAULT: "gpt-6-luna",
   AI_MODEL_ESCALATION: "gpt-6.1-sol",
   AI_MODEL_EMBEDDING: "e",
+  AI_MODEL_TRANSCRIBE: "gpt-transcribe",
   OPENAI_API_KEY: "sk-platform-key" as string | undefined,
   AI_MAX_RUNS_PER_THREAD_PER_MONTH: 2,
   AI_PLATFORM_DAILY_USD_PER_ORG: 1,
@@ -825,6 +826,110 @@ describe("plan and trial limits (hosted)", () => {
     await owner.$client.unsafe("delete from subscriptions where org_id = $1", [org]);
     await owner.$client.unsafe("delete from connections where org_id = $1", [org]);
     await owner.$client.unsafe("delete from plans where id = $1", [plan?.id]);
+  });
+});
+
+describe("voice messages (ADR 0014)", () => {
+  const voiceChat = (): CrispConversation => ({
+    ...conversation,
+    messages: [
+      {
+        fingerprint: "v1",
+        timestamp: Date.now() - 6000,
+        role: "customer",
+        kind: "file",
+        file: {
+          name: "voice-message.webm",
+          url: "https://storage.crisp.chat/users/upload/v1.webm",
+          mime: "audio/webm",
+          durationSec: 49,
+        },
+      },
+      {
+        fingerprint: "t1",
+        timestamp: Date.now() - 5000,
+        role: "customer",
+        kind: "text",
+        text: "Hi, I sent a voice message, please check.",
+      },
+    ],
+  });
+  const audioHost = {
+    resolve: async () => ["93.184.216.34"],
+    fetch: (async () =>
+      new Response(new Uint8Array([1, 2, 3]), {
+        headers: { "content-type": "audio/webm" },
+      })) as unknown as typeof fetch,
+  };
+  function voiceProvider(transcribe: AiProvider["transcribe"]) {
+    const prompts: string[] = [];
+    const provider: AiProvider = {
+      async complete(req) {
+        prompts.push(req.text);
+        return {
+          json: { actions: [create] },
+          usage: { inputTokens: 1000, cachedInputTokens: 0, outputTokens: 200, reasoningTokens: 0 },
+          finishReason: "stop",
+        };
+      },
+      transcribe,
+    };
+    return { provider, prompts };
+  }
+  const run = (provider: AiProvider, i: TriageInput) =>
+    createTriage({
+      enqueueUpdate: async () => {},
+      enqueueDelivery: async () => {},
+      db,
+      config,
+      keyring,
+      log,
+      providerFor: () => provider,
+      download: audioHost,
+    })(i);
+  const activity = (threadId: string) =>
+    withOrg(db, orgId, (tx) =>
+      tx.select().from(schema.activityLog).where(eq(schema.activityLog.threadId, threadId)),
+    ).then((rows) => rows.map((r) => r.kind));
+
+  it("the AI reads what the customer said, and the transcription cost is counted", async () => {
+    const { provider, prompts } = voiceProvider(async ({ model, fileName }) => {
+      expect(model).toBe("gpt-transcribe");
+      expect(fileName).toBe("voice-message.webm");
+      return { text: "The export button crashes the app on Android.", seconds: 49 };
+    });
+    const i = await input(orgId, voiceChat());
+    await run(provider, i);
+    expect(prompts[0]).toContain(
+      "(voice message, transcribed) The export button crashes the app on Android.",
+    );
+    expect(await activity(i.thread.id)).toContain("voice_transcribed");
+    const [r] = await withOrg(db, orgId, (tx) =>
+      tx.select().from(schema.aiRuns).where(eq(schema.aiRuns.threadId, i.thread.id)),
+    );
+    // 49 seconds at $0.0045 a minute is about 3,675 micro-dollars on top of the model's cost.
+    expect(r?.costMicroUsd).toBeGreaterThanOrEqual(3675);
+  });
+
+  it("a failed transcription never stops the analysis; it is said in the activity log", async () => {
+    const { provider, prompts } = voiceProvider(async () => {
+      throw new AiError("unavailable", "down");
+    });
+    const i = await input(orgId, voiceChat());
+    await run(provider, i);
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).not.toContain("(voice message, transcribed)");
+    expect(await activity(i.thread.id)).toContain("voice_not_transcribed");
+  });
+
+  it("a rejected key pauses analysis like any other AI call", async () => {
+    const { provider, prompts } = voiceProvider(async () => {
+      throw new AiError("auth", "bad key");
+    });
+    const i = await input(orgId, voiceChat());
+    await expect(run(provider, i)).rejects.toBeInstanceOf(UnrecoverableError);
+    expect(prompts).toHaveLength(0);
+    expect(await activity(i.thread.id)).toContain("ai_key_problem");
   });
 });
 

@@ -9,6 +9,7 @@ import type { RpcOutput } from "@triagefox/rpc";
 import { RpcError } from "@triagefox/rpc";
 import { resolveAiKey } from "../pipeline/ai-key";
 import { toAiMessages } from "../pipeline/triage";
+import { transcribeVoiceNotes } from "../pipeline/voice";
 import type { Ctx } from "./context";
 
 const HOW_MANY = 10;
@@ -74,10 +75,16 @@ export async function dryRun(
       const firstCustomer = conversation.messages.find((m) => m.role === "customer" && m.text);
       if (!firstCustomer) continue; // nothing a customer wrote: the live pipeline skips these too
       analysed++;
+      const voice = await transcribeVoiceNotes({
+        conversation,
+        provider,
+        model: ctx.config.AI_MODEL_TRANSCRIBE,
+        log: ctx.log,
+      }).catch(() => ({ transcripts: new Map<string, string>() }));
       const out = await triage(
         provider,
         {
-          messages: toAiMessages(conversation),
+          messages: toAiMessages(conversation, voice.transcripts),
           state: conversation.state,
           workspace: { language: settings.language, timezone: settings.timezone, now: new Date() },
           existingIssues: [],

@@ -8,6 +8,7 @@ The AI step is the product: if it misjudges what is a ticket, users lose trust. 
 - Default: a small/cheap model. Escalate to a stronger model when the thread is long, has several images, or the small model's confidence is low.
   - Candidates (OpenAI pricing, Oct 2026, per 1M tokens input / cached / output): **`gpt-6-luna`** $0.10 / $0.01 / $0.50 as the default; **`gpt-6.1-sol`** $2.00 / $0.10 / $10.00 for escalation. Final choice is made by the evals in Phase 4. Check OpenAI's deprecation list first, since older `gpt-5-mini`/`gpt-5-nano` are marked deprecated.
 - Embeddings: `text-embedding-3-small` (1536 dims, $0.02 / 1M tokens) for duplicate search.
+- Speech to text: `gpt-transcribe` ($0.0045 / minute, `AI_MODEL_TRANSCRIBE`) turns customers' voice messages into text before the analysis; the AI sees it as "(voice message, transcribed) …". Never stored ([ADR 0014](decisions/0014-voice-message-transcription.md)).
 - Model names live in server config, never hard-coded and **never chosen by customers** (bring-your-own-key replaces the key only).
 - Keep the system prompt + rubric as a stable prefix so OpenAI's prompt caching applies (cached input is ~90% cheaper).
 - Cost guardrails: at most **10 evaluations per conversation per month**, plus a monthly AI-spend ceiling per workspace that pauses processing and alerts us.

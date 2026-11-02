@@ -45,4 +45,18 @@ export interface AiProvider {
   complete(req: CompletionRequest): Promise<CompletionResult>;
   /** Text embeddings (duplicate search). Optional: without it, duplicate detection is simply off. */
   embed?(model: string, texts: string[]): Promise<number[][]>;
+  /** Speech to text for voice messages. Optional: without it, voice messages are not transcribed. */
+  transcribe?(req: TranscribeRequest): Promise<TranscribeResult>;
+}
+
+export interface TranscribeRequest {
+  model: string;
+  audio: Blob;
+  fileName: string;
+}
+
+export interface TranscribeResult {
+  text: string;
+  /** Audio length the provider billed, when it says (for cost tracking). */
+  seconds?: number;
 }

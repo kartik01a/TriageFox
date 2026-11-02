@@ -19,6 +19,7 @@ const ai = {
   AI_MODEL_DEFAULT: z.string().default("gpt-6-luna"),
   AI_MODEL_ESCALATION: z.string().default("gpt-6.1-sol"),
   AI_MODEL_EMBEDDING: z.string().default("text-embedding-3-small"),
+  AI_MODEL_TRANSCRIBE: z.string().default("gpt-transcribe"),
 };
 
 const cryptoPublic = {

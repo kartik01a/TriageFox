@@ -17,6 +17,7 @@ One file per significant decision: `NNNN-short-name.md`. Don't edit an accepted 
 | [0011](0011-own-support-admin-inbox.md) | Own support via Crisp, triaged into an admin inbox | Accepted |
 | [0012](0012-seven-day-trial.md) | The free trial is 7 days | Accepted |
 | [0013](0013-customer-label-mapping.md) | Customers choose the labels on their tickets | Accepted |
+| [0014](0014-voice-message-transcription.md) | Voice messages are turned into text for the AI | Accepted |
 
 ## Template
 

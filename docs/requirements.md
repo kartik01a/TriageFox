@@ -88,7 +88,7 @@ The names and colours above are the **default labels**. Each team can choose its
 
 ## 13. Attachments
 - **Always** included, with no setting, because screenshots are critical for developers. Every file the customer sends (screenshots, documents, **voice messages**, videos) goes on the ticket, even when the AI thinks a picture doesn't show the bug. When one chat produces several tickets, the AI's choice decides which ticket each file goes on; files it matched to none go on all of them. Operator and internal-note files are attached only when the AI picks them.
-- The AI does not listen to voice messages (no transcription yet); they are attached for the developer to play.
+- Voice messages are also turned into text for the AI (OpenAI speech to text, never stored), so a chat that is only a voice note can still become a ticket ([ADR 0014](decisions/0014-voice-message-transcription.md)).
 - Files are streamed from Crisp and uploaded **directly** into Trello or Jira. We store nothing, so there's no extra cost. Only if a file is too large or the upload fails do we link Crisp's own file URL instead.
 
 ## 14. Timeline & budget

@@ -9,7 +9,7 @@ import {
   type TriageMessage,
   type TriageResult,
 } from "@triagefox/ai";
-import { CRISP_FILE_HOSTS } from "@triagefox/connectors";
+import { CRISP_FILE_HOSTS, type SafeDownloadOptions } from "@triagefox/connectors";
 import { openSecret, type PrivateKeyring, sealSecret } from "@triagefox/crypto";
 import { and, eq, gte, inArray, schema, sql, withOrg } from "@triagefox/db";
 import type { DeliverPayload, UpdatePayload } from "@triagefox/pipeline";
@@ -22,6 +22,7 @@ import { applyResult } from "./apply";
 import type { PipelineLogger, Triage, TriageInput } from "./deps";
 import { customerText, embedIssues, findDuplicateCandidates } from "./duplicates";
 import { recordSupportItems } from "./support";
+import { transcribeVoiceNotes, type VoiceResult } from "./voice";
 
 export interface TriageDeps {
   db: Parameters<typeof withOrg>[0];
@@ -30,6 +31,7 @@ export interface TriageDeps {
     | "AI_MODEL_DEFAULT"
     | "AI_MODEL_ESCALATION"
     | "AI_MODEL_EMBEDDING"
+    | "AI_MODEL_TRANSCRIBE"
     | "OPENAI_API_KEY"
     | "AI_MAX_RUNS_PER_THREAD_PER_MONTH"
     | "AI_PLATFORM_DAILY_USD_PER_ORG"
@@ -46,20 +48,30 @@ export interface TriageDeps {
   notifier?: Notifier;
   /** Tests inject a fake model here. */
   providerFor?: (apiKey: string) => AiProvider;
+  /** Tests inject the voice-message file host / resolver here. */
+  download?: Partial<SafeDownloadOptions>;
   now?: () => Date;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Crisp message -> what the AI sees. Files are only shown when they live on Crisp's own storage host. */
-export function toAiMessages(conversation: TriageInput["conversation"]): TriageMessage[] {
+/**
+ * Crisp message -> what the AI sees. Files are only shown when they live on Crisp's own storage host.
+ * A transcribed voice message (ADR 0014) keeps its attachment and gets the transcript as its text.
+ */
+export function toAiMessages(
+  conversation: TriageInput["conversation"],
+  transcripts: Map<string, string> = new Map(),
+): TriageMessage[] {
   return conversation.messages.map((m) => {
     const base = { id: m.fingerprint, role: m.role, at: m.timestamp };
     if (m.kind === "text") return { ...base, text: m.text };
     const file = m.file;
+    const transcript = transcripts.get(m.fingerprint);
     if (file && isCrispFileUrl(file.url))
       return {
         ...base,
+        ...(transcript ? { text: `(voice message, transcribed) ${transcript}` } : {}),
         attachment: { id: m.fingerprint, name: file.name, mime: file.mime, url: file.url },
       };
     return { ...base, text: `[file not shown: ${file?.name ?? "unknown"}]` };
@@ -213,8 +225,55 @@ export function createTriage(deps: TriageDeps): Triage {
 
     const provider =
       deps.providerFor?.(resolved.key) ?? new OpenAiProvider({ apiKey: resolved.key });
+    const onAiError = async (err: unknown): Promise<never> => {
+      if (err instanceof AiError && (err.kind === "auth" || err.kind === "no_quota")) {
+        const whose =
+          resolved.source === "byok"
+            ? "Your OpenAI key was rejected or is out of credit"
+            : "The platform AI key was rejected";
+        await log(input, "ai_key_problem", `${whose}; analysis is paused until it is fixed.`);
+        if (resolved.source === "platform")
+          await deps.notifier?.alert({
+            subject: "The platform OpenAI key was rejected or is out of credit",
+            text: "Every workspace using TriageFox AI is paused until this is fixed. Check the OpenAI account (key and billing).",
+            dedupeKey: "platform-openai-key",
+            dedupeSeconds: 1800,
+          });
+        throw new UnrecoverableError(`ai_${err.kind}`);
+      }
+      throw err; // rate limits, outages and bad output: retried with backoff
+    };
+
+    // Voice messages become text the AI can read (ADR 0014). Never stored.
+    let voice: VoiceResult;
+    try {
+      voice = await transcribeVoiceNotes({
+        conversation,
+        provider,
+        model: deps.config.AI_MODEL_TRANSCRIBE,
+        log: deps.log,
+        download: deps.download,
+      });
+    } catch (err) {
+      return await onAiError(err);
+    }
+    if (voice.transcripts.size > 0)
+      await log(
+        input,
+        "voice_transcribed",
+        voice.transcripts.size === 1
+          ? "A voice message was turned into text for the AI."
+          : `${voice.transcripts.size} voice messages were turned into text for the AI.`,
+      );
+    if (voice.skipped > 0)
+      await log(
+        input,
+        "voice_not_transcribed",
+        "A voice message could not be turned into text (too long or unavailable). It is still attached to the ticket.",
+      );
+
     const aiInput: AiInput = {
-      messages: toAiMessages(conversation),
+      messages: toAiMessages(conversation, voice.transcripts),
       state: conversation.state,
       workspace: {
         language: automation.settings.language,
@@ -264,22 +323,7 @@ export function createTriage(deps: TriageDeps): Triage {
         reasoning: { default: "low", escalation: "low" },
       });
     } catch (err) {
-      if (err instanceof AiError && (err.kind === "auth" || err.kind === "no_quota")) {
-        const whose =
-          resolved.source === "byok"
-            ? "Your OpenAI key was rejected or is out of credit"
-            : "The platform AI key was rejected";
-        await log(input, "ai_key_problem", `${whose}; analysis is paused until it is fixed.`);
-        if (resolved.source === "platform")
-          await deps.notifier?.alert({
-            subject: "The platform OpenAI key was rejected or is out of credit",
-            text: "Every workspace using TriageFox AI is paused until this is fixed. Check the OpenAI account (key and billing).",
-            dedupeKey: "platform-openai-key",
-            dedupeSeconds: 1800,
-          });
-        throw new UnrecoverableError(`ai_${err.kind}`);
-      }
-      throw err; // rate limits, outages and bad output: retried with backoff
+      return await onAiError(err);
     }
 
     const runId = crypto.randomUUID();
@@ -308,7 +352,7 @@ export function createTriage(deps: TriageDeps): Triage {
         keySource: resolved.source,
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens,
-        costMicroUsd: Math.round(result.costUsd * 1e6),
+        costMicroUsd: Math.round((result.costUsd + voice.costUsd) * 1e6),
         decision: summariseDecision(result.actions),
         rawOutputSealed,
       }),
@@ -336,7 +380,7 @@ export function createTriage(deps: TriageDeps): Triage {
         periodStart: entitlement.periodStart,
         trialing: entitlement.trialing,
         usingPlatformKey: resolved.source === "platform",
-        costMicroUsd: Math.round(result.costUsd * 1e6),
+        costMicroUsd: Math.round((result.costUsd + voice.costUsd) * 1e6),
         ticketsCreated: applied.created.length,
         limit: entitlement.decision.allowed ? entitlement.decision.limit : null,
       });
@@ -364,7 +408,7 @@ export function createTriage(deps: TriageDeps): Triage {
         model: result.model,
         escalated: result.escalated,
         actions: result.actions.map((a) => a.kind),
-        costUsd: result.costUsd,
+        costUsd: result.costUsd + voice.costUsd,
       },
       "conversation analysed",
     );

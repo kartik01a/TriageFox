@@ -141,7 +141,8 @@ export interface CrispMessage {
   role: "customer" | "operator" | "note";
   kind: "text" | "file";
   text?: string;
-  file?: { name: string; url: string; mime: string };
+  /** `durationSec`: length of a voice or video message, when Crisp says. */
+  file?: { name: string; url: string; mime: string; durationSec?: number };
 }
 
 export interface CrispConversation {
@@ -211,14 +212,21 @@ export function normalizeCrispMessage(m: RawMessage): CrispMessage | null {
     return typeof m.content === "string" ? { ...base, role, kind: "text", text: m.content } : null;
   }
   if (MESSAGE_FILE_TYPES.has(m.type)) {
-    const c = m.content as { name?: string; url?: string; type?: string } | undefined;
+    const c = m.content as
+      | { name?: string; url?: string; type?: string; duration?: number }
+      | undefined;
     if (!c || typeof c.url !== "string") return null;
     const mime = c.type ?? "application/octet-stream";
     return {
       ...base,
       role,
       kind: "file",
-      file: { name: c.name || defaultFileName(m.type, mime, m.timestamp), url: c.url, mime },
+      file: {
+        name: c.name || defaultFileName(m.type, mime, m.timestamp),
+        url: c.url,
+        mime,
+        ...(typeof c.duration === "number" ? { durationSec: c.duration } : {}),
+      },
     };
   }
   return null; // events, carousels, pickers ...

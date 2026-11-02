@@ -3,6 +3,8 @@ import {
   type AiProvider,
   type CompletionRequest,
   type CompletionResult,
+  type TranscribeRequest,
+  type TranscribeResult,
 } from "./provider";
 
 interface ChatResponse {
@@ -66,6 +68,50 @@ export class OpenAiProvider implements AiProvider {
     if (data.length !== texts.length)
       throw new AiError("bad_output", "Unexpected embeddings answer.");
     return data.map((d) => d.embedding);
+  }
+
+  async transcribe(req: TranscribeRequest): Promise<TranscribeResult> {
+    const f = this.opts.fetch ?? fetch;
+    const form = new FormData();
+    form.append("file", req.audio, req.fileName);
+    form.append("model", req.model);
+    form.append("response_format", "json");
+    let res: Response;
+    try {
+      res = await f(`${this.opts.baseUrl ?? "https://api.openai.com/v1"}/audio/transcriptions`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${this.opts.apiKey}` },
+        body: form,
+        signal: AbortSignal.timeout(this.opts.timeoutMs ?? 120_000),
+      });
+    } catch {
+      throw new AiError("unavailable", "OpenAI could not be reached.");
+    }
+    const json = (await res.json().catch(() => ({}))) as {
+      text?: string;
+      usage?: { type?: string; seconds?: number };
+      error?: { code?: string };
+    };
+    if (res.status === 401 || res.status === 403)
+      throw new AiError("auth", "OpenAI rejected the API key.");
+    if (res.status === 429)
+      throw new AiError(
+        json.error?.code === "insufficient_quota" ? "no_quota" : "rate_limited",
+        "OpenAI is limiting requests.",
+      );
+    if (!res.ok)
+      throw new AiError(
+        res.status >= 500 ? "unavailable" : "invalid_request",
+        "OpenAI could not transcribe the voice message.",
+      );
+    if (typeof json.text !== "string")
+      throw new AiError("bad_output", "Unexpected transcription answer.");
+    return {
+      text: json.text,
+      ...(json.usage?.type === "duration" && typeof json.usage.seconds === "number"
+        ? { seconds: json.usage.seconds }
+        : {}),
+    };
   }
 
   async complete(req: CompletionRequest): Promise<CompletionResult> {
