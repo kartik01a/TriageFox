@@ -100,7 +100,7 @@ Enforced with OpenAI strict structured outputs, then re-validated with zod.
 
 Post-validation:
 - `issueId` not in the supplied set → drop action, log.
-- `relevantAttachmentIds` filtered to real attachments.
+- `relevantAttachmentIds` filtered to real attachments. They only decide **which ticket** a file goes on when one chat produces several; every customer file is attached regardless (`apps/worker/src/pipeline/files.ts`, requirements §13).
 - Strip emails/phone numbers from `title`/`summary`.
 
 ## Ticket body template

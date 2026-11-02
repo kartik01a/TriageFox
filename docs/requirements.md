@@ -85,7 +85,8 @@ Set by a fixed rubric, not gut feel ([ai-triage.md](ai-triage.md#priority-rubric
 - Hosting: **one cheap server running Docker Compose**: Oracle Cloud Always Free or a ~₹450/month VPS ([decisions/0007](decisions/0007-hosting-single-vps.md)). The same Compose file is the self-host package.
 
 ## 13. Attachments
-- **Always** included, with no setting, because screenshots are critical for developers.
+- **Always** included, with no setting, because screenshots are critical for developers. Every file the customer sends (screenshots, documents, **voice messages**, videos) goes on the ticket, even when the AI thinks a picture doesn't show the bug. When one chat produces several tickets, the AI's choice decides which ticket each file goes on; files it matched to none go on all of them. Operator and internal-note files are attached only when the AI picks them.
+- The AI does not listen to voice messages (no transcription yet); they are attached for the developer to play.
 - Files are streamed from Crisp and uploaded **directly** into Trello or Jira. We store nothing, so there's no extra cost. Only if a file is too large or the upload fails do we link Crisp's own file URL instead.
 
 ## 14. Timeline & budget

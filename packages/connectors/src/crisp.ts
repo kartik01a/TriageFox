@@ -173,6 +173,28 @@ const MESSAGE_FILE_TYPES = new Set(["file", "picture", "animation", "audio", "vi
 const MAX_MESSAGES = 2000;
 const MAX_MESSAGE_PAGES = 100;
 
+const EXTENSIONS: Record<string, string> = {
+  "audio/webm": "webm",
+  "audio/ogg": "ogg",
+  "audio/mpeg": "mp3",
+  "audio/mp4": "m4a",
+  "audio/wav": "wav",
+  "video/webm": "webm",
+  "video/mp4": "mp4",
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
+
+/** Voice notes and pictures often arrive without a name; give them a readable one with an extension. */
+function defaultFileName(type: string, mime: string, timestamp: number) {
+  const ext = EXTENSIONS[mime.split(";")[0]?.trim() ?? ""];
+  const stamp = new Date(timestamp).toISOString().slice(0, 16).replace("T", "-").replace(":", "");
+  const base = type === "audio" ? "voice-message" : type === "picture" ? "image" : "file";
+  return ext ? `${base}-${stamp}.${ext}` : `${base}-${stamp}`;
+}
+
 export function normalizeCrispMessage(m: RawMessage): CrispMessage | null {
   if (m.fingerprint == null || typeof m.timestamp !== "number" || !m.type) return null;
   const base = { fingerprint: String(m.fingerprint), timestamp: m.timestamp };
@@ -191,11 +213,12 @@ export function normalizeCrispMessage(m: RawMessage): CrispMessage | null {
   if (MESSAGE_FILE_TYPES.has(m.type)) {
     const c = m.content as { name?: string; url?: string; type?: string } | undefined;
     if (!c || typeof c.url !== "string") return null;
+    const mime = c.type ?? "application/octet-stream";
     return {
       ...base,
       role,
       kind: "file",
-      file: { name: c.name ?? "file", url: c.url, mime: c.type ?? "application/octet-stream" },
+      file: { name: c.name || defaultFileName(m.type, mime, m.timestamp), url: c.url, mime },
     };
   }
   return null; // events, carousels, pickers ...

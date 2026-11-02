@@ -264,6 +264,44 @@ describe("normalizeCrispMessage", () => {
   });
 });
 
+describe("voice messages and unnamed files", () => {
+  it("keeps a customer's voice note as a file with a readable name and extension", () => {
+    const voice = normalizeCrispMessage({
+      fingerprint: 7,
+      timestamp: Date.UTC(2026, 10, 2, 9, 5),
+      type: "audio",
+      from: "user",
+      content: { url: "https://storage.crisp.chat/v.webm", type: "audio/webm", duration: 4 },
+    });
+    expect(voice).toMatchObject({
+      role: "customer",
+      kind: "file",
+      file: { name: "voice-message-2026-11-02-0905.webm", mime: "audio/webm" },
+    });
+  });
+
+  it("names an unnamed picture and an unknown type without inventing an extension", () => {
+    expect(
+      normalizeCrispMessage({
+        fingerprint: 8,
+        timestamp: Date.UTC(2026, 10, 2, 9, 5),
+        type: "picture",
+        from: "user",
+        content: { url: "https://storage.crisp.chat/p", type: "image/png" },
+      })?.file?.name,
+    ).toBe("image-2026-11-02-0905.png");
+    expect(
+      normalizeCrispMessage({
+        fingerprint: 9,
+        timestamp: Date.UTC(2026, 10, 2, 9, 5),
+        type: "file",
+        from: "user",
+        content: { url: "https://storage.crisp.chat/f", type: "application/x-thing" },
+      })?.file?.name,
+    ).toBe("file-2026-11-02-0905");
+  });
+});
+
 describe("fetchConversation", () => {
   // 45 messages, Crisp returns the newest 20 per page and `timestamp_before` pages backwards.
   const all = Array.from({ length: 45 }, (_, i) => ({

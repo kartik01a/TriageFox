@@ -6,6 +6,7 @@ import { and, eq, ne, schema, withOrg } from "@triagefox/db";
 import type { DeliverPayload, UpdatePayload } from "@triagefox/pipeline";
 import type { Priority } from "@triagefox/shared";
 import type { TriageInput } from "./deps";
+import { planTicketFiles } from "./files";
 
 type Entry = { kind: string; message: string; refs: Record<string, unknown> };
 
@@ -57,6 +58,12 @@ export async function applyResult(args: {
       extra: { attachmentIds: string[]; newPriority: number | null; newDueDate: string | null },
     ) => {
       if (issue.status !== "active") return; // nothing exists in the trackers yet
+      if (issue.originThreadId === thread.id && extra.attachmentIds.length > 0)
+        // Remember them, so a later ticket from this chat does not attach the same files again.
+        await tx
+          .update(schema.issues)
+          .set({ attachmentIds: [...new Set([...issue.attachmentIds, ...extra.attachmentIds])] })
+          .where(eq(schema.issues.id, issue.id));
       const id = crypto.randomUUID();
       const contentSealed = await sealSecret(
         JSON.stringify({ text }),
@@ -90,7 +97,19 @@ export async function applyResult(args: {
       );
     };
 
-    for (const a of result.actions) {
+    const threadIssues = await tx
+      .select({ attachmentIds: schema.issues.attachmentIds })
+      .from(schema.issues)
+      .where(eq(schema.issues.originThreadId, thread.id));
+    const files = planTicketFiles({
+      messages: conversation.messages,
+      cursor: thread.lastProcessedMessageId,
+      actions: result.actions,
+      alreadyOnThreadTickets: threadIssues.flatMap((i) => i.attachmentIds),
+    });
+
+    for (const [i, a] of result.actions.entries()) {
+      const actionFiles = files[i] ?? [];
       if (a.kind === "create" && a.type && a.priority) {
         const [issue] = await tx
           .insert(schema.issues)
@@ -115,7 +134,7 @@ export async function applyResult(args: {
             dueDate: a.dueDate,
             dueDateQuote: a.dueDateQuote,
             confidence: a.confidence,
-            attachmentIds: a.relevantAttachmentIds,
+            attachmentIds: actionFiles,
             status: a.needsReview ? "pending_review" : "active",
           })
           .returning({ id: schema.issues.id });
@@ -179,13 +198,13 @@ export async function applyResult(args: {
             })
             .where(eq(schema.issues.id, issue.id));
           await queueUpdate(next, "update", a.summary, {
-            attachmentIds: a.relevantAttachmentIds,
+            attachmentIds: actionFiles,
             newPriority,
             newDueDate,
           });
         } else {
           await queueUpdate(issue, "update", a.summary, {
-            attachmentIds: a.relevantAttachmentIds,
+            attachmentIds: actionFiles,
             newPriority: null,
             newDueDate: null,
           });
@@ -226,7 +245,7 @@ export async function applyResult(args: {
           "duplicate",
           a.summary || a.reason || "Another customer reported the same problem.",
           {
-            attachmentIds: a.relevantAttachmentIds,
+            attachmentIds: actionFiles,
             newPriority: null,
             newDueDate: null,
           },

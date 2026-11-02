@@ -380,6 +380,40 @@ describe("creating issues from the AI's answer", () => {
     expect(queued).toEqual([{ orgId, issueId: issue?.id, destinationId: dest }]);
   });
 
+  it("attaches the customer's screenshot and voice note even when the AI picked neither", async () => {
+    const queued: unknown[] = [];
+    const now = Date.now();
+    const withFiles: CrispConversation = {
+      ...conversation,
+      messages: [
+        ...conversation.messages,
+        {
+          fingerprint: "2",
+          timestamp: now - 4000,
+          role: "customer",
+          kind: "file",
+          file: { name: "shot.png", url: "https://storage.crisp.chat/shot.png", mime: "image/png" },
+        },
+        {
+          fingerprint: "3",
+          timestamp: now - 3000,
+          role: "customer",
+          kind: "file",
+          file: {
+            name: "voice-message.webm",
+            url: "https://storage.crisp.chat/v.webm",
+            mime: "audio/webm",
+          },
+        },
+      ],
+    };
+    const i = await input(orgId, withFiles);
+    await withDestination(i);
+    await run(queued, [{ ...create, relevantAttachmentIds: [] }])(i);
+    const [issue] = await issuesOf(i.thread.id);
+    expect(issue?.attachmentIds).toEqual(["2", "3"]);
+  });
+
   it("keeps low-confidence tickets for review and does not send them", async () => {
     const queued: unknown[] = [];
     const i = await input();
