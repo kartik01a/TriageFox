@@ -26,6 +26,7 @@ Running your own copy? The whole install is in [../self-hosting.md](../self-host
    ```
    Crisp appends `website_id`, `token` and `locale` to that URL. The page verifies the token against Crisp's API through the worker, then offers *Continue in TriageFox*, which opens a normal tab where the signed-in owner/admin confirms the link.
    *Status: our side is implemented and tested end to end with the real Crisp API (token fetched from Crisp, page opened with it). Placing the widget in Marketplace is a manual step; confirm the exact Marketplace labels when you do it and correct this guide.*
+   *Before the plugin is activated:* Crisp only shows the widget for an **activated** plugin, and activation needs a production token (Crisp's review). For local testing, run `pnpm --filter @triagefox/worker dev:crisp-link` (uses `CRISP_WEBSITE_ID` and the development token). It prints the exact page address Crisp would open; open it in the browser where you are signed in and continue as above. The address works like a password: don't share it. Development only.
 5. **Hooks**: set the **Development Web Hook** URL to `<public URL>/api/webhooks/crisp` (locally your ngrok static domain; change any older `/crisp` URL) and put the signing secret Crisp shows in `CRISP_HOOK_SECRET` (web app). Subscribe to `message:send`, `message:received` and `session:set_state`.
 6. **Production**: "Ask a production token" and publish for review before customers can install (launch task).
 
