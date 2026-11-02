@@ -52,19 +52,26 @@ export function DestinationToggle({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  // Shows the new state at once; goes back if saving fails.
+  const [on, setOn] = useState(enabled);
   return (
     <label className="flex items-center gap-2 text-sm">
       <input
         type="checkbox"
         className="size-4 accent-primary"
-        checked={enabled}
+        checked={on}
         disabled={busy}
         aria-label={`Send tickets to ${label}`}
         onChange={async (e) => {
+          const next = e.target.checked;
+          setOn(next);
           setBusy(true);
-          await call(`/api/automation/${automationId}/destinations/${destinationId}`, "PATCH", {
-            enabled: e.target.checked,
-          });
+          const r = await call(
+            `/api/automation/${automationId}/destinations/${destinationId}`,
+            "PATCH",
+            { enabled: next },
+          );
+          if (!r.ok) setOn(!next);
           setBusy(false);
           router.refresh();
         }}

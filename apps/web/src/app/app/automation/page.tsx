@@ -54,6 +54,14 @@ export default async function AutomationPage() {
         {canManage && <EnableButton id={automation.id} enabled={automation.enabled} />}
       </div>
 
+      {automation.enabled && destinations.length > 0 && destinations.every((d) => !d.enabled) && (
+        <p className="rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">
+          No tool is receiving tickets. Chats are still read, but new tickets are not created in
+          Trello or Jira, and they are not sent later. Tick “Send tickets here” on at least one
+          below.
+        </p>
+      )}
+
       <section aria-labelledby="flow" className="space-y-3">
         <h2 id="flow" className="font-semibold">
           Where chats go

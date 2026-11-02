@@ -61,7 +61,7 @@
 | Screenshot over 10 MB | Added to the ticket as a link instead of an upload |
 | Screenshot on a host other than Crisp storage, or at a private address | Dropped, never downloaded or linked |
 | Ticket confidence below the automation's threshold | Saved as `pending_review`, not sent (review queue in Phase 7) |
-| Ticket created but nowhere to send it | Activity entry "no Trello or Jira destination is set up yet" |
+| Ticket created but nowhere to send it (none set up, or every destination switched off on the Automation page) | Activity entry "not sent: no Trello or Jira destination is set up or switched on"; the Automation page warns while every destination is off. Not sent later. |
 | Follow-up arrives before the ticket exists in the tracker | The update job retries with growing delays until the ticket exists (8 attempts), then is skipped and logged |
 | Same follow-up job runs twice | `applied_to` records each destination; the comment is added once |
 | Someone edited the ticket description | Description and footer left alone; comments, labels and priority still updated; logged |

@@ -141,6 +141,20 @@ test("turning the automation on and off", async () => {
   await expect(page.getByText("Paused. Nothing is created")).toBeVisible();
 });
 
+test("switching off every destination is allowed, with a clear warning", async () => {
+  await page.goto("/app/automation");
+  await page.getByRole("button", { name: "Turn on automation" }).click();
+  await expect(page.getByText("On. New chats are read")).toBeVisible();
+  const warning = page.getByText("No tool is receiving tickets.");
+  await expect(warning).toHaveCount(0);
+  await page.getByLabel("Send tickets to Trello").uncheck();
+  await expect(warning).toBeVisible();
+  await page.getByLabel("Send tickets to Trello").check();
+  await expect(warning).toHaveCount(0);
+  await page.getByRole("button", { name: "Pause automation" }).click();
+  await expect(page.getByText("Paused. Nothing is created")).toBeVisible();
+});
+
 test("enabling needs a working destination", async () => {
   await db()
     .update(schema.automationDestinations)
@@ -285,7 +299,7 @@ test("security page: sessions, audit log, and the workspace 2FA rule needs 2FA f
   await page.goto("/app/settings/security");
   await expect(page.getByRole("heading", { name: "Two-factor sign-in" })).toBeVisible();
   await expect(page.getByText("This device")).toBeVisible();
-  await expect(page.getByText(/turned the automation on/i)).toBeVisible();
+  await expect(page.getByText(/turned the automation on/i).first()).toBeVisible();
 
   await page.getByLabel(/Require two-factor sign-in for everyone/).click();
   await expect(page.getByText("Turn on two-factor for your own account first.")).toBeVisible();
