@@ -4,7 +4,13 @@ import { CrispPluginClient } from "@triagefox/connectors";
 import { eq, schema } from "@triagefox/db";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
-import { closeOwnerDb, ownerDb } from "./db";
+import {
+  closeOwnerDb,
+  crispWebsiteInRealUse,
+  ownerDb,
+  REAL_USE_REASON,
+  removeTestCrispLinks,
+} from "./db";
 import { newUser, signUpWithWorkspace } from "./helpers";
 
 const env = process.env;
@@ -227,6 +233,7 @@ test("live Crisp: a hook makes the worker fetch the real conversation, and recon
   request,
 }) => {
   test.skip(!hasCrisp, "no Crisp plugin credentials");
+  test.skip(await crispWebsiteInRealUse(env.CRISP_WEBSITE_ID), REAL_USE_REASON);
   test.setTimeout(120_000);
   const websiteId = env.CRISP_WEBSITE_ID as string;
   const crisp = new CrispPluginClient({
@@ -263,7 +270,7 @@ test("live Crisp: a hook makes the worker fetch the real conversation, and recon
   );
   if (!viaHook || !viaReconcile) return;
 
-  await ownerDb().delete(schema.connections).where(eq(schema.connections.provider, "crisp")); // one workspace per website
+  await removeTestCrispLinks(); // one workspace per website (test workspaces only)
   await seedWebsite(websiteId, 1);
 
   // (1) A real hook for a real conversation.

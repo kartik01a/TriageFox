@@ -4,7 +4,13 @@ import { expect, type Page, test } from "@playwright/test";
 import { CrispPluginClient, refreshJiraTokens } from "@triagefox/connectors";
 import { keyringFromEnv, openSecret, type PrivateKeyring, sealSecret } from "@triagefox/crypto";
 import { and, eq, schema } from "@triagefox/db";
-import { closeOwnerDb, ownerDb } from "./db";
+import {
+  closeOwnerDb,
+  crispWebsiteInRealUse,
+  ownerDb,
+  REAL_USE_REASON,
+  removeTestCrispLinks,
+} from "./db";
 import { BASE, inviteMember, newUser, signUp, signUpWithWorkspace } from "./helpers";
 
 const env = process.env;
@@ -57,11 +63,8 @@ test.beforeAll(async ({ browser }) => {
     .where(eq(schema.organization.name, wsName));
   if (!org) throw new Error("workspace not found");
   orgId = org.id;
-  if (hasCrisp)
-    // a previous interrupted run must not leave the Crisp website linked
-    await ownerDb()
-      .delete(schema.connections)
-      .where(and(eq(schema.connections.provider, "crisp")));
+  // a previous interrupted run must not leave the Crisp website linked (test workspaces only)
+  if (hasCrisp) await removeTestCrispLinks();
 });
 
 test.afterAll(async () => {
@@ -390,6 +393,7 @@ test("Crisp (live): link a real website from inside the Crisp page, once only", 
   browser,
 }) => {
   test.skip(!hasCrisp, "no Crisp plugin credentials");
+  test.skip(await crispWebsiteInRealUse(env.CRISP_WEBSITE_ID), REAL_USE_REASON);
   const websiteId = env.CRISP_WEBSITE_ID as string;
   // Crisp gives the iframe page this per-website token; we read the same value from Crisp's API.
   const crisp = new CrispPluginClient({
