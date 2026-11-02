@@ -150,7 +150,11 @@ export default async function ConnectionsPage({
                           href={`/app/connections/${c.id}`}
                           className="text-sm font-medium text-primary hover:underline"
                         >
-                          {c.metadata.defaults ? "Change target" : "Choose target"}
+                          {c.metadata.defaults
+                            ? p.key === "trello"
+                              ? "Board, list & labels"
+                              : "Project, mappings & labels"
+                            : "Choose target"}
                         </Link>
                       )}
                       {c.status !== "active" && canManage && p.connectHref && p.enabled && (
