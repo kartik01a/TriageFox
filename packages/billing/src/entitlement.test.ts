@@ -136,6 +136,21 @@ describe("paid plans", () => {
       }),
     ).toMatchObject({ allowed: false, reason: "plan_ended" });
   });
+  it("a plan cancelled mid-period keeps working until the period ends, then stops on its own", () => {
+    const cancelled = { status: "active" as const, cancelAtPeriodEnd: true };
+    // Still inside the paid period: tickets keep coming.
+    expect(run({ subscription: sub(cancelled) })).toMatchObject({ allowed: true });
+    // Period over, even if the provider's "subscription ended" message was lost.
+    expect(
+      run({
+        subscription: sub({ ...cancelled, currentPeriodEnd: new Date(now.getTime() - 1000) }),
+      }),
+    ).toMatchObject({ allowed: false, reason: "plan_ended" });
+    // A plan that renews normally is not affected by its period end date.
+    expect(
+      run({ subscription: sub({ currentPeriodEnd: new Date(now.getTime() - 1000) }) }),
+    ).toMatchObject({ allowed: true });
+  });
   it("free access (comp) honours its end date and still has limits", () => {
     expect(
       run({ subscription: sub({ status: "comped", compUntil: null }), used: 300 }),

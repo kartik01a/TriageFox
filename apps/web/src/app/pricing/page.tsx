@@ -103,8 +103,8 @@ export default async function PricingPage({
           </p>
           <p>
             <strong>What happens at my limit?</strong> We warn you at 80%. At 100%, new
-            conversations wait until next month, or until you upgrade or add your own OpenAI key.
-            You are never charged extra.
+            conversations are not turned into tickets until next month, or until you upgrade or add
+            your own OpenAI key. You are never charged extra.
           </p>
           <p>
             <strong>Can I cancel?</strong> Any time. Your plan runs until the end of the period you

@@ -1,5 +1,7 @@
 import "server-only";
-import { DodoProvider } from "@triagefox/billing";
+import { billingSummary, DodoProvider } from "@triagefox/billing";
+import { eq, schema, withOrg } from "@triagefox/db";
+import { db } from "./db";
 import { env } from "./env";
 
 /** Billing exists only in the hosted version. */
@@ -33,3 +35,20 @@ export function formatPrice(minor: number, currency: string) {
   const text = Number.isInteger(v) ? v.toLocaleString("en-US") : v.toFixed(2);
   return `${SYMBOL[currency] ?? `${currency} `}${text}`;
 }
+
+/** The workspace's plan, usage and whether new chats are blocked (hosted only). */
+export async function workspaceBilling(orgId: string) {
+  const [key] = await withOrg(db(), orgId, (tx) =>
+    tx
+      .select({ hint: schema.aiSettings.keyHint })
+      .from(schema.aiSettings)
+      .where(eq(schema.aiSettings.orgId, orgId)),
+  );
+  return billingSummary(db(), orgId, !!key?.hint);
+}
+
+/** Blocks that only a plan fixes: the Overview page sends these workspaces to Billing. */
+export const NEEDS_A_PLAN = new Set(["trial_ended", "plan_ended", "no_plan"]);
+
+/** Said wherever a block is shown: chats that arrive meanwhile are not ticketed later. */
+export const BLOCKED_NOTE = "Chats that arrive until then won't become tickets.";

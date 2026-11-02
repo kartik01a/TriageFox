@@ -4,7 +4,13 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { IntervalAndCurrencySwitch, PlanCard } from "@/components/pricing-grid";
 import { Card } from "@/components/ui/card";
-import { billingEnabled, billingProvider, currencyFor } from "@/lib/billing";
+import {
+  BLOCKED_NOTE,
+  billingEnabled,
+  billingProvider,
+  currencyFor,
+  workspaceBilling,
+} from "@/lib/billing";
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
 import { ChooseButton, PortalButton, RedeemForm } from "./billing-actions";
@@ -25,7 +31,12 @@ const date = (d: Date | null) =>
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ interval?: string; currency?: string; checkout?: string }>;
+  searchParams: Promise<{
+    interval?: string;
+    currency?: string;
+    checkout?: string;
+    ended?: string;
+  }>;
 }) {
   const { workspace, role } = await requireWorkspace();
   if (!billingEnabled())
@@ -43,14 +54,8 @@ export default async function BillingPage({
   const interval = q.interval === "monthly" ? "monthly" : "yearly";
   const currency = currencyFor((await headers()).get("cf-ipcountry"), q.currency);
   const isOwner = role === "owner";
-  const [key] = await withOrg(db(), workspace.id, (tx) =>
-    tx
-      .select({ hint: schema.aiSettings.keyHint })
-      .from(schema.aiSettings)
-      .where(eq(schema.aiSettings.orgId, workspace.id)),
-  );
   const [summary, plans] = await Promise.all([
-    billingSummary(db(), workspace.id, !!key?.hint),
+    workspaceBilling(workspace.id),
     listPlans(db(), { publicOnly: true }),
   ]);
   const provider = billingProvider();
@@ -70,9 +75,20 @@ export default async function BillingPage({
         </p>
       )}
       {summary.blocked && (
-        <p className="rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">
-          {summary.blocked.message} New conversations are waiting.
-        </p>
+        <div
+          className="space-y-1 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger"
+          role="alert"
+        >
+          {q.ended && <p className="font-semibold">Choose a plan to keep creating tickets</p>}
+          <p>
+            {summary.blocked.message} {BLOCKED_NOTE}
+          </p>
+          {q.ended && (
+            <p className="text-muted-foreground">
+              Everything else (activity, connections, settings) stays open from the menu above.
+            </p>
+          )}
+        </div>
       )}
       {!isOwner && (
         <p className="rounded-lg bg-muted px-4 py-3 text-sm">

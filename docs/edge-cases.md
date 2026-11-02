@@ -84,8 +84,9 @@
 | Same payment webhook delivered twice | The provider's event id is stored once; the repeat does nothing |
 | Webhook for a workspace we cannot find | Answered 200 and logged (a retry would not help) |
 | Webhook with a bad signature or an old timestamp | Bare 401, nothing changes |
-| Payment fails | `past_due` with a grace period (admin setting, default 7 days), then new conversations wait; a success clears it |
-| Customer cancels | Access continues to the end of the paid period; then new conversations wait |
+| Payment fails | `past_due` with a grace period (admin setting, default 7 days), then new conversations are not ticketed (and not later); a success clears it |
+| Customer cancels | Access continues to the end of the paid period, even if the provider's "ended" message is lost (`cancelAtPeriodEnd` + period end in `evaluate`); then new conversations are not ticketed |
+| Trial or plan ended | Banner on every page with *Choose a plan*; the Overview page redirects to Billing; other pages stay open |
 | Conversation limit reached | New conversations wait until next period, or an upgrade, or the workspace's own key; follow-ups of counted conversations still work; never extra charges |
 | Platform trial AI budget used up | New trials without their own key are told to add one |
 | Price changed while people are subscribed | New plan version; subscribers keep theirs; the old version stays on sale until the new one is published |

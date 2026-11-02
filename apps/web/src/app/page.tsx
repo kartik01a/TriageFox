@@ -98,7 +98,7 @@ const faq = [
   },
   {
     q: "What happens at my limit?",
-    a: "You get a warning at 80%. At 100% new conversations wait until the next period, or until you upgrade or add your own key. You are never charged extra.",
+    a: "You get a warning at 80%. At 100% new conversations are not turned into tickets until the next period, or until you upgrade or add your own key. You are never charged extra.",
   },
   {
     q: "Is my data safe?",

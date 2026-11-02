@@ -15,6 +15,8 @@ export interface EntitlementSubscription {
   compUntil: Date | null;
   pastDueSince: Date | null;
   pausedByAdmin: boolean;
+  /** Cancelled, still running until `currentPeriodEnd`. */
+  cancelAtPeriodEnd?: boolean;
 }
 
 export type BlockReason =
@@ -85,6 +87,9 @@ export function evaluate(i: {
   } else {
     if (!plan) return block("no_plan", "Choose a plan to start analysing conversations.");
     if (s.status === "canceled" && (!s.currentPeriodEnd || now > s.currentPeriodEnd))
+      return block("plan_ended", "Your plan has ended. Choose a plan to continue.");
+    // A cancelled plan ends with its paid period even if the provider's "ended" message never arrives.
+    if (s.cancelAtPeriodEnd && s.currentPeriodEnd && now > s.currentPeriodEnd)
       return block("plan_ended", "Your plan has ended. Choose a plan to continue.");
     if (s.status === "comped" && s.compUntil && now > s.compUntil)
       return block("plan_ended", "Your complimentary access has ended. Choose a plan to continue.");

@@ -392,3 +392,31 @@ test("admin: the support inbox lists items, with identity shown honestly, and up
   await expect(admin.getByRole("article", { name: `Refund please ${slug}` })).toHaveCount(0);
   await db().delete(schema.supportItems).where(eq(schema.supportItems.sourceOrgId, orgId));
 });
+
+test("after the trial the home page leads to Billing, other pages stay open, and the gap is explained", async () => {
+  const ended = newUser("ended");
+  const p = await (await page.context().browser()?.newContext())?.newPage();
+  if (!p) throw new Error("no page");
+  await signUpWithWorkspace(p, ended, `Ended ${Date.now()}`);
+  const [u] = await db().select().from(schema.user).where(eq(schema.user.email, ended.email));
+  const [m] = await db()
+    .select()
+    .from(schema.member)
+    .where(eq(schema.member.userId, u?.id ?? ""));
+  await db()
+    .update(schema.subscriptions)
+    .set({ trialEndsAt: new Date(Date.now() - 60_000) })
+    .where(eq(schema.subscriptions.orgId, m?.organizationId ?? ""));
+
+  await p.goto("/app");
+  await expect(p).toHaveURL(/\/app\/billing\?ended=1/);
+  await expect(p.getByText("Choose a plan to keep creating tickets")).toBeVisible();
+  await expect(
+    p.getByText("Chats that arrive until then won't become tickets.").first(),
+  ).toBeVisible();
+  // Not locked: other pages open, with the banner and its button.
+  await p.goto("/app/activity");
+  await expect(p).toHaveURL(/\/app\/activity/);
+  await expect(p.getByRole("link", { name: "Choose a plan" })).toBeVisible();
+  await p.close();
+});

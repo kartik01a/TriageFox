@@ -95,8 +95,10 @@ export default async function TermsPage() {
           as GST or VAT) are added where required.
         </li>
         <li>
-          If you reach your plan's conversation limit, new conversations wait until the next period
-          or until you upgrade or add your own OpenAI key. We never charge for going over a limit.
+          If you reach your plan's conversation limit, or your trial or plan ends, new conversations
+          are not turned into tickets until the next period, an upgrade, or (for limits) adding your
+          own OpenAI key. Conversations from that gap are not processed later. We never charge for
+          going over a limit.
         </li>
         <li>
           You can use your own OpenAI key. Then OpenAI bills you directly for AI use, under OpenAI's

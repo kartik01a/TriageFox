@@ -7,7 +7,7 @@ import { StepUpProvider } from "@/components/app/step-up";
 import { CrispIdentity } from "@/components/crisp-identity";
 import { Wordmark } from "@/components/fox-logo";
 import { reviewCount } from "@/lib/app-data";
-import { billingEnabled } from "@/lib/billing";
+import { BLOCKED_NOTE, billingEnabled, workspaceBilling } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { resolveWorkspace } from "@/lib/workspace";
@@ -21,15 +21,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   let banner: { message: string; tone: "danger" | "warn" } | null = null;
   if (ctx && hosted) {
     try {
-      const [key] = await withOrg(db(), ctx.workspace.id, (tx) =>
-        tx
-          .select({ hint: schema.aiSettings.keyHint })
-          .from(schema.aiSettings)
-          .where(eq(schema.aiSettings.orgId, ctx.workspace.id)),
-      );
-      const s = await billingSummary(db(), ctx.workspace.id, !!key?.hint);
-      if (s.blocked)
-        banner = { message: `${s.blocked.message} New conversations are waiting.`, tone: "danger" };
+      const s = await workspaceBilling(ctx.workspace.id);
+      if (s.blocked) banner = { message: `${s.blocked.message} ${BLOCKED_NOTE}`, tone: "danger" };
       else if (s.percent !== null && s.percent >= 80)
         banner = {
           message: `You've used ${s.percent}% of this period's conversations.`,
@@ -72,7 +65,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         >
           {banner.message}{" "}
           <Link href="/app/billing" className="font-semibold underline">
-            Billing
+            {banner.tone === "danger" ? "Choose a plan" : "Billing"}
           </Link>
         </div>
       )}

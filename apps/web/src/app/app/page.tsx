@@ -1,11 +1,13 @@
 import { schema, withOrg } from "@triagefox/db";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { timeAgo } from "@/components/app/chips";
 import { StatusBadge } from "@/components/status-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { listActivity, monthStats, reviewCount } from "@/lib/app-data";
+import { billingEnabled, NEEDS_A_PLAN, workspaceBilling } from "@/lib/billing";
 import { cn } from "@/lib/cn";
 import { listConnections } from "@/lib/connections";
 import { db } from "@/lib/db";
@@ -18,6 +20,12 @@ const NAMES = { crisp: "Crisp", trello: "Trello", jira: "Jira" } as const;
 export default async function OverviewPage() {
   const { workspace } = await requireWorkspace();
   const orgId = workspace.id;
+  // Trial or plan over: the home page becomes the plan chooser. Every other page stays open.
+  if (billingEnabled()) {
+    const billing = await workspaceBilling(orgId).catch(() => null);
+    if (billing?.blocked && NEEDS_A_PLAN.has(billing.blocked.reason))
+      redirect("/app/billing?ended=1");
+  }
   const [stats, recent, connections, waiting, automations] = await Promise.all([
     monthStats(orgId),
     listActivity(orgId, { limit: 6 }),
