@@ -148,7 +148,11 @@ export default async function BillingPage({
           )}
         </div>
         <div>
-          <p className="text-sm text-muted-foreground">Conversations this period</p>
+          <p className="text-sm text-muted-foreground">
+            {summary.status === "trialing"
+              ? "Conversations in your trial"
+              : "Conversations this month"}
+          </p>
           <p className="text-xl font-semibold tabular-nums">
             {summary.used}
             {summary.limit !== null ? ` / ${summary.limit.toLocaleString("en-US")}` : " (no limit)"}
@@ -173,6 +177,12 @@ export default async function BillingPage({
                 style={{ width: `${summary.percent}%` }}
               />
             </div>
+          )}
+          {summary.status !== "trialing" && summary.usageResetsAt && summary.limit !== null && (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Starts again on {date(summary.usageResetsAt)}
+              {summary.interval === "yearly" ? " (every month, also on yearly plans)" : ""}
+            </p>
           )}
         </div>
         {isOwner && summary.hasPortal && (

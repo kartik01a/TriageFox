@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  addMonthsUtc,
   type EntitlementPlan,
   type EntitlementSubscription,
   evaluate,
+  monthlyWindow,
   periodStartFor,
 } from "./entitlement";
 import { defaultPlatformSettings as S } from "./settings";
@@ -199,5 +201,36 @@ describe("period", () => {
       ),
     ).toBe("2026-11-01");
     expect(periodStartFor(null, now)).toBe("2026-11-01");
+  });
+
+  it("a yearly plan gets its monthly allowance again every month, from its start date", () => {
+    const yearly = (currentPeriodStart: Date) => ({
+      status: "active" as const,
+      createdAt: currentPeriodStart,
+      currentPeriodStart,
+      interval: "yearly" as const,
+    });
+    // Started 3 Feb 2026; on 10 Nov 2026 the window is 3 Nov – 3 Dec.
+    expect(periodStartFor(yearly(new Date("2026-02-03T09:00:00Z")), now)).toBe("2026-11-03");
+    // Before the day of the month comes round, it is still last month's window.
+    expect(periodStartFor(yearly(new Date("2026-02-15T09:00:00Z")), now)).toBe("2026-10-15");
+    // The first month of the year.
+    expect(periodStartFor(yearly(new Date("2026-11-08T09:00:00Z")), now)).toBe("2026-11-08");
+    // Monthly plans keep using their billing period.
+    expect(
+      periodStartFor({ ...yearly(new Date("2026-11-07T00:00:00Z")), interval: "monthly" }, now),
+    ).toBe("2026-11-07");
+  });
+
+  it("months are counted from the start date, falling back to the month's last day", () => {
+    const jan31 = new Date("2026-01-31T00:00:00Z");
+    expect(addMonthsUtc(jan31, 1).toISOString().slice(0, 10)).toBe("2026-02-28");
+    expect(addMonthsUtc(jan31, 2).toISOString().slice(0, 10)).toBe("2026-03-31");
+    expect(addMonthsUtc(jan31, 13).toISOString().slice(0, 10)).toBe("2027-02-28");
+    const w = monthlyWindow(jan31, new Date("2026-03-01T12:00:00Z"));
+    expect([w.start, w.end].map((d) => d.toISOString().slice(0, 10))).toEqual([
+      "2026-02-28",
+      "2026-03-31",
+    ]);
   });
 });

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, asc, type Db, desc, eq, schema, sql, withOrg } from "@triagefox/db";
-import { type Decision, evaluate, periodStartFor } from "./entitlement";
+import { type Decision, evaluate, monthlyWindow, periodStartFor } from "./entitlement";
 import { type ChangeRequest, changeKind, changeRequest } from "./plan-change";
 import type { NormalizedEvent } from "./provider";
 import {
@@ -551,6 +551,17 @@ export interface BillingSummary {
   currency: string | null;
   /** A smaller plan or monthly billing scheduled for the next billing date. */
   scheduled: { planName: string; interval: "monthly" | "yearly"; at: Date | null } | null;
+  /** When the conversation count starts again (monthly, also on yearly plans). */
+  usageResetsAt: Date | null;
+}
+
+function usageResetsAt(s: Subscription | null, now: Date): Date | null {
+  if (s?.status === "trialing") return s.trialEndsAt;
+  if (s && s.status !== "comped" && s.currentPeriodStart)
+    return s.interval === "yearly"
+      ? monthlyWindow(s.currentPeriodStart, now).end
+      : s.currentPeriodEnd;
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 }
 
 export async function billingSummary(
@@ -586,6 +597,7 @@ export async function billingSummary(
     blocked: d.allowed ? null : { reason: d.reason, message: d.message },
     hasPortal: !!s?.providerCustomerId,
     paid: hasPaidSubscription(s),
+    usageResetsAt: usageResetsAt(s, now),
     currency: s?.currency ?? null,
     scheduled:
       s?.scheduledPlanId && s.scheduledInterval

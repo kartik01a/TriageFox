@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createDb, type Db, eq, like, schema, withOrg } from "@triagefox/db";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { periodStartFor } from "./entitlement";
 import {
   applyBillingEvent,
   billingSummary,
@@ -669,5 +670,51 @@ describe("plan changes for a paying workspace (ADR 0015)", () => {
       }),
     );
     expect((await getSubscription(db, o)).subscription?.scheduledPlanId).toBeNull();
+  });
+});
+
+describe("yearly plans count conversations per month", () => {
+  it("a yearly customer who used everything last month starts again this month", async () => {
+    const o = fresh();
+    const started = new Date(Date.now() - 40 * 86_400_000);
+    await applyBillingEvent(
+      db,
+      "dodo",
+      ev({
+        orgId: o,
+        subscriptionId: `sub_${tag}_${randomUUID().slice(0, 6)}`,
+        productId: productYearly,
+        periodStart: started,
+        periodEnd: new Date(started.getTime() + 365 * 86_400_000),
+      }),
+    );
+    const sub = (await getSubscription(db, o)).subscription;
+    expect(sub?.interval).toBe("yearly");
+    const now = new Date();
+    const current = periodStartFor(sub, now);
+    const lastMonth = periodStartFor(sub, new Date(now.getTime() - 31 * 86_400_000));
+    expect(lastMonth < current).toBe(true);
+    // Last month: the whole allowance (the test plan allows 10) was used.
+    await owner
+      .insert(schema.usageCounters)
+      .values({ orgId: o, periodStart: lastMonth, conversationsAnalysed: 10 });
+    const fresh1 = await checkEntitlement(db, {
+      orgId: o,
+      threadId: randomUUID(),
+      hasOwnKey: false,
+      now,
+    });
+    expect(fresh1.decision).toMatchObject({ allowed: true, used: 0, limit: 10 });
+    // This month's allowance still applies.
+    await owner
+      .insert(schema.usageCounters)
+      .values({ orgId: o, periodStart: current, conversationsAnalysed: 10 });
+    const full = await checkEntitlement(db, {
+      orgId: o,
+      threadId: randomUUID(),
+      hasOwnKey: false,
+      now,
+    });
+    expect(full.decision).toMatchObject({ allowed: false, reason: "over_limit" });
   });
 });

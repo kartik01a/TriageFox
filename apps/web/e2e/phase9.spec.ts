@@ -135,6 +135,8 @@ test("a signed payment webhook activates the plan; a bad signature and a repeat 
   await expect(page.getByText(/Active · yearly/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Manage payment" })).toBeVisible();
   await expect(page.getByText("0 / 300")).toBeVisible();
+  // Yearly plans get their allowance every month.
+  await expect(page.getByText(/Starts again on .*every month, also on yearly plans/)).toBeVisible();
 
   // The payment portal opens in a new tab; the app stays where it was.
   await page

@@ -121,13 +121,54 @@ export function evaluate(i: {
 }
 
 /** The first day of the entitlement period that usage is counted in (a `YYYY-MM-DD` string, UTC). */
+/** `months` calendar months after `d`, on the same day, or the month's last day (31 Jan → 28 Feb). */
+export function addMonthsUtc(d: Date, months: number): Date {
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth() + months;
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(
+    Date.UTC(
+      y,
+      m,
+      Math.min(d.getUTCDate(), lastDay),
+      d.getUTCHours(),
+      d.getUTCMinutes(),
+      d.getUTCSeconds(),
+    ),
+  );
+}
+
+/**
+ * The monthly usage window containing `now`, counted from `anchor` (a yearly plan's start): limits are
+ * "a month" on every plan, so a yearly plan gets its full allowance again each month.
+ */
+export function monthlyWindow(anchor: Date, now: Date): { start: Date; end: Date } {
+  let k =
+    (now.getUTCFullYear() - anchor.getUTCFullYear()) * 12 +
+    (now.getUTCMonth() - anchor.getUTCMonth());
+  if (addMonthsUtc(anchor, k) > now) k--;
+  k = Math.max(0, k);
+  return { start: addMonthsUtc(anchor, k), end: addMonthsUtc(anchor, k + 1) };
+}
+
+/** The first day of the usage window conversations are counted in (the key of `usage_counters`). */
 export function periodStartFor(
-  s: { status: SubscriptionStatus; createdAt: Date; currentPeriodStart: Date | null } | null,
+  s: {
+    status: SubscriptionStatus;
+    createdAt: Date;
+    currentPeriodStart: Date | null;
+    interval?: "monthly" | "yearly" | null;
+  } | null,
   now: Date,
 ): string {
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   if (!s) return iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)));
   if (s.status === "trialing") return iso(s.createdAt);
-  if (s.status !== "comped" && s.currentPeriodStart) return iso(s.currentPeriodStart);
+  if (s.status !== "comped" && s.currentPeriodStart)
+    return iso(
+      s.interval === "yearly"
+        ? monthlyWindow(s.currentPeriodStart, now).start
+        : s.currentPeriodStart,
+    );
   return iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)));
 }
