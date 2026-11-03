@@ -1,6 +1,7 @@
 import { getSettings, listPlans } from "@triagefox/billing";
 import { ArrowRight, Eye, GitBranch, Lock, ShieldCheck, ToggleRight } from "lucide-react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BeforeAfter } from "@/components/landing/before-after";
@@ -13,6 +14,7 @@ import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { currencyFor } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { getSession } from "@/lib/session";
@@ -119,6 +121,8 @@ export default async function Home() {
   ]);
   const trialDays = settings.trial.days;
   const preview = plans.filter((p) => !p.byokRequired).slice(0, 3);
+  // Rupees for visitors in India (Cloudflare's country header), dollars for everyone else.
+  const currency = currencyFor((await headers()).get("cf-ipcountry"));
 
   return (
     <>
@@ -328,7 +332,7 @@ export default async function Home() {
                 <PlanCard
                   key={p.id}
                   plan={{ ...p, buyable: true }}
-                  currency="USD"
+                  currency={currency}
                   interval="yearly"
                   action={
                     <Link

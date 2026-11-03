@@ -224,3 +224,27 @@ test("signed-in people skip the landing page, and public pages offer them their 
   await expect(nav.getByRole("link", { name: "Sign in" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Start free trial" })).toHaveCount(0);
 });
+
+test("visitors in India see rupee prices, everyone else dollars (Cloudflare's country header)", async ({
+  browser,
+}) => {
+  const visit = async (country: string, path: string) => {
+    const ctx = await browser.newContext({ extraHTTPHeaders: { "cf-ipcountry": country } });
+    const p = await ctx.newPage();
+    await p.goto(path);
+    const text = (await p.getByRole("main").textContent()) ?? "";
+    await ctx.close();
+    return text;
+  };
+  const rupeePrice = /₹[\d,]+(\.\d+)? \/ month/;
+  const dollarPrice = /\$[\d,]+(\.\d+)? \/ month/;
+  for (const path of ["/", "/pricing"]) {
+    const inr = await visit("IN", path);
+    test.skip(!rupeePrice.test(inr) && !dollarPrice.test(inr), "no public plans in this database");
+    expect(inr).toMatch(rupeePrice);
+    expect(inr).not.toMatch(dollarPrice);
+    const usd = await visit("US", path);
+    expect(usd).toMatch(dollarPrice);
+    expect(usd).not.toMatch(rupeePrice);
+  }
+});
