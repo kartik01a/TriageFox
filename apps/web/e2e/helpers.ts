@@ -16,14 +16,39 @@ export function newUser(label: string): TestUser {
   return { name: `${label} Tester`, email: `${label.toLowerCase()}-${id}@example.test` };
 }
 
+/** Waits until React has attached its handlers to the page's submit button (the page's script has run). */
+export async function waitForHydration(page: Page, selector = "form button[type=submit]") {
+  await page
+    .waitForFunction(
+      (sel) => {
+        const el = document.querySelector(sel);
+        return !!el && Object.keys(el).some((k) => k.startsWith("__reactProps"));
+      },
+      selector,
+      { timeout: 30_000 },
+    )
+    .catch(() => {});
+}
+
 /** Sign up through the UI and confirm the email via Mailpit. Leaves the page signed in. */
 export async function signUp(page: Page, user: TestUser, next?: string) {
   await page.goto(next ? `/signup?next=${encodeURIComponent(next)}` : "/signup");
-  await page.getByLabel("Your name").fill(user.name);
-  await page.getByLabel("Work email").fill(user.email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible();
+  const sent = page.getByRole("heading", { name: "Check your inbox" });
+  // A freshly started test server can take a while to load the page's script; a click before that
+  // just reloads the form. Wait for the page to settle, and try once more if it reloaded anyway.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await waitForHydration(page);
+    await page.getByLabel("Your name").fill(user.name);
+    await page.getByLabel("Work email").fill(user.email);
+    await page.getByLabel("Password").fill(PASSWORD);
+    await page.getByRole("button", { name: "Create account" }).click();
+    const ok = await sent
+      .waitFor({ state: "visible", timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (ok) break;
+  }
+  await expect(sent).toBeVisible();
   const link = await waitForLink(user.email, new RegExp(`${BASE_RE}/api/auth/verify-email\\S+`));
   await page.goto(link);
 }

@@ -13,6 +13,8 @@ process.env.RECONCILE_LOOKBACK_MIN ||= "100000";
 export default defineConfig({
   testDir: "./e2e",
   timeout: 90_000,
+  // The test server builds each page the first time it is opened, which is slow on CI machines.
+  expect: { timeout: process.env.CI ? 15_000 : 5_000 },
   fullyParallel: false,
   workers: 1,
   retries: 0,
