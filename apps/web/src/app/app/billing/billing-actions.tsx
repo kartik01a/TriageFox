@@ -5,6 +5,20 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 
+/** Re-reads the page every few seconds (up to 2 minutes) while a payment is being confirmed. */
+export function AutoRefresh() {
+  const router = useRouter();
+  useEffect(() => {
+    let tries = 0;
+    const timer = setInterval(() => {
+      if (++tries >= 40) clearInterval(timer);
+      router.refresh();
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [router]);
+  return null;
+}
+
 /**
  * Opens the payment portal in a new tab. The tab is opened during the click itself, so
  * browsers don't block it as a pop-up, and pointed at the link once the server has made it.
@@ -127,6 +141,7 @@ export function ChangePlanButton({
     if (current) {
       setWaiting(false);
       setDone(null);
+      router.replace("/app/billing?upgraded=1", { scroll: false });
       return;
     }
     let tries = 0;

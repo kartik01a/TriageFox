@@ -85,6 +85,7 @@
 | Webhook for a workspace we cannot find | Answered 200 and logged (a retry would not help) |
 | Webhook with a bad signature or an old timestamp | Bare 401, nothing changes |
 | Payment fails | `past_due` with a grace period (admin setting, default 7 days), then new conversations are not ticketed (and not later); a success clears it |
+| Dodo sends "updated" in the same second as "cancelled" | Read as a cancellation (the subscription's own status/flag decides), never as "active again" |
 | Customer cancels | Access continues to the end of the paid period, even if the provider's "ended" message is lost (`cancelAtPeriodEnd` + period end in `evaluate`); then new conversations are not ticketed |
 | Trial or plan ended | Banner on every page with *Choose a plan*; the Overview page redirects to Billing; other pages stay open |
 | Yearly plan | The monthly limit applies per month (from the start date), not once per year |

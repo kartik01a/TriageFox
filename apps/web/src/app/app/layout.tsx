@@ -13,25 +13,40 @@ import { requireSession } from "@/lib/session";
 import { resolveWorkspace } from "@/lib/workspace";
 import { SignOutButton } from "./sign-out-button";
 
+const longDate = (d: Date) => d.toLocaleDateString("en-US", { dateStyle: "long" });
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = await requireSession();
   const ctx = await resolveWorkspace();
   const pending = ctx ? await reviewCount(ctx.workspace.id).catch(() => 0) : 0;
   const hosted = billingEnabled();
-  let banner: { message: string; tone: "danger" | "warn" } | null = null;
+  let banner: { message: string; tone: "danger" | "warn"; link: string } | null = null;
   if (ctx && hosted) {
     try {
       const s = await workspaceBilling(ctx.workspace.id);
-      if (s.blocked) banner = { message: `${s.blocked.message} ${BLOCKED_NOTE}`, tone: "danger" };
+      if (s.blocked)
+        banner = {
+          message: `${s.blocked.message} ${BLOCKED_NOTE}`,
+          tone: "danger",
+          link: "Choose a plan",
+        };
+      else if (s.paid && s.cancelAtPeriodEnd && s.periodEnd)
+        banner = {
+          message: `Your subscription is cancelled. TriageFox keeps working until ${longDate(s.periodEnd)}; after that, new chats won't become tickets.`,
+          tone: "danger",
+          link: "Resume or choose a plan",
+        };
       else if (s.percent !== null && s.percent >= 80)
         banner = {
-          message: `You've used ${s.percent}% of this period's conversations.`,
+          message: `You've used ${s.percent}% of this month's conversations.`,
           tone: "warn",
+          link: "Billing",
         };
-      else if (s.status === "trialing" && s.trialDaysLeft !== null && s.trialDaysLeft <= 3)
+      else if (s.status === "trialing" && s.trialDaysLeft !== null && s.trialDaysLeft <= 2)
         banner = {
-          message: `Your free trial ends in ${s.trialDaysLeft} ${s.trialDaysLeft === 1 ? "day" : "days"}.`,
+          message: `Your free trial ends ${s.trialDaysLeft <= 1 ? "within a day" : `in ${s.trialDaysLeft} days`}. Choose a plan to keep TriageFox creating tickets.`,
           tone: "warn",
+          link: "Choose a plan",
         };
     } catch {
       /* the banner is a convenience; never break a page for it */
@@ -61,11 +76,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {banner && (
         <div
           role={banner.tone === "danger" ? "alert" : "status"}
-          className={`px-4 py-2 text-center text-sm ${banner.tone === "danger" ? "bg-danger/10 text-danger" : "bg-p4/20"}`}
+          className={`px-4 py-2 text-center text-sm ${banner.tone === "danger" ? "bg-danger/10 text-danger" : "bg-p3/25"}`}
         >
           {banner.message}{" "}
           <Link href="/app/billing" className="font-semibold underline">
-            {banner.tone === "danger" ? "Choose a plan" : "Billing"}
+            {banner.link}
           </Link>
         </div>
       )}

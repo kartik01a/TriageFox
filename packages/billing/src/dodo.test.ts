@@ -59,6 +59,25 @@ describe("webhook verification", () => {
     expect(type("payment.failed")).toBe("payment_failed");
     expect(type("refund.succeeded")).toBe("ignored");
   });
+
+  it("an 'updated' message sent right after a cancellation does not undo it", () => {
+    const parse = (t: string, data: Record<string, unknown>) => {
+      const { body, headers } = fake.sign(event(t, data));
+      return dodo.parseWebhook(headers, body);
+    };
+    // Cancelled for the end of the period: still active, with the flag set.
+    expect(
+      parse("subscription.updated", { status: "active", cancel_at_next_billing_date: true }),
+    ).toMatchObject({ type: "subscription_cancelled", cancelAtPeriodEnd: true });
+    expect(parse("subscription.updated", { status: "cancelled" }).type).toBe(
+      "subscription_cancelled",
+    );
+    expect(parse("subscription.renewed", { status: "expired" }).type).toBe("subscription_ended");
+    // An ordinary update stays an update.
+    expect(
+      parse("subscription.updated", { status: "active", cancel_at_next_billing_date: false }).type,
+    ).toBe("subscription_active");
+  });
 });
 
 describe("API calls", () => {

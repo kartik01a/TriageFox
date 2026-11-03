@@ -14,6 +14,7 @@ import {
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
 import {
+  AutoRefresh,
   ChangePlanButton,
   ChooseButton,
   KeepPlanButton,
@@ -42,6 +43,7 @@ export default async function BillingPage({
     currency?: string;
     checkout?: string;
     ended?: string;
+    upgraded?: string;
   }>;
 }) {
   const { workspace, role } = await requireWorkspace();
@@ -90,11 +92,18 @@ export default async function BillingPage({
         </p>
       </div>
 
-      {q.checkout === "done" && (
-        <p className="rounded-lg bg-success/10 px-4 py-3 text-sm text-success" role="status">
-          Thank you! Your payment is being confirmed. This page updates in a moment.
-        </p>
-      )}
+      {(q.checkout === "done" || q.upgraded) &&
+        (summary.paid && summary.status === "active" ? (
+          <p className="rounded-lg bg-success/10 px-4 py-3 text-sm text-success" role="status">
+            Payment received. You're on {summary.planName}
+            {summary.interval ? ` (${summary.interval})` : ""}. Thank you!
+          </p>
+        ) : (
+          <p className="rounded-lg bg-success/10 px-4 py-3 text-sm text-success" role="status">
+            Thank you! Your payment is being confirmed. This page updates in a moment.
+            <AutoRefresh />
+          </p>
+        ))}
       {summary.blocked && (
         <div
           className="space-y-1 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger"

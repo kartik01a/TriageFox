@@ -180,9 +180,18 @@ export class DodoProvider implements BillingProvider {
     const customer = (data.customer ?? {}) as Record<string, unknown>;
     const metadata = (data.metadata ?? {}) as Record<string, unknown>;
     const periodEnd = date(data.next_billing_date) ?? date(data.expires_at);
+    // General messages ("updated", "renewed", "plan changed") carry the subscription as it is now. One sent
+    // right after a cancellation must not undo it, so the subscription's own state decides.
+    let type = TYPES[rawType] ?? "ignored";
+    const status = str(data.status);
+    if (type === "subscription_active") {
+      if (status === "expired") type = "subscription_ended";
+      else if (status === "cancelled" || data.cancel_at_next_billing_date === true)
+        type = "subscription_cancelled";
+    }
     return {
       id,
-      type: TYPES[rawType] ?? "ignored",
+      type,
       rawType,
       orgId: str(metadata.org_id),
       subscriptionId: str(data.subscription_id),

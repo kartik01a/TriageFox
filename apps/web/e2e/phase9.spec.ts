@@ -172,7 +172,7 @@ test("the usage banner appears at 80% and says new conversations wait at 100%", 
     .values({ orgId, periodStart: start, conversationsAnalysed: 250 })
     .onConflictDoNothing();
   await page.goto("/app");
-  await expect(page.getByText(/used 83% of this period/)).toBeVisible();
+  await expect(page.getByText(/used 83% of this month/)).toBeVisible();
   await db()
     .update(schema.usageCounters)
     .set({ conversationsAnalysed: 300 })
@@ -518,6 +518,9 @@ test("a paying workspace upgrades now (prorated) or schedules a downgrade; never
       timeout: 15_000,
     });
     await expect(bigCard.getByText(/Upgrading/)).toHaveCount(0);
+    await expect(
+      p.getByText(`Payment received. You're on Big ${tag} (monthly). Thank you!`),
+    ).toBeVisible();
     await expect(p.getByText("0 / 1,500").or(p.getByText("0 / 1500"))).toBeVisible();
 
     // Downgrade: scheduled for the next billing date, shown, and undoable.
@@ -544,6 +547,67 @@ test("a paying workspace upgrades now (prorated) or schedules a downgrade; never
     await db().delete(schema.subscriptions).where(eq(schema.subscriptions.orgId, payerOrg));
     for (const pl of [small, big])
       if (pl) await db().delete(schema.plans).where(eq(schema.plans.id, pl.id));
+    await p.close();
+  }
+});
+
+test("banners: cancelled (even when Dodo's 'updated' follows the cancellation) and trial ending", async ({
+  browser,
+}) => {
+  const tag = randomUUID().slice(0, 6);
+  const p = await (await browser.newContext()).newPage();
+  const name = `Banner ${tag}`;
+  await signUpWithWorkspace(p, newUser("banner"), name);
+  const [org] = await db()
+    .select()
+    .from(schema.organization)
+    .where(eq(schema.organization.name, name));
+  const o = org?.id ?? "";
+  try {
+    // Trial ending tomorrow: a yellow banner on every page.
+    await db()
+      .update(schema.subscriptions)
+      .set({ trialEndsAt: new Date(Date.now() + 20 * 3600_000) })
+      .where(eq(schema.subscriptions.orgId, o));
+    await p.goto("/app/activity");
+    await expect(p.getByText(/Your free trial ends within a day\. Choose a plan/)).toBeVisible();
+
+    // Paid, then cancelled for the end of the period. Dodo sends "cancelled" and "updated" together.
+    const subId = `sub_b_${tag}`;
+    const end = new Date(Date.now() + 200 * 86_400_000);
+    const data = (extra: Record<string, unknown>) => ({
+      subscription_id: subId,
+      customer: { customer_id: `cus_b_${tag}` },
+      product_id: productYearly,
+      metadata: { org_id: o },
+      previous_billing_date: new Date().toISOString(),
+      next_billing_date: end.toISOString(),
+      ...extra,
+    });
+    await post(p, webhook("subscription.active", data({ status: "active" })));
+    await post(
+      p,
+      webhook(
+        "subscription.cancelled",
+        data({ status: "active", cancel_at_next_billing_date: true }),
+      ),
+    );
+    await post(
+      p,
+      webhook(
+        "subscription.updated",
+        data({ status: "active", cancel_at_next_billing_date: true }),
+      ),
+    );
+    await p.goto("/app/activity");
+    await expect(
+      p.getByText(/Your subscription is cancelled\. TriageFox keeps working until/),
+    ).toBeVisible();
+    await expect(p.getByRole("link", { name: "Resume or choose a plan" })).toBeVisible();
+    await p.goto("/app/billing");
+    await expect(p.getByText("Cancelled: access continues until then.")).toBeVisible();
+  } finally {
+    await db().delete(schema.subscriptions).where(eq(schema.subscriptions.orgId, o));
     await p.close();
   }
 });
