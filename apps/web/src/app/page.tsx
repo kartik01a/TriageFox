@@ -143,7 +143,8 @@ export default async function Home() {
               <a
                 href={SITE.repoUrl}
                 className={buttonVariants({ variant: "outline", size: "lg" })}
-                rel="noopener"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 View on GitHub
               </a>
@@ -303,7 +304,8 @@ export default async function Home() {
             <a
               href={`${SITE.repoUrl}/blob/main/docs/self-hosting.md`}
               className="font-medium text-primary hover:underline"
-              rel="noopener"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               Read the self-hosting guide →
             </a>

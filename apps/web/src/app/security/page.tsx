@@ -71,8 +71,11 @@ export default async function SecurityPage() {
 
       <h2>Open source</h2>
       <p>
-        Every line of TriageFox is public on <a href={SITE.repoUrl}>GitHub</a>. You don't have to
-        take our word for any of this, and you can run the whole thing yourself.
+        Every line of TriageFox is public on{" "}
+        <a href={SITE.repoUrl} target="_blank" rel="noopener noreferrer">
+          GitHub
+        </a>
+        . You don't have to take our word for any of this, and you can run the whole thing yourself.
       </p>
 
       <h2>Your controls</h2>
@@ -93,7 +96,10 @@ export default async function SecurityPage() {
         Please email <a href={`mailto:${SITE.securityEmail}`}>{SITE.securityEmail}</a> (or use
         GitHub's private “Report a vulnerability” button on the repository). We reply within 48
         hours, and we will credit you if you like. See{" "}
-        <a href={`${SITE.repoUrl}/blob/main/SECURITY.md`}>SECURITY.md</a>.
+        <a href={`${SITE.repoUrl}/blob/main/SECURITY.md`} target="_blank" rel="noopener noreferrer">
+          SECURITY.md
+        </a>
+        .
       </p>
     </ProsePage>
   );

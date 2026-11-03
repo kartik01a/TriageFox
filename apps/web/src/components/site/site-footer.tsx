@@ -58,7 +58,13 @@ export function SiteFooter() {
               {c.links.map((l) => (
                 <li key={l.label}>
                   {"external" in l ? (
-                    <a href={l.href} className="hover:text-foreground" rel="noopener">
+                    <a
+                      href={l.href}
+                      className="hover:text-foreground"
+                      {...(l.href.startsWith("mailto:")
+                        ? {}
+                        : { target: "_blank", rel: "noopener noreferrer" })}
+                    >
                       {l.label}
                     </a>
                   ) : (

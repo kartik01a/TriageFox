@@ -136,6 +136,20 @@ test("a signed payment webhook activates the plan; a bad signature and a repeat 
   await expect(page.getByRole("button", { name: "Manage payment" })).toBeVisible();
   await expect(page.getByText("0 / 300")).toBeVisible();
 
+  // The payment portal opens in a new tab; the app stays where it was.
+  await page
+    .context()
+    .route("https://portal.example.test/**", (r) =>
+      r.fulfill({ body: "portal", contentType: "text/html" }),
+    );
+  const [portal] = await Promise.all([
+    page.waitForEvent("popup"),
+    page.getByRole("button", { name: "Manage payment" }).click(),
+  ]);
+  await expect.poll(() => portal.url()).toContain("https://portal.example.test/cus_e2e");
+  await expect(page).toHaveURL(/\/app\/billing/);
+  await portal.close();
+
   // A failed payment is shown plainly; a later success clears it.
   await post(page, webhook("payment.failed", { subscription_id: subId }));
   await page.goto("/app/billing");

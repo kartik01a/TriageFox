@@ -5,6 +5,21 @@ import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 
+/**
+ * Opens a payment page (checkout, portal) in a new tab. The tab is opened during the click itself, so
+ * browsers don't block it as a pop-up, and pointed at the link once the server has made it.
+ */
+async function openInNewTab(make: () => Promise<{ ok: boolean; url?: string; error?: string }>) {
+  const tab = window.open("about:blank", "_blank");
+  if (tab) tab.opener = null; // the payment site gets no handle on this page
+  const r = await make();
+  if (r.ok && r.url) {
+    if (tab) tab.location.href = r.url;
+    else window.location.assign(r.url); // pop-ups fully blocked: same tab rather than nothing
+  } else tab?.close();
+  return r;
+}
+
 async function post(url: string, body?: unknown) {
   const res = await fetch(url, {
     method: "POST",
@@ -45,12 +60,11 @@ export function ChooseButton({
         onClick={async () => {
           setBusy(true);
           setError(null);
-          const r = await post("/api/billing/checkout", { planId, interval, currency });
-          if (r.ok && r.url) window.location.assign(r.url);
-          else {
-            setError(r.error ?? "Could not open checkout.");
-            setBusy(false);
-          }
+          const r = await openInNewTab(() =>
+            post("/api/billing/checkout", { planId, interval, currency }),
+          );
+          setBusy(false);
+          if (!r.ok) setError(r.error ?? "Could not open checkout.");
         }}
       >
         {busy ? "Opening checkout…" : label}
@@ -236,12 +250,9 @@ export function PortalButton() {
         onClick={async () => {
           setBusy(true);
           setError(null);
-          const r = await post("/api/billing/portal");
-          if (r.ok && r.url) window.location.assign(r.url);
-          else {
-            setError(r.error ?? "Could not open the portal.");
-            setBusy(false);
-          }
+          const r = await openInNewTab(() => post("/api/billing/portal"));
+          setBusy(false);
+          if (!r.ok) setError(r.error ?? "Could not open the portal.");
         }}
       >
         {busy ? "Opening…" : "Manage payment"}
