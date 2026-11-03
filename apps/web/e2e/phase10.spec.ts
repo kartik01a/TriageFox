@@ -137,8 +137,11 @@ test("a flood of changes from one workspace is slowed down, and other workspaces
   await signUpWithWorkspace(b, newUser("Calm"), `Calm ${Date.now()}`);
   const hit = (p: typeof a) =>
     p.request.post("/api/automation", { headers: { origin: BASE } }).then((r) => r.status());
+  // The limit is 300 per clock minute. A slow run can straddle a minute boundary, so keep going until
+  // slowed down: 700 requests cannot all fit under the limit within two minutes.
+  test.setTimeout(180_000);
   const statuses: number[] = [];
-  for (let i = 0; i < 320; i += 40)
+  for (let i = 0; i < 700 && !statuses.includes(429); i += 40)
     statuses.push(...(await Promise.all(Array.from({ length: 40 }, () => hit(a)))));
   expect(statuses.filter((s) => s === 429).length).toBeGreaterThan(0);
   expect(statuses.slice(0, 250).every((s) => s === 400)).toBe(true); // "Connect Crisp first", not limited yet

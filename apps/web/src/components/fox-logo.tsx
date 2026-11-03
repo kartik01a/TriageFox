@@ -1,19 +1,20 @@
-/** Simple geometric fox head: the TriageFox mark. */
-export function FoxMark({ className = "size-7" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
-      <path d="M3 4l9 6h8l9-6-2 13-9 11h-4L5 17 3 4z" fill="var(--primary)" />
-      <path d="M12 10h8l-4 8-4-8z" fill="#fff" opacity=".92" />
-      <circle cx="12.5" cy="15" r="1.2" fill="#111114" />
-      <circle cx="19.5" cy="15" r="1.2" fill="#111114" />
-      <path d="M16 24.6l-1.8-2.2h3.6L16 24.6z" fill="#111114" />
-    </svg>
-  );
+/**
+ * The TriageFox mark: a geometric fox holding a ticket. One source for the top bar and the share image;
+ * app/icon.svg (the browser tab icon) is the same SVG and must be kept identical.
+ */
+export const FOX_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#F97316" d="M126 40 256 116 386 40 446 246 256 270 66 246Z"/><path fill="#E8590C" d="M126 40 168 180 66 246Z"/><path fill="#E8590C" d="M386 40 344 180 446 246Z"/><path fill="#E8590C" d="M140 82 214 134 168 172Z"/><path fill="#E8590C" d="M372 82 298 134 344 172Z"/><path fill="#FBE7D7" d="M66 246 256 270 446 246 256 350Z"/><path fill="none" stroke="#111114" stroke-width="16" stroke-linecap="round" d="M170 220q28-32 56 0M286 220q28-32 56 0"/><circle cx="256" cy="274" r="20" fill="#111114"/><path fill="#F97316" d="M198 318h116a22 22 0 0 1 22 22v64a22 22 0 0 1-22 22h-40a18 18 0 0 0-36 0h-40a22 22 0 0 1-22-22v-64a22 22 0 0 1 22-22Z"/><rect x="210" y="346" width="92" height="16" rx="8" fill="#FFFFFF"/><rect x="210" y="378" width="60" height="16" rx="8" fill="#FFFFFF"/></svg>`;
+
+/** The mark as an image source (works everywhere, including the share-image renderer). */
+export const FOX_DATA_URI = `data:image/svg+xml,${encodeURIComponent(FOX_SVG)}`;
+
+export function FoxMark({ className = "size-9" }: { className?: string }) {
+  // biome-ignore lint/performance/noImgElement: a fixed inline SVG; nothing for the image optimiser to do
+  return <img src={FOX_DATA_URI} alt="" aria-hidden="true" className={className} />;
 }
 
 export function Wordmark() {
   return (
-    <span className="inline-flex items-center gap-2 text-lg font-bold tracking-tight">
+    <span className="inline-flex items-center gap-2 text-xl font-extrabold tracking-tight">
       <FoxMark />
       TriageFox
     </span>
