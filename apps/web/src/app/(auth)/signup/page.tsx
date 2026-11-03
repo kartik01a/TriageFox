@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { GoogleButton } from "@/components/google-button";
 import { Card } from "@/components/ui/card";
 import { env } from "@/lib/env";
 import { safeNext } from "@/lib/safe-redirect";
@@ -22,8 +21,7 @@ export default async function SignupPage({
     <Card>
       <h1 className="text-xl font-bold">Create your TriageFox account</h1>
       <div className="mt-6 space-y-4">
-        {googleOn && <GoogleButton next={next} label="Sign up with Google" />}
-        <SignupForm next={next} />
+        <SignupForm next={next} google={googleOn} />
       </div>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}

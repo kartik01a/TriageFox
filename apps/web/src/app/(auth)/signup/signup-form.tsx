@@ -2,11 +2,13 @@
 
 import { MailCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { GoogleButton } from "@/components/google-button";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
-export function SignupForm({ next }: { next: string }) {
+/** `google`: also offer "Sign up with Google" (hidden once the confirmation email is on its way). */
+export function SignupForm({ next, google }: { next: string; google?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,35 +58,38 @@ export function SignupForm({ next }: { next: string }) {
   }
 
   return (
-    <form method="post" onSubmit={onSubmit} className="space-y-4" noValidate>
-      <div>
-        <Label htmlFor="name">Your name</Label>
-        <Input id="name" name="name" autoComplete="name" required />
-      </div>
-      <div>
-        <Label htmlFor="email">Work email</Label>
-        <Input id="email" name="email" type="email" autoComplete="email" required />
-      </div>
-      <div>
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          minLength={10}
-          required
-        />
-        <p className="mt-1.5 text-xs text-muted-foreground">At least 10 characters.</p>
-      </div>
-      {error && (
-        <p className="text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-      <Button type="submit" className="w-full" disabled={busy}>
-        {busy ? "Creating account…" : "Create account"}
-      </Button>
-    </form>
+    <div className="space-y-4">
+      {google && <GoogleButton next={next} label="Sign up with Google" />}
+      <form method="post" onSubmit={onSubmit} className="space-y-4" noValidate>
+        <div>
+          <Label htmlFor="name">Your name</Label>
+          <Input id="name" name="name" autoComplete="name" required />
+        </div>
+        <div>
+          <Label htmlFor="email">Work email</Label>
+          <Input id="email" name="email" type="email" autoComplete="email" required />
+        </div>
+        <div>
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            minLength={10}
+            required
+          />
+          <p className="mt-1.5 text-xs text-muted-foreground">At least 10 characters.</p>
+        </div>
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+        <Button type="submit" className="w-full" disabled={busy}>
+          {busy ? "Creating account…" : "Create account"}
+        </Button>
+      </form>
+    </div>
   );
 }
