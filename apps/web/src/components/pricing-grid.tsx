@@ -50,18 +50,24 @@ export function PlanCard({
       role="article"
       aria-label={plan.name}
     >
-      <div className="flex items-center justify-between gap-2">
+      {/* Every card has the badge row (empty when there is none), so names and prices line up across a row
+          and a long plan name never squeezes a badge. On phones, where cards stand alone, an empty one is hidden. */}
+      <div className="space-y-1.5">
+        <div
+          className={`h-6 items-center gap-1.5 ${plan.isPopular || current ? "flex" : "hidden sm:flex"}`}
+        >
+          {plan.isPopular && (
+            <span className="whitespace-nowrap rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+              Most popular
+            </span>
+          )}
+          {current && (
+            <span className="whitespace-nowrap rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-semibold text-success">
+              Current plan
+            </span>
+          )}
+        </div>
         <h3 className="text-lg font-semibold">{plan.name}</h3>
-        {plan.isPopular && (
-          <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
-            Most popular
-          </span>
-        )}
-        {current && (
-          <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-semibold text-success">
-            Current plan
-          </span>
-        )}
       </div>
       <div>
         {price ? (
