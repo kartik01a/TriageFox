@@ -578,7 +578,8 @@ export async function billingSummary(
     now,
   });
   const d = probe.decision;
-  const limit = d.limit;
+  // A block (e.g. "add your own key") stops before the limit is known: show the plan's number anyway.
+  const limit = d.limit ?? (s && s.status !== "trialing" && plan ? plan.conversationLimit : null);
   return {
     status: s?.status ?? "none",
     planName: plan?.name ?? null,

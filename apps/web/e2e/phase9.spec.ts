@@ -611,3 +611,53 @@ test("banners: cancelled (even when Dodo's 'updated' follows the cancellation) a
     await p.close();
   }
 });
+
+test("own-key plan without a key: one banner, pointing at the AI key page; the plan's limit still shows", async ({
+  browser,
+}) => {
+  const tag = randomUUID().slice(0, 6);
+  const [byok] = await db()
+    .insert(schema.plans)
+    .values({
+      slug: `pc-byok-${tag}`,
+      name: `Own key ${tag}`,
+      prices: { USD: { monthly: 500, yearly: 5000 } },
+      conversationLimit: 1000,
+      byokRequired: true,
+      providerPriceIds: { dodo: { USD: { monthly: `pdt_k_m_${tag}`, yearly: `pdt_k_y_${tag}` } } },
+      isPublic: true,
+      sortOrder: -3000,
+    })
+    .returning();
+  const p = await (await browser.newContext()).newPage();
+  const name = `Byok ${tag}`;
+  await signUpWithWorkspace(p, newUser("byok"), name);
+  const [org] = await db()
+    .select()
+    .from(schema.organization)
+    .where(eq(schema.organization.name, name));
+  const o = org?.id ?? "";
+  try {
+    await post(
+      p,
+      webhook("subscription.active", {
+        subscription_id: `sub_k_${tag}`,
+        product_id: `pdt_k_m_${tag}`,
+        metadata: { org_id: o },
+        status: "active",
+        previous_billing_date: new Date().toISOString(),
+        next_billing_date: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+      }),
+    );
+    await p.goto("/app/billing?checkout=done");
+    await expect(p.getByText(`Payment received. You're on Own key ${tag} (monthly)`)).toBeVisible();
+    await expect(p.getByText(/This plan needs your own OpenAI key/)).toHaveCount(1);
+    const fix = p.getByRole("link", { name: "Add your OpenAI key" });
+    await expect(fix).toHaveAttribute("href", "/app/settings/ai");
+    await expect(p.getByText("0 / 1,000")).toBeVisible();
+  } finally {
+    await db().delete(schema.subscriptions).where(eq(schema.subscriptions.orgId, o));
+    if (byok) await db().delete(schema.plans).where(eq(schema.plans.id, byok.id));
+    await p.close();
+  }
+});

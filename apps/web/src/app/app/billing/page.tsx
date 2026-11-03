@@ -4,13 +4,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { IntervalAndCurrencySwitch, PlanCard } from "@/components/pricing-grid";
 import { Card } from "@/components/ui/card";
-import {
-  BLOCKED_NOTE,
-  billingEnabled,
-  billingProvider,
-  currencyFor,
-  workspaceBilling,
-} from "@/lib/billing";
+import { billingEnabled, billingProvider, currencyFor, workspaceBilling } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
 import {
@@ -104,20 +98,13 @@ export default async function BillingPage({
             <AutoRefresh />
           </p>
         ))}
-      {summary.blocked && (
-        <div
-          className="space-y-1 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger"
-          role="alert"
-        >
-          {q.ended && <p className="font-semibold">Choose a plan to keep creating tickets</p>}
-          <p>
-            {summary.blocked.message} {BLOCKED_NOTE}
+      {/* The block itself is in the banner at the top of every page; here only what to do next. */}
+      {q.ended && summary.blocked && (
+        <div className="space-y-1 rounded-lg bg-danger/10 px-4 py-3 text-sm" role="status">
+          <p className="font-semibold text-danger">Choose a plan to keep creating tickets</p>
+          <p className="text-muted-foreground">
+            Everything else (activity, connections, settings) stays open from the menu above.
           </p>
-          {q.ended && (
-            <p className="text-muted-foreground">
-              Everything else (activity, connections, settings) stays open from the menu above.
-            </p>
-          )}
         </div>
       )}
       {!isOwner && (

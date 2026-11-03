@@ -15,12 +15,23 @@ import { SignOutButton } from "./sign-out-button";
 
 const longDate = (d: Date) => d.toLocaleDateString("en-US", { dateStyle: "long" });
 
+/** What the banner offers for each kind of block: the one thing that fixes it. */
+const BLOCK_ACTION = (reason: string): { link: string; href: string } => {
+  if (reason === "own_key_required" || reason === "trial_budget")
+    return { link: "Add your OpenAI key", href: "/app/settings/ai" };
+  if (reason === "payment_failed") return { link: "Update payment", href: "/app/billing" };
+  if (reason === "over_limit") return { link: "Upgrade", href: "/app/billing" };
+  if (reason === "paused") return { link: "Billing", href: "/app/billing" };
+  return { link: "Choose a plan", href: "/app/billing" };
+};
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = await requireSession();
   const ctx = await resolveWorkspace();
   const pending = ctx ? await reviewCount(ctx.workspace.id).catch(() => 0) : 0;
   const hosted = billingEnabled();
-  let banner: { message: string; tone: "danger" | "warn"; link: string } | null = null;
+  let banner: { message: string; tone: "danger" | "warn"; link: string; href?: string } | null =
+    null;
   if (ctx && hosted) {
     try {
       const s = await workspaceBilling(ctx.workspace.id);
@@ -28,7 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         banner = {
           message: `${s.blocked.message} ${BLOCKED_NOTE}`,
           tone: "danger",
-          link: "Choose a plan",
+          ...BLOCK_ACTION(s.blocked.reason),
         };
       else if (s.paid && s.cancelAtPeriodEnd && s.periodEnd)
         banner = {
@@ -79,7 +90,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           className={`px-4 py-2 text-center text-sm ${banner.tone === "danger" ? "bg-danger/10 text-danger" : "bg-p3/25"}`}
         >
           {banner.message}{" "}
-          <Link href="/app/billing" className="font-semibold underline">
+          <Link href={banner.href ?? "/app/billing"} className="font-semibold underline">
             {banner.link}
           </Link>
         </div>
