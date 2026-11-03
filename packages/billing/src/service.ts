@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, asc, type Db, desc, eq, schema, sql, withOrg } from "@triagefox/db";
 import { type Decision, evaluate, periodStartFor } from "./entitlement";
+import { type ChangeRequest, changeKind, changeRequest } from "./plan-change";
 import type { NormalizedEvent } from "./provider";
 import {
   defaultPlatformSettings,
@@ -220,6 +221,10 @@ export async function recordUsage(
 
 // ---- Webhooks ----------------------------------------------------------------------------------
 
+/** A renewal message can arrive a little before the scheduled moment. */
+const SCHEDULE_SLACK_MS = 60 * 60 * 1000;
+const NO_SCHEDULE = { scheduledPlanId: null, scheduledInterval: null, scheduledAt: null } as const;
+
 export type ApplyResult =
   | { handled: false; reason: "duplicate" | "ignored" | "unknown_workspace" }
   | { handled: true; orgId: string; status: Subscription["status"] };
@@ -265,18 +270,37 @@ export async function applyBillingEvent(
     };
     let patch: Partial<typeof schema.subscriptions.$inferInsert> | null = null;
     switch (e.type) {
-      case "subscription_active":
+      case "subscription_active": {
+        // A downgrade scheduled for the next billing date (ADR 0015) applies only once that date has
+        // come: a message that already names the new product earlier must not shrink the plan early.
+        const isScheduled =
+          !!cur?.scheduledPlanId &&
+          match?.plan.id === cur.scheduledPlanId &&
+          match.interval === cur.scheduledInterval;
+        const due =
+          !cur?.scheduledAt ||
+          (e.periodStart ?? now).getTime() >= cur.scheduledAt.getTime() - SCHEDULE_SLACK_MS;
+        const keepCurrent = isScheduled && !due;
+        // The scheduled plan arrived, or a different change replaced it: the schedule is done.
+        const clearSchedule =
+          (isScheduled && due) ||
+          (!!match && !!cur?.scheduledPlanId && !isScheduled && match.plan.id !== cur.planId);
         patch = {
           status: "active",
-          planId: match?.plan.id ?? cur?.planId ?? null,
-          interval: match?.interval ?? cur?.interval ?? null,
+          planId: keepCurrent ? (cur?.planId ?? null) : (match?.plan.id ?? cur?.planId ?? null),
+          interval: keepCurrent
+            ? (cur?.interval ?? null)
+            : (match?.interval ?? cur?.interval ?? null),
+          currency: match?.currency ?? cur?.currency ?? null,
           currentPeriodStart: e.periodStart ?? cur?.currentPeriodStart ?? now,
           currentPeriodEnd: e.periodEnd ?? cur?.currentPeriodEnd ?? null,
           cancelAtPeriodEnd: false,
           pastDueSince: null,
           compUntil: null,
+          ...(clearSchedule ? NO_SCHEDULE : {}),
         };
         break;
+      }
       case "subscription_past_due":
       case "payment_failed":
         if (cur?.status === "comped") break;
@@ -290,13 +314,22 @@ export async function applyBillingEvent(
         const end = e.periodEnd ?? cur?.currentPeriodEnd ?? now;
         patch =
           end > now
-            ? { status: "active", cancelAtPeriodEnd: true, currentPeriodEnd: end }
-            : { status: "canceled", cancelAtPeriodEnd: false, currentPeriodEnd: end };
+            ? { status: "active", cancelAtPeriodEnd: true, currentPeriodEnd: end, ...NO_SCHEDULE }
+            : {
+                status: "canceled",
+                cancelAtPeriodEnd: false,
+                currentPeriodEnd: end,
+                ...NO_SCHEDULE,
+              };
         break;
       }
       case "subscription_ended":
         if (cur?.status === "comped") break;
-        patch = { status: "canceled", currentPeriodEnd: cur?.currentPeriodEnd ?? now };
+        patch = {
+          status: "canceled",
+          currentPeriodEnd: cur?.currentPeriodEnd ?? now,
+          ...NO_SCHEDULE,
+        };
         break;
     }
     if (!patch) return cur?.status ?? "trialing";
@@ -311,6 +344,101 @@ export async function applyBillingEvent(
     return row?.status ?? "trialing";
   });
   return { handled: true, orgId: org, status };
+}
+
+// ---- Plan changes for a paying workspace (ADR 0015) --------------------------------------------
+
+export type PlanChangePlan =
+  | {
+      ok: true;
+      kind: "now" | "at_renewal";
+      subscriptionId: string;
+      productId: string;
+      request: ChangeRequest;
+      currency: string;
+      currentPlanName: string;
+      targetPlan: Plan;
+      interval: "monthly" | "yearly";
+      /** When a change at renewal takes effect. */
+      effectiveAt: Date | null;
+    }
+  | { ok: false; error: string };
+
+/** True when the workspace has a live paid subscription: plans are changed, never bought a second time. */
+export const hasPaidSubscription = (s: Subscription | null) =>
+  !!s?.providerSubscriptionId && (s.status === "active" || s.status === "past_due");
+
+/**
+ * Checks that a paying workspace can move to `target` and works out how (now or at renewal). Prices and
+ * product ids come from the plans table, never from the browser.
+ */
+export async function planChangePlan(
+  db: Db,
+  i: {
+    orgId: string;
+    provider: string;
+    planId: string;
+    interval: "monthly" | "yearly";
+    /** Used only for an older subscription whose currency was never recorded. */
+    fallbackCurrency: string;
+  },
+): Promise<PlanChangePlan> {
+  const { subscription: s, plan: current } = await getSubscription(db, i.orgId);
+  if (!s || !hasPaidSubscription(s) || !current || !s.interval)
+    return { ok: false, error: "There is no paid plan to change. Choose a plan instead." };
+  if (s.status === "past_due")
+    return { ok: false, error: "Update your payment method first, then change the plan." };
+  if (s.cancelAtPeriodEnd)
+    return {
+      ok: false,
+      error: "Your plan is set to end. Resume it under Manage subscription to change plans.",
+    };
+  const plans = await listPlans(db, { publicOnly: true });
+  const target = plans.find((p) => p.id === i.planId);
+  if (!target) return { ok: false, error: "That plan isn't available." };
+  const currency = s.currency ?? i.fallbackCurrency;
+  const productId = target.providerPriceIds[i.provider]?.[currency]?.[i.interval];
+  const targetPrice = target.prices[currency];
+  const currentPrice = current.prices[currency];
+  if (!productId || !targetPrice || !currentPrice)
+    return { ok: false, error: "That plan isn't available in your currency." };
+  const from = { planId: current.id, interval: s.interval, monthlyPrice: currentPrice.monthly };
+  const to = { planId: target.id, interval: i.interval, monthlyPrice: targetPrice.monthly };
+  const kind = changeKind(from, to);
+  const request = changeRequest(from, to);
+  if (kind === "same" || !request) return { ok: false, error: "That is already your plan." };
+  return {
+    ok: true,
+    kind,
+    subscriptionId: s.providerSubscriptionId as string,
+    productId,
+    request,
+    currency,
+    currentPlanName: current.name,
+    targetPlan: target,
+    interval: i.interval,
+    effectiveAt: kind === "at_renewal" ? s.currentPeriodEnd : null,
+  };
+}
+
+/** Remembers a change scheduled for the next billing date, so Billing can show and undo it. */
+export async function recordScheduledChange(
+  db: Db,
+  orgId: string,
+  c: { planId: string; interval: "monthly" | "yearly"; at: Date | null },
+) {
+  await withOrg(db, orgId, (tx) =>
+    tx
+      .update(schema.subscriptions)
+      .set({ scheduledPlanId: c.planId, scheduledInterval: c.interval, scheduledAt: c.at })
+      .where(eq(schema.subscriptions.orgId, orgId)),
+  );
+}
+
+export async function clearScheduledChange(db: Db, orgId: string) {
+  await withOrg(db, orgId, (tx) =>
+    tx.update(schema.subscriptions).set(NO_SCHEDULE).where(eq(schema.subscriptions.orgId, orgId)),
+  );
 }
 
 // ---- Free access (admin grants and invite codes) ---------------------------------------------------
@@ -418,6 +546,11 @@ export interface BillingSummary {
   /** Why new conversations are waiting, if they are. */
   blocked: { reason: string; message: string } | null;
   hasPortal: boolean;
+  /** Paying through the provider: other plans are changes, not new purchases (ADR 0015). */
+  paid: boolean;
+  currency: string | null;
+  /** A smaller plan or monthly billing scheduled for the next billing date. */
+  scheduled: { planName: string; interval: "monthly" | "yearly"; at: Date | null } | null;
 }
 
 export async function billingSummary(
@@ -452,6 +585,19 @@ export async function billingSummary(
     percent: limit ? Math.min(100, Math.round((d.used / limit) * 100)) : null,
     blocked: d.allowed ? null : { reason: d.reason, message: d.message },
     hasPortal: !!s?.providerCustomerId,
+    paid: hasPaidSubscription(s),
+    currency: s?.currency ?? null,
+    scheduled:
+      s?.scheduledPlanId && s.scheduledInterval
+        ? {
+            planName:
+              (
+                await db.select().from(schema.plans).where(eq(schema.plans.id, s.scheduledPlanId))
+              )[0]?.name ?? "another plan",
+            interval: s.scheduledInterval,
+            at: s.scheduledAt,
+          }
+        : null,
   };
 }
 

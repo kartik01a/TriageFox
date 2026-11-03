@@ -18,6 +18,7 @@ One file per significant decision: `NNNN-short-name.md`. Don't edit an accepted 
 | [0012](0012-seven-day-trial.md) | The free trial is 7 days | Accepted |
 | [0013](0013-customer-label-mapping.md) | Customers choose the labels on their tickets | Accepted |
 | [0014](0014-voice-message-transcription.md) | Voice messages are turned into text for the AI | Accepted |
+| [0015](0015-plan-changes.md) | Changing plans: upgrades now and prorated, downgrades at renewal | Accepted |
 
 ## Template
 

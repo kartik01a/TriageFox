@@ -1,5 +1,10 @@
 import "server-only";
-import { billingSummary, DodoProvider } from "@triagefox/billing";
+import {
+  type BillingProvider,
+  billingSummary,
+  DodoProvider,
+  FakeProvider,
+} from "@triagefox/billing";
 import { eq, schema, withOrg } from "@triagefox/db";
 import { db } from "./db";
 import { env } from "./env";
@@ -7,10 +12,18 @@ import { env } from "./env";
 /** Billing exists only in the hosted version. */
 export const billingEnabled = () => env().APP_MODE === "hosted";
 
+let fake: FakeProvider | undefined;
+
 /** The payment provider, or null when its keys are not configured on this server. */
-export function billingProvider(): DodoProvider | null {
+export function billingProvider(): BillingProvider | null {
   const e = env();
-  if (!billingEnabled() || !e.DODO_API_KEY || !e.DODO_WEBHOOK_SECRET) return null;
+  if (!billingEnabled()) return null;
+  // Only the automated browser tests use the stand-in provider (no real payments); never in production.
+  if (process.env.E2E_FAKE_BILLING === "true" && e.NODE_ENV !== "production") {
+    fake ??= new FakeProvider({ name: "dodo" });
+    return fake;
+  }
+  if (!e.DODO_API_KEY || !e.DODO_WEBHOOK_SECRET) return null;
   return new DodoProvider({
     apiKey: e.DODO_API_KEY,
     webhookKey: e.DODO_WEBHOOK_SECRET,

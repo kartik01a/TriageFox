@@ -62,6 +62,7 @@ Anything that needs a customer's token runs in the worker, so `pnpm dev` (web + 
 - **Self-host stack:** `./deploy/smoke-test.sh` (also run in CI).
 
 ## Tests
+- Billing in the browser tests uses a stand-in payment provider (`E2E_FAKE_BILLING=true`, set by `playwright.config.ts`; ignored in production), so checkout, webhooks and plan changes run without real payments.
 - End-to-end specs sign up real users; the sign-up route allows 5 per minute per IP, so when running the whole Playwright suite right after other specs a sign-up can be refused. Re-run the failing spec on its own.
 - Unit/integration: Vitest per package (db tests need `pnpm infra:up`).
 - Browser: Playwright in `apps/web/e2e` (reads emails from Mailpit). The test setup starts the worker itself (set `E2E_NO_WORKER=1` to use your own).

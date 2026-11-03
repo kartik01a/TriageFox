@@ -4,13 +4,17 @@ import { createDb, type Db, eq, like, schema, withOrg } from "@triagefox/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   applyBillingEvent,
+  billingSummary,
   checkEntitlement,
+  clearScheduledChange,
   findPlanForProduct,
   getSettings,
   getSubscription,
   grantComp,
   hashInviteCode,
   newInviteCode,
+  planChangePlan,
+  recordScheduledChange,
   recordUsage,
   redeemInviteCode,
   revokeComp,
@@ -60,6 +64,7 @@ afterAll(async () => {
   }
   await owner.delete(schema.inviteCodes).where(eq(schema.inviteCodes.planId, plan.id));
   await owner.delete(schema.plans).where(eq(schema.plans.id, plan.id));
+  await owner.delete(schema.plans).where(like(schema.plans.slug, `pc-%-${tag}`));
   await owner.delete(schema.billingEvents).where(like(schema.billingEvents.eventId, "evt_%"));
   await db.$client.end();
   await owner.$client.end();
@@ -490,5 +495,179 @@ describe("isolation between workspaces", () => {
       ),
     ).rejects.toThrow();
     expect((await getSubscription(db, a)).subscription?.status).toBe("trialing");
+  });
+});
+
+describe("plan changes for a paying workspace (ADR 0015)", () => {
+  const ids = (size: string) => ({
+    USD: { monthly: `pdt_${size}_m_${tag}`, yearly: `pdt_${size}_y_${tag}` },
+  });
+  let small: typeof schema.plans.$inferSelect;
+  let big: typeof schema.plans.$inferSelect;
+  beforeAll(async () => {
+    const make = async (size: string, monthly: number) => {
+      const [p] = await owner
+        .insert(schema.plans)
+        .values({
+          slug: `pc-${size}-${tag}`,
+          name: `PC ${size}`,
+          prices: { USD: { monthly, yearly: monthly * 10 } },
+          conversationLimit: monthly,
+          providerPriceIds: { dodo: ids(size) },
+          isPublic: true,
+        })
+        .returning();
+      if (!p) throw new Error("plan not created");
+      return p;
+    };
+    small = await make("small", 900);
+    big = await make("big", 2400);
+  });
+  /** A workspace paying monthly for `p` through Dodo, as the webhook leaves it. */
+  async function paying(p: typeof small, periodEnd = new Date(Date.now() + 20 * 86_400_000)) {
+    const o = fresh();
+    const sub = `sub_${tag}_${randomUUID().slice(0, 6)}`;
+    await applyBillingEvent(
+      db,
+      "dodo",
+      ev({
+        orgId: o,
+        subscriptionId: sub,
+        productId: p.providerPriceIds.dodo?.USD?.monthly,
+        periodStart: new Date(Date.now() - 10 * 86_400_000),
+        periodEnd,
+      }),
+    );
+    return { o, sub, periodEnd };
+  }
+  const plan = (o: string, planId: string, interval: "monthly" | "yearly" = "monthly") =>
+    planChangePlan(db, { orgId: o, provider: "dodo", planId, interval, fallbackCurrency: "INR" });
+
+  it("records the subscription's currency from the product it paid for", async () => {
+    const { o } = await paying(small);
+    expect((await getSubscription(db, o)).subscription?.currency).toBe("USD");
+  });
+
+  it("an upgrade is planned now, with the bigger plan's product in the same currency", async () => {
+    const { o, sub } = await paying(small);
+    const r = await plan(o, big.id);
+    expect(r).toMatchObject({
+      ok: true,
+      kind: "now",
+      subscriptionId: sub,
+      productId: `pdt_big_m_${tag}`,
+      currency: "USD",
+      request: { prorationMode: "prorated_immediately_keep_cycle", effectiveAt: "immediately" },
+    });
+  });
+
+  it("a downgrade is planned for the next billing date", async () => {
+    const { o, periodEnd } = await paying(big);
+    const r = await plan(o, small.id);
+    expect(r).toMatchObject({ ok: true, kind: "at_renewal", effectiveAt: periodEnd });
+  });
+
+  it("refuses: no paid plan, the same plan, a plan set to end, or a failed payment", async () => {
+    const trial = fresh();
+    await startTrial(db, trial);
+    expect(await plan(trial, big.id)).toMatchObject({ ok: false });
+    const { o, sub } = await paying(small);
+    expect(await plan(o, small.id)).toMatchObject({
+      ok: false,
+      error: "That is already your plan.",
+    });
+    await applyBillingEvent(
+      db,
+      "dodo",
+      ev({ type: "payment_failed", rawType: "payment.failed", subscriptionId: sub }),
+    );
+    expect(await plan(o, big.id)).toMatchObject({ ok: false, error: /payment method/ });
+    const ending = await paying(small);
+    await applyBillingEvent(
+      db,
+      "dodo",
+      ev({
+        type: "subscription_cancelled",
+        rawType: "subscription.cancelled",
+        subscriptionId: ending.sub,
+        periodEnd: ending.periodEnd,
+      }),
+    );
+    expect(await plan(ending.o, big.id)).toMatchObject({ ok: false, error: /set to end/ });
+  });
+
+  it("a scheduled downgrade keeps the bigger plan until its date, then applies and clears", async () => {
+    const { o, sub, periodEnd } = await paying(big);
+    await recordScheduledChange(db, o, { planId: small.id, interval: "monthly", at: periodEnd });
+    expect((await billingSummary(db, o, false)).scheduled).toMatchObject({
+      planName: "PC small",
+      interval: "monthly",
+    });
+    // A message naming the smaller product before the date does not shrink the plan yet.
+    await applyBillingEvent(
+      db,
+      "dodo",
+      ev({
+        rawType: "subscription.plan_changed",
+        subscriptionId: sub,
+        productId: `pdt_small_m_${tag}`,
+        periodStart: new Date(Date.now() - 10 * 86_400_000),
+        periodEnd,
+      }),
+    );
+    let s = (await getSubscription(db, o)).subscription;
+    expect(s?.planId).toBe(big.id);
+    expect(s?.scheduledPlanId).toBe(small.id);
+    // The renewal at the scheduled date carries the smaller product: now it applies.
+    await applyBillingEvent(
+      db,
+      "dodo",
+      ev({
+        rawType: "subscription.renewed",
+        subscriptionId: sub,
+        productId: `pdt_small_m_${tag}`,
+        periodStart: periodEnd,
+        periodEnd: new Date(periodEnd.getTime() + 30 * 86_400_000),
+      }),
+    );
+    s = (await getSubscription(db, o)).subscription;
+    expect(s?.planId).toBe(small.id);
+    expect(s?.scheduledPlanId).toBeNull();
+  });
+
+  it("an upgrade made while a downgrade was scheduled replaces it", async () => {
+    const { o, sub, periodEnd } = await paying(small);
+    await recordScheduledChange(db, o, { planId: small.id, interval: "yearly", at: periodEnd });
+    await applyBillingEvent(
+      db,
+      "dodo",
+      ev({
+        rawType: "subscription.plan_changed",
+        subscriptionId: sub,
+        productId: `pdt_big_m_${tag}`,
+      }),
+    );
+    const s = (await getSubscription(db, o)).subscription;
+    expect(s?.planId).toBe(big.id);
+    expect(s?.scheduledPlanId).toBeNull();
+  });
+
+  it("undoing a scheduled change, or cancelling the subscription, clears the schedule", async () => {
+    const { o, sub, periodEnd } = await paying(big);
+    await recordScheduledChange(db, o, { planId: small.id, interval: "monthly", at: periodEnd });
+    await clearScheduledChange(db, o);
+    expect((await getSubscription(db, o)).subscription?.scheduledPlanId).toBeNull();
+    await recordScheduledChange(db, o, { planId: small.id, interval: "monthly", at: periodEnd });
+    await applyBillingEvent(
+      db,
+      "dodo",
+      ev({
+        type: "subscription_cancelled",
+        rawType: "subscription.cancelled",
+        subscriptionId: sub,
+        periodEnd,
+      }),
+    );
+    expect((await getSubscription(db, o)).subscription?.scheduledPlanId).toBeNull();
   });
 });

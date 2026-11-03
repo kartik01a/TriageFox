@@ -3,6 +3,8 @@ import {
   type BillingProvider,
   type NormalizedEvent,
   type NormalizedEventType,
+  type PlanChangeInput,
+  type PlanChangePreview,
   ProviderRequestError,
   WebhookError,
 } from "./provider";
@@ -52,17 +54,17 @@ export class DodoProvider implements BillingProvider {
     },
   ) {}
 
-  private async call<T>(path: string, body: unknown): Promise<T> {
+  private async call<T>(path: string, body: unknown, method = "POST"): Promise<T> {
     const f = this.opts.fetch ?? fetch;
     let res: Response;
     try {
       res = await f(`${BASES[this.opts.mode]}${path}`, {
-        method: "POST",
+        method,
         headers: {
           authorization: `Bearer ${this.opts.apiKey}`,
-          "content-type": "application/json",
+          ...(body === undefined ? {} : { "content-type": "application/json" }),
         },
-        body: JSON.stringify(body),
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         signal: AbortSignal.timeout(20_000),
       });
     } catch {
@@ -70,7 +72,56 @@ export class DodoProvider implements BillingProvider {
     }
     if (!res.ok)
       throw new ProviderRequestError(`The payment provider answered ${res.status}.`, res.status);
-    return (await res.json()) as T;
+    if (res.status === 204) return undefined as T;
+    return (await res.json().catch(() => ({}))) as T;
+  }
+
+  private changeBody(i: PlanChangeInput) {
+    return {
+      product_id: i.productId,
+      quantity: 1,
+      proration_billing_mode: i.request.prorationMode,
+      effective_at: i.request.effectiveAt,
+      // A failed charge leaves the customer on their current plan instead of half-changing it.
+      on_payment_failure: "prevent_change",
+      // A new choice replaces any change that was scheduled before.
+      cancel_scheduled_change_plan: true,
+    };
+  }
+
+  async previewPlanChange(i: PlanChangeInput): Promise<PlanChangePreview> {
+    const out = await this.call<{
+      immediate_charge?: { summary?: { total_amount?: number; currency?: string } };
+      new_plan?: { currency?: string };
+    }>(
+      `/subscriptions/${encodeURIComponent(i.subscriptionId)}/change-plan/preview`,
+      this.changeBody(i),
+    );
+    const summary = out.immediate_charge?.summary;
+    return {
+      amount: typeof summary?.total_amount === "number" ? summary.total_amount : 0,
+      currency: summary?.currency ?? out.new_plan?.currency ?? "",
+    };
+  }
+
+  async changePlan(i: PlanChangeInput): Promise<void> {
+    await this.call(
+      `/subscriptions/${encodeURIComponent(i.subscriptionId)}/change-plan`,
+      this.changeBody(i),
+    );
+  }
+
+  async cancelScheduledPlanChange(subscriptionId: string): Promise<void> {
+    try {
+      await this.call(
+        `/subscriptions/${encodeURIComponent(subscriptionId)}/change-plan/scheduled`,
+        undefined,
+        "DELETE",
+      );
+    } catch (err) {
+      if (err instanceof ProviderRequestError && err.status === 404) return; // nothing was scheduled
+      throw err;
+    }
   }
 
   async createCheckout(i: Parameters<BillingProvider["createCheckout"]>[0]) {

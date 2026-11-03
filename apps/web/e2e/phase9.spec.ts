@@ -184,13 +184,18 @@ test("only the owner can change billing", async ({ browser }) => {
   await memberPage.close();
 });
 
-test("checkout refuses a plan that is not sold in the chosen currency", async () => {
-  const res = await page.request.post("/api/billing/checkout", {
+test("checkout refuses a plan that is not sold in the chosen currency", async ({ browser }) => {
+  // A workspace still on its trial (the main one above already pays, and paying workspaces change
+  // plans instead of checking out).
+  const p = await (await browser.newContext()).newPage();
+  await signUpWithWorkspace(p, newUser("currency"), `Currency ${Date.now()}`);
+  const res = await p.request.post("/api/billing/checkout", {
     data: { planId, interval: "monthly", currency: "INR" }, // the plan has product ids for USD only
     headers: { origin: ORIGIN, "content-type": "application/json" },
   });
   expect(res.status()).toBe(400);
   expect((await res.json()).error).toMatch(/isn't available in your currency/);
+  await p.close();
 });
 
 test("the admin area is a plain 404 for everyone except an admin with two-factor on", async () => {
@@ -419,4 +424,108 @@ test("after the trial the home page leads to Billing, other pages stay open, and
   await expect(p).toHaveURL(/\/app\/activity/);
   await expect(p.getByRole("link", { name: "Choose a plan" })).toBeVisible();
   await p.close();
+});
+
+test("a paying workspace upgrades now (prorated) or schedules a downgrade; never a second checkout", async ({
+  browser,
+}) => {
+  const tag = randomUUID().slice(0, 6);
+  const ids = (size: string) => ({
+    USD: { monthly: `pdt_${size}_m_${tag}`, yearly: `pdt_${size}_y_${tag}` },
+  });
+  const [small, big] = await db()
+    .insert(schema.plans)
+    .values([
+      {
+        slug: `pc-small-${tag}`,
+        name: `Small ${tag}`,
+        prices: { USD: { monthly: 900, yearly: 9000 } },
+        conversationLimit: 300,
+        providerPriceIds: { dodo: ids("small") },
+        isPublic: true,
+        sortOrder: -2000,
+      },
+      {
+        slug: `pc-big-${tag}`,
+        name: `Big ${tag}`,
+        prices: { USD: { monthly: 2400, yearly: 24000 } },
+        conversationLimit: 1500,
+        providerPriceIds: { dodo: ids("big") },
+        isPublic: true,
+        sortOrder: -1999,
+      },
+    ])
+    .returning();
+  const p = await (await browser.newContext()).newPage();
+  const payer = newUser("payer");
+  const name = `Payer ${tag}`;
+  await signUpWithWorkspace(p, payer, name);
+  const [org] = await db()
+    .select()
+    .from(schema.organization)
+    .where(eq(schema.organization.name, name));
+  const payerOrg = org?.id ?? "";
+  try {
+    const subId = `sub_${tag}`;
+    const periodEnd = new Date(Date.now() + 20 * 86_400_000);
+    const active = (product: string, periodStart = new Date(Date.now() - 10 * 86_400_000)) =>
+      webhook("subscription.active", {
+        subscription_id: subId,
+        customer: { customer_id: `cus_${tag}`, email: payer.email },
+        product_id: product,
+        metadata: { org_id: payerOrg },
+        previous_billing_date: periodStart.toISOString(),
+        next_billing_date: periodEnd.toISOString(),
+      });
+    expect((await post(p, active(`pdt_small_m_${tag}`))).status()).toBe(200);
+
+    // Already paying: a second checkout is refused.
+    const second = await p.request.post("/api/billing/checkout", {
+      data: { planId: big?.id, interval: "monthly", currency: "USD" },
+      headers: { origin: ORIGIN },
+    });
+    expect(second.status()).toBe(409);
+
+    await p.goto("/app/billing");
+    const smallCard = p.getByRole("article", { name: `Small ${tag}` });
+    const bigCard = p.getByRole("article", { name: `Big ${tag}` });
+    await expect(smallCard.getByRole("button", { name: "Your plan" })).toBeDisabled();
+
+    // Upgrade: the price for the rest of the period is shown first, then charged.
+    await bigCard.getByRole("button", { name: "Upgrade now" }).click();
+    await expect(bigCard.getByText("$12.34")).toBeVisible(); // the stand-in provider's preview
+    await bigCard.getByRole("button", { name: "Pay and upgrade" }).click();
+    await expect(bigCard.getByText(/Upgrading/)).toBeVisible();
+    // The plan follows the provider's confirmation.
+    expect((await post(p, active(`pdt_big_m_${tag}`))).status()).toBe(200);
+    await p.goto("/app/billing");
+    await expect(bigCard.getByRole("button", { name: "Your plan" })).toBeDisabled();
+    await expect(p.getByText("0 / 1,500").or(p.getByText("0 / 1500"))).toBeVisible();
+
+    // Downgrade: scheduled for the next billing date, shown, and undoable.
+    await smallCard.getByRole("button", { name: "Switch at renewal" }).click();
+    await expect(smallCard.getByText(/Nothing is charged today/)).toBeVisible();
+    await smallCard.getByRole("button", { name: "Schedule change" }).click();
+    await expect(p.getByText(new RegExp(`Your plan changes to Small ${tag}`))).toBeVisible();
+    await expect(bigCard.getByRole("button", { name: "Your plan" })).toBeDisabled(); // still Big
+    await p.getByRole("button", { name: "Keep my current plan" }).click();
+    await expect(p.getByText(new RegExp(`Your plan changes to Small ${tag}`))).toHaveCount(0);
+
+    const audit = await db()
+      .select()
+      .from(schema.auditLog)
+      .where(eq(schema.auditLog.orgId, payerOrg));
+    expect(audit.map((a) => a.action)).toEqual(
+      expect.arrayContaining([
+        "billing.plan_upgraded",
+        "billing.plan_change_scheduled",
+        "billing.plan_change_cancelled",
+      ]),
+    );
+  } finally {
+    await db().delete(schema.subscriptions).where(eq(schema.subscriptions.orgId, payerOrg));
+    for (const pl of [small, big])
+      if (pl) await db().delete(schema.plans).where(eq(schema.plans.id, pl.id));
+    await p.close();
+  }
 });

@@ -31,6 +31,8 @@ export default defineConfig({
       // and the one email allowed into /admin.
       DODO_API_KEY: "e2e-not-a-real-key",
       DODO_WEBHOOK_SECRET: "whsec_dGVzdC1zZWNyZXQtZm9yLXRoZS1mYWtlLXByb3ZpZGVy",
+      // Plan changes call the payment provider directly: the tests use the stand-in (never in production).
+      E2E_FAKE_BILLING: "true",
       PLATFORM_ADMIN_EMAILS: "e2e-admin@example.test",
     },
     timeout: 120_000,

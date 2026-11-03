@@ -38,6 +38,13 @@ Effective for us: **≈ 6% + $0.40** per international subscription payment, **p
 - **Reminders** (daily worker job): an email 3 days (monthly) / 7 days (yearly) before renewal, including what TriageFox did that period, once per period; a notice 3 days before a trial ends.
 - **Provider set-up** (owner): [setup/providers.md](setup/providers.md) "Dodo Payments".
 
+## Changing plans (ADR 0015)
+- A paying workspace never checks out twice: other plans show **Upgrade now** or **Switch at renewal** (the checkout route answers 409 for a live paid subscription).
+- **Bigger plan or switching to yearly → now.** The customer sees the exact amount for the rest of the period (Dodo's preview), confirms, and is charged only the difference (`prorated_immediately_keep_cycle`; across intervals `prorated_immediately`). The bigger limit applies as soon as Dodo's webhook confirms the change. A failed charge leaves the plan unchanged (`prevent_change`).
+- **Smaller plan or switching to monthly → next billing date.** Nothing is charged today; Billing shows "… changes to Starter on 3 December. Until then you keep Pro and its limits." with **Keep my current plan** to undo. Stored in `subscriptions.scheduled_*`; applied when the renewal webhook carries the new product on or after that date.
+- Not while a payment has failed or the plan is set to end. Owner only; audited (`billing.plan_upgraded`, `billing.plan_change_scheduled`, `billing.plan_change_cancelled`).
+- To check once in Dodo test mode before going live: the preview amount, a prorated upgrade mid-period, and a scheduled downgrade arriving at renewal (the exact webhook fields are read defensively).
+
 ## Currency (agreed 2026-10-25)
 | Visitor | What they see | What they pay in |
 |---|---|---|

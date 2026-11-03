@@ -1,4 +1,4 @@
-import { listPlans } from "@triagefox/billing";
+import { getSubscription, hasPaidSubscription, listPlans } from "@triagefox/billing";
 import { z } from "zod";
 import { billingProvider, currencyFor } from "@/lib/billing";
 import { audit } from "@/lib/connections";
@@ -20,6 +20,14 @@ export async function POST(req: Request) {
   if (!provider) return json({ ok: false, error: "Billing isn't set up on this server yet." }, 501);
   const input = body.safeParse(await req.json().catch(() => null));
   if (!input.success) return json({ ok: false, error: "Choose a plan." }, 400);
+
+  // A paying workspace changes its plan; a second checkout would start a second subscription (ADR 0015).
+  const { subscription } = await getSubscription(db(), guard.ctx.workspace.id);
+  if (hasPaidSubscription(subscription))
+    return json(
+      { ok: false, error: "You already have a plan. Change it from the Billing page." },
+      409,
+    );
 
   const plans = await listPlans(db(), { publicOnly: true });
   const plan = plans.find((p) => p.id === input.data.planId);

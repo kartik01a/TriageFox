@@ -112,3 +112,73 @@ describe("API calls", () => {
     );
   });
 });
+
+describe("plan changes against Dodo's API (ADR 0015)", () => {
+  type Call = { url: string; method: string; body: Record<string, unknown> | null };
+  const recorder = (respond: (c: Call) => Response) => {
+    const calls: Call[] = [];
+    const f = (async (url: string, init: RequestInit) => {
+      const c = {
+        url,
+        method: init.method ?? "GET",
+        body: init.body ? JSON.parse(String(init.body)) : null,
+      };
+      calls.push(c);
+      return respond(c);
+    }) as unknown as typeof fetch;
+    return {
+      calls,
+      provider: new DodoProvider({ apiKey: "k", webhookKey: fake.secret, mode: "test", fetch: f }),
+    };
+  };
+  const input = {
+    subscriptionId: "sub_1",
+    productId: "pdt_pro_m",
+    request: {
+      prorationMode: "prorated_immediately_keep_cycle" as const,
+      effectiveAt: "immediately" as const,
+    },
+  };
+
+  it("previews and changes with the same request: no half-changes, a new choice replaces a scheduled one", async () => {
+    const { calls, provider } = recorder(
+      (c) =>
+        new Response(
+          JSON.stringify(
+            c.url.endsWith("/preview")
+              ? { immediate_charge: { summary: { total_amount: 1500, currency: "USD" } } }
+              : { payment_id: "pay_1" },
+          ),
+        ),
+    );
+    expect(await provider.previewPlanChange(input)).toEqual({ amount: 1500, currency: "USD" });
+    await provider.changePlan(input);
+    expect(calls.map((c) => [c.method, c.url])).toEqual([
+      ["POST", "https://test.dodopayments.com/subscriptions/sub_1/change-plan/preview"],
+      ["POST", "https://test.dodopayments.com/subscriptions/sub_1/change-plan"],
+    ]);
+    for (const c of calls)
+      expect(c.body).toEqual({
+        product_id: "pdt_pro_m",
+        quantity: 1,
+        proration_billing_mode: "prorated_immediately_keep_cycle",
+        effective_at: "immediately",
+        on_payment_failure: "prevent_change",
+        cancel_scheduled_change_plan: true,
+      });
+  });
+
+  it("cancels a scheduled change; nothing scheduled (404) is fine, other failures are not", async () => {
+    const ok = recorder(() => new Response(null, { status: 204 }));
+    await ok.provider.cancelScheduledPlanChange("sub_1");
+    expect(ok.calls[0]).toMatchObject({
+      method: "DELETE",
+      url: "https://test.dodopayments.com/subscriptions/sub_1/change-plan/scheduled",
+      body: null,
+    });
+    const none = recorder(() => new Response("{}", { status: 404 }));
+    await expect(none.provider.cancelScheduledPlanChange("sub_1")).resolves.toBeUndefined();
+    const down = recorder(() => new Response("{}", { status: 503 }));
+    await expect(down.provider.cancelScheduledPlanChange("sub_1")).rejects.toThrow();
+  });
+});

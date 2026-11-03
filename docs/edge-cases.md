@@ -87,6 +87,10 @@
 | Payment fails | `past_due` with a grace period (admin setting, default 7 days), then new conversations are not ticketed (and not later); a success clears it |
 | Customer cancels | Access continues to the end of the paid period, even if the provider's "ended" message is lost (`cancelAtPeriodEnd` + period end in `evaluate`); then new conversations are not ticketed |
 | Trial or plan ended | Banner on every page with *Choose a plan*; the Overview page redirects to Billing; other pages stay open |
+| Paying workspace tries to check out again | Refused (409): plans are changed, never bought twice (ADR 0015) |
+| Upgrade charge fails | The plan stays as it was (`prevent_change`); the plan only changes when the provider confirms |
+| Downgrade scheduled, then the customer upgrades | The upgrade replaces the scheduled downgrade |
+| Provider message names the smaller plan before its date | Ignored until the scheduled date; then applied and the schedule cleared |
 | Conversation limit reached | New conversations wait until next period, or an upgrade, or the workspace's own key; follow-ups of counted conversations still work; never extra charges |
 | Platform trial AI budget used up | New trials without their own key are told to add one |
 | Price changed while people are subscribed | New plan version; subscribers keep theirs; the old version stays on sale until the new one is published |

@@ -74,6 +74,12 @@ export const subscriptions = pgTable("subscriptions", {
   reminderSentForPeriodEnd: timestamp("reminder_sent_for_period_end", { withTimezone: true }),
   /** An admin paused the workspace (support action). */
   pausedByAdmin: boolean("paused_by_admin").notNull().default(false),
+  /** Currency of the paid subscription (plan changes must stay in it). */
+  currency: text("currency"),
+  /** A downgrade the customer scheduled for the next billing date (ADR 0015). */
+  scheduledPlanId: uuid("scheduled_plan_id").references(() => plans.id),
+  scheduledInterval: text("scheduled_interval").$type<"monthly" | "yearly">(),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

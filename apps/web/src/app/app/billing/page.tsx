@@ -1,4 +1,4 @@
-import { billingSummary, listPlans } from "@triagefox/billing";
+import { changeKind, listPlans } from "@triagefox/billing";
 import { eq, schema, withOrg } from "@triagefox/db";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -13,7 +13,13 @@ import {
 } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
-import { ChooseButton, PortalButton, RedeemForm } from "./billing-actions";
+import {
+  ChangePlanButton,
+  ChooseButton,
+  KeepPlanButton,
+  PortalButton,
+  RedeemForm,
+} from "./billing-actions";
 
 export const metadata: Metadata = { title: "Billing" };
 
@@ -51,14 +57,29 @@ export default async function BillingPage({
     );
 
   const q = await searchParams;
-  const interval = q.interval === "monthly" ? "monthly" : "yearly";
-  const currency = currencyFor((await headers()).get("cf-ipcountry"), q.currency);
   const isOwner = role === "owner";
   const [summary, plans] = await Promise.all([
     workspaceBilling(workspace.id),
     listPlans(db(), { publicOnly: true }),
   ]);
   const provider = billingProvider();
+  // A paying workspace sees its own billing period and the currency it pays in (plan changes stay in it).
+  const interval =
+    q.interval === "monthly" || q.interval === "yearly"
+      ? q.interval
+      : (summary.interval ?? "yearly");
+  const currency =
+    summary.paid && summary.currency
+      ? (summary.currency as "USD" | "INR")
+      : currencyFor((await headers()).get("cf-ipcountry"), q.currency);
+  const currentPlan = summary.paid ? plans.find((p) => p.slug === summary.planSlug) : undefined;
+  const changeBlocked = summary.paid
+    ? summary.status === "past_due"
+      ? "Update your payment method first, then change the plan."
+      : summary.cancelAtPeriodEnd
+        ? "Your plan is set to end. Resume it under Manage subscription to change plans."
+        : null
+    : null;
 
   return (
     <div className="space-y-8">
@@ -164,7 +185,7 @@ export default async function BillingPage({
       <section className="space-y-4" aria-labelledby="plans">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 id="plans" className="text-lg font-semibold">
-            {summary.status === "active" ? "Change plan" : "Choose a plan"}
+            {summary.paid ? "Change plan" : "Choose a plan"}
           </h2>
           <IntervalAndCurrencySwitch base="/app/billing" interval={interval} currency={currency} />
         </div>
@@ -173,14 +194,45 @@ export default async function BillingPage({
             Payments aren't set up on this server yet.
           </p>
         )}
+        {summary.scheduled && (
+          <div
+            className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted px-4 py-3 text-sm"
+            role="status"
+          >
+            <p>
+              Your plan changes to <strong>{summary.scheduled.planName}</strong> (
+              {summary.scheduled.interval}) on <strong>{date(summary.scheduled.at)}</strong>. Until
+              then you keep {summary.planName ?? "your current plan"} and its limits.
+            </p>
+            {isOwner && <KeepPlanButton />}
+          </div>
+        )}
+        {changeBlocked && <p className="text-sm text-muted-foreground">{changeBlocked}</p>}
         {plans.length === 0 ? (
           <Card className="text-sm text-muted-foreground">Plans are coming soon.</Card>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {plans.map((p) => {
-              const current = summary.planSlug === p.slug && summary.status === "active";
+              const current =
+                summary.planSlug === p.slug &&
+                (summary.paid ? summary.interval === interval : summary.status === "active");
               const buyable =
                 !!provider && !!p.providerPriceIds[provider.name]?.[currency]?.[interval];
+              // For a paying workspace: does choosing this happen now (bigger/yearly) or at renewal?
+              const kind =
+                currentPlan &&
+                summary.interval &&
+                currentPlan.prices[currency] &&
+                p.prices[currency]
+                  ? changeKind(
+                      {
+                        planId: currentPlan.id,
+                        interval: summary.interval,
+                        monthlyPrice: currentPlan.prices[currency].monthly,
+                      },
+                      { planId: p.id, interval, monthlyPrice: p.prices[currency].monthly },
+                    )
+                  : null;
               return (
                 <PlanCard
                   key={p.id}
@@ -189,7 +241,23 @@ export default async function BillingPage({
                   interval={interval}
                   current={current}
                   action={
-                    isOwner ? (
+                    isOwner && summary.paid ? (
+                      <ChangePlanButton
+                        planId={p.id}
+                        interval={interval}
+                        primary={kind === "now" && p.isPopular}
+                        disabled={!buyable || current || !kind || !!changeBlocked}
+                        label={
+                          current
+                            ? "Your plan"
+                            : !buyable
+                              ? "Not available yet"
+                              : kind === "now"
+                                ? "Upgrade now"
+                                : "Switch at renewal"
+                        }
+                      />
+                    ) : isOwner ? (
                       <ChooseButton
                         planId={p.id}
                         interval={interval}
@@ -208,8 +276,10 @@ export default async function BillingPage({
           </div>
         )}
         <p className="text-xs text-muted-foreground">
-          Cancel any time; payments are non-refundable. Plan changes, cards and invoices are handled
-          in the payment portal.
+          A bigger plan or yearly billing starts now: you pay only the difference for the rest of
+          the period and get the new limit straight away. A smaller plan or monthly billing starts
+          at your next billing date. Cancel any time; payments are non-refundable. Cards and
+          invoices are in the payment portal.
         </p>
       </section>
 

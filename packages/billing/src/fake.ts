@@ -1,13 +1,22 @@
 import { createHmac } from "node:crypto";
 import { DodoProvider } from "./dodo";
-import type { BillingProvider, NormalizedEvent } from "./provider";
+import type {
+  BillingProvider,
+  NormalizedEvent,
+  PlanChangeInput,
+  PlanChangePreview,
+} from "./provider";
 
 /**
  * A stand-in for tests and local work: checkout and portal links point back at a path we can assert on, and
  * webhooks are signed exactly like Dodo's, so the real verification code runs in tests.
  */
 export class FakeProvider implements BillingProvider {
-  readonly name = "fake";
+  /** "fake" by default; the browser tests use "dodo" so plans' Dodo product ids apply. */
+  readonly name: string;
+  constructor(opts: { name?: string } = {}) {
+    this.name = opts.name ?? "fake";
+  }
   readonly checkouts: Parameters<BillingProvider["createCheckout"]>[0][] = [];
   readonly secret = "whsec_dGVzdC1zZWNyZXQtZm9yLXRoZS1mYWtlLXByb3ZpZGVy"; // not a real secret
   private readonly inner = new DodoProvider({ apiKey: "x", webhookKey: this.secret, mode: "test" });
@@ -18,6 +27,18 @@ export class FakeProvider implements BillingProvider {
   }
   async createPortalSession(i: Parameters<BillingProvider["createPortalSession"]>[0]) {
     return { url: `https://portal.example.test/${i.customerId}` };
+  }
+  readonly planChanges: PlanChangeInput[] = [];
+  readonly cancelledSchedules: string[] = [];
+  /** A fixed, recognisable preview: 1,234 in the smallest unit for a change now, 0 at renewal. */
+  async previewPlanChange(i: PlanChangeInput): Promise<PlanChangePreview> {
+    return { amount: i.request.effectiveAt === "immediately" ? 1234 : 0, currency: "USD" };
+  }
+  async changePlan(i: PlanChangeInput) {
+    this.planChanges.push(i);
+  }
+  async cancelScheduledPlanChange(subscriptionId: string) {
+    this.cancelledSchedules.push(subscriptionId);
   }
   parseWebhook(headers: Headers, rawBody: string, now?: Date): NormalizedEvent {
     return this.inner.parseWebhook(headers, rawBody, now);
