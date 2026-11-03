@@ -84,10 +84,11 @@ Do this last, when the hosted version works end to end.
 - [ ] README: add the demo GIF (`docs/assets/demo.gif`, see the comment at the top of `README.md`), check the self-host section, set the repository's description and topics (`customer-support`, `jira`, `trello`, `crisp`, `ai`, `self-hosted`).
 - [ ] `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `CLA.md`, `CODE_OF_CONDUCT.md`, issue and pull-request templates are in place (they are).
 - [ ] GitHub → Settings → **Code security**: turn on Dependabot alerts and security updates, **secret scanning and push protection**, private vulnerability reporting, and check CodeQL is running.
-- [ ] GitHub → Settings → Branches: protect `main` against force-push and deletion (allow yourself to push directly, as you do now) and require the CI checks to pass for pull requests from others.
 - [ ] Turn on Discussions (the issue template links to it).
 - [ ] Publish the first release tag (section 2, "Releasing") so the Docker images exist before anyone reads the self-host guide.
 - [ ] Switch the repository to **public**.
+- [ ] Right after: GitHub → Settings → Rules → Rulesets → new branch ruleset for `main` (Enforcement **Active**): **Restrict deletions** and **Block force pushes**. Leave pull-request and status-check rules off while you push straight to `main` yourself. Free accounts can't enforce rulesets on private repositories, which is why this step comes after the switch to public.
+- [ ] Merge or close the open Dependabot pull requests after testing them (major jumps such as the Node base image need the self-host smoke test).
 
 ## 6. Launch week
 
