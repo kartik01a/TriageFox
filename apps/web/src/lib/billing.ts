@@ -31,6 +31,16 @@ export function billingProvider(): BillingProvider | null {
   });
 }
 
+/**
+ * The visitor's country: Cloudflare's free `CF-IPCountry` header in production. Locally there is no
+ * Cloudflare, so `DEV_COUNTRY` (e.g. IN) stands in for it; it is ignored in production.
+ */
+export function visitorCountry(h: Headers): string | null {
+  const fromCloudflare = h.get("cf-ipcountry");
+  if (fromCloudflare) return fromCloudflare;
+  return env().NODE_ENV !== "production" ? (process.env.DEV_COUNTRY ?? null) : null;
+}
+
 /** INR for visitors in India (Cloudflare's free country header), USD for everyone else. */
 export function currencyFor(
   country: string | null | undefined,

@@ -14,7 +14,7 @@ import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { currencyFor } from "@/lib/billing";
+import { currencyFor, visitorCountry } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { getSession } from "@/lib/session";
@@ -122,7 +122,7 @@ export default async function Home() {
   const trialDays = settings.trial.days;
   const preview = plans.filter((p) => !p.byokRequired).slice(0, 3);
   // Rupees for visitors in India (Cloudflare's country header), dollars for everyone else.
-  const currency = currencyFor((await headers()).get("cf-ipcountry"));
+  const currency = currencyFor(visitorCountry(await headers()));
 
   return (
     <>

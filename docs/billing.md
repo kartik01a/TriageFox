@@ -54,7 +54,7 @@ Effective for us: **≈ 6% + $0.40** per international subscription payment, **p
 | **India** | Real rupee prices (round numbers, e.g. ₹699/month), + GST added at checkout | **INR**: UPI, RuPay and Indian cards (Dodo India domestic fee: 4% + $0.15) |
 | **Everyone else** | USD price + an approximate local hint, e.g. "$9/month (≈ ¥1,350)" | **USD** (cards, Apple Pay, Google Pay) |
 
-- The currency is chosen automatically from Cloudflare's free `CF-IPCountry` header; visitors can switch manually (USD ↔ INR).
+- The currency is chosen automatically from Cloudflare's free `CF-IPCountry` header; visitors can switch manually (USD ↔ INR). Locally there is no Cloudflare, so every visit counts as "unknown country" (USD); set `DEV_COUNTRY=IN` in `.env` to see the Indian view (ignored in production). Paying customers always see the currency they pay in.
 - Hint conversion rates come from a free daily source (e.g. Frankfurter / ECB rates), cached for 24 h, and labelled "approximate".
 - Rupee prices are stored per plan alongside USD (admin-editable, versioned like USD prices).
 - Dodo's **adaptive currency** (customer pays a 2–4% FX fee) stays **off**.

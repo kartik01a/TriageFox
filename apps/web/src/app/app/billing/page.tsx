@@ -4,7 +4,13 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { IntervalAndCurrencySwitch, PlanCard } from "@/components/pricing-grid";
 import { Card } from "@/components/ui/card";
-import { billingEnabled, billingProvider, currencyFor, workspaceBilling } from "@/lib/billing";
+import {
+  billingEnabled,
+  billingProvider,
+  currencyFor,
+  visitorCountry,
+  workspaceBilling,
+} from "@/lib/billing";
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/workspace";
 import {
@@ -67,7 +73,7 @@ export default async function BillingPage({
   const currency =
     summary.paid && summary.currency
       ? (summary.currency as "USD" | "INR")
-      : currencyFor((await headers()).get("cf-ipcountry"), q.currency);
+      : currencyFor(visitorCountry(await headers()), q.currency);
   const currentPlan = summary.paid ? plans.find((p) => p.slug === summary.planSlug) : undefined;
   const changeBlocked = summary.paid
     ? summary.status === "past_due"

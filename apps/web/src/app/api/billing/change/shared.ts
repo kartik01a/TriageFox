@@ -1,7 +1,7 @@
 import "server-only";
 import { planChangePlan } from "@triagefox/billing";
 import { z } from "zod";
-import { billingProvider, currencyFor, formatPrice } from "@/lib/billing";
+import { billingProvider, currencyFor, formatPrice, visitorCountry } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { json, managerGuard } from "@/lib/guards";
 
@@ -24,7 +24,7 @@ export async function prepareChange(req: Request) {
     provider: provider.name,
     planId: input.data.planId,
     interval: input.data.interval,
-    fallbackCurrency: currencyFor(req.headers.get("cf-ipcountry")),
+    fallbackCurrency: currencyFor(visitorCountry(req.headers)),
   });
   if (!plan.ok) return { response: json({ ok: false, error: plan.error }, 400) } as const;
   return { guard, provider, plan } as const;

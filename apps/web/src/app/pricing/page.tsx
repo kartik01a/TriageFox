@@ -7,7 +7,7 @@ import { IntervalAndCurrencySwitch, PlanCard, type PlanView } from "@/components
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
 import { buttonVariants } from "@/components/ui/button";
-import { billingEnabled, currencyFor } from "@/lib/billing";
+import { billingEnabled, currencyFor, visitorCountry } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { SITE } from "@/lib/site";
 
@@ -25,7 +25,7 @@ export default async function PricingPage({
   if (!billingEnabled()) notFound();
   const q = await searchParams;
   const interval = q.interval === "monthly" ? "monthly" : "yearly";
-  const currency = currencyFor((await headers()).get("cf-ipcountry"), q.currency);
+  const currency = currencyFor(visitorCountry(await headers()), q.currency);
   const [plans, settings] = await Promise.all([
     listPlans(db(), { publicOnly: true }),
     getSettings(db()),

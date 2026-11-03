@@ -1,6 +1,6 @@
 import { getSubscription, hasPaidSubscription, listPlans } from "@triagefox/billing";
 import { z } from "zod";
-import { billingProvider, currencyFor } from "@/lib/billing";
+import { billingProvider, currencyFor, visitorCountry } from "@/lib/billing";
 import { audit } from "@/lib/connections";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
   const plans = await listPlans(db(), { publicOnly: true });
   const plan = plans.find((p) => p.id === input.data.planId);
-  const country = req.headers.get("cf-ipcountry");
+  const country = visitorCountry(req.headers);
   const currency = input.data.currency ?? currencyFor(country);
   const productId = plan?.providerPriceIds[provider.name]?.[currency]?.[input.data.interval];
   if (!plan || !productId)
