@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 
 /**
- * Opens a payment page (checkout, portal) in a new tab. The tab is opened during the click itself, so
+ * Opens the payment portal in a new tab. The tab is opened during the click itself, so
  * browsers don't block it as a pop-up, and pointed at the link once the server has made it.
  */
 async function openInNewTab(make: () => Promise<{ ok: boolean; url?: string; error?: string }>) {
@@ -60,11 +60,13 @@ export function ChooseButton({
         onClick={async () => {
           setBusy(true);
           setError(null);
-          const r = await openInNewTab(() =>
-            post("/api/billing/checkout", { planId, interval, currency }),
-          );
-          setBusy(false);
-          if (!r.ok) setError(r.error ?? "Could not open checkout.");
+          // Same tab: checkout sends the customer back to Billing when the payment is done.
+          const r = await post("/api/billing/checkout", { planId, interval, currency });
+          if (r.ok && r.url) window.location.assign(r.url);
+          else {
+            setError(r.error ?? "Could not open checkout.");
+            setBusy(false);
+          }
         }}
       >
         {busy ? "Opening checkout…" : label}
