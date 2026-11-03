@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 
@@ -103,18 +103,46 @@ export function ChangePlanButton({
   label,
   disabled,
   primary,
+  current,
 }: {
   planId: string;
   interval: "monthly" | "yearly";
   label: string;
   disabled?: boolean;
   primary?: boolean;
+  /** This card is the workspace's plan (as the server last rendered it). */
+  current?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // After an upgrade, the plan changes when the payment provider's confirmation arrives (usually seconds,
+  // longer through a tunnel). Keep re-reading the page until this card is the plan, for up to 2 minutes.
+  const [waiting, setWaiting] = useState(false);
+  useEffect(() => {
+    if (!waiting) return;
+    if (current) {
+      setWaiting(false);
+      setDone(null);
+      return;
+    }
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries++;
+      router.refresh();
+      if (tries >= 40) {
+        clearInterval(timer);
+        setWaiting(false);
+        setDone(
+          "The payment went through, but the new plan hasn't shown yet. Reload this page in a minute.",
+        );
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [waiting, current, router]);
 
   async function ask() {
     setBusy(true);
@@ -137,8 +165,7 @@ export function ChangePlanButton({
     setPreview(null);
     if (preview?.kind === "now") {
       setDone("Upgrading… your new plan shows here in a moment.");
-      // The plan follows the payment provider's confirmation, which arrives within seconds.
-      for (const wait of [3000, 8000, 15000]) setTimeout(() => router.refresh(), wait);
+      setWaiting(true);
     } else {
       setDone(null);
       router.refresh();

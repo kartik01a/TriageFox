@@ -512,10 +512,12 @@ test("a paying workspace upgrades now (prorated) or schedules a downgrade; never
     await expect(bigCard.getByText("$12.34")).toBeVisible(); // the stand-in provider's preview
     await bigCard.getByRole("button", { name: "Pay and upgrade" }).click();
     await expect(bigCard.getByText(/Upgrading/)).toBeVisible();
-    // The plan follows the provider's confirmation.
+    // The plan follows the provider's confirmation, and the page updates by itself (no reload).
     expect((await post(p, active(`pdt_big_m_${tag}`))).status()).toBe(200);
-    await p.goto("/app/billing");
-    await expect(bigCard.getByRole("button", { name: "Your plan" })).toBeDisabled();
+    await expect(bigCard.getByRole("button", { name: "Your plan" })).toBeDisabled({
+      timeout: 15_000,
+    });
+    await expect(bigCard.getByText(/Upgrading/)).toHaveCount(0);
     await expect(p.getByText("0 / 1,500").or(p.getByText("0 / 1500"))).toBeVisible();
 
     // Downgrade: scheduled for the next billing date, shown, and undoable.

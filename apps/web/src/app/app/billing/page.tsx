@@ -255,6 +255,7 @@ export default async function BillingPage({
                       <ChangePlanButton
                         planId={p.id}
                         interval={interval}
+                        current={current}
                         primary={kind === "now" && p.isPopular}
                         disabled={!buyable || current || !kind || !!changeBlocked}
                         label={
