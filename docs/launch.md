@@ -4,9 +4,10 @@ Everything between "the code works" and "customers can use it": running the host
 
 ## 1. Accounts and names (start these first: some take days)
 
-- [ ] **you** Buy **triagefox.com**. Then, in one pass, replace the temporary contact address: `apps/web/src/lib/site.ts` (`contactEmail`, `securityEmail`), `SECURITY.md`, `CODE_OF_CONDUCT.md` (each has a `TODO(owner)` comment).
+- [x] **you** Buy **triagefox.com** (Cloudflare Registrar). The public contact addresses are `support@triagefox.com` and `security@triagefox.com` (`apps/web/src/lib/site.ts`, `SECURITY.md`, `CODE_OF_CONDUCT.md`).
+- [ ] **you** Receiving mail: Cloudflare → Email → **Email Routing**: verify your personal inbox as the destination, then forward `support@` and `security@` to it (Cloudflare adds the MX and SPF records itself).
 - [ ] **you** Dodo Payments: create the account, submit KYC for **live** mode (can take days), keep working in test mode meanwhile ([setup/providers.md](setup/providers.md) "Dodo Payments").
-- [ ] **you** Email: a Resend account, verify the domain (SPF, DKIM, DMARC records). Use its SMTP details for `SMTP_*`; sender e.g. `TriageFox <hello@triagefox.com>`.
+- [ ] **you** Sending mail: a Resend account, add the domain (its records live on the `send.` subdomain and `resend._domainkey`, so they don't clash with Email Routing), plus a `_dmarc` TXT record starting at `p=none`. The app uses Resend's SMTP (`smtp.resend.com`, port 465, `SMTP_SECURE=true`, user `resend`, an API key as the password) with `MAIL_FROM="TriageFox <support@triagefox.com>"`. To answer support mail as support@ from your personal inbox, add it in Gmail → Settings → Accounts → *Send mail as* with the same SMTP details and a **separate** API key.
 - [ ] **you** Sentry (free): one project for the web app and the worker, DSN in `SENTRY_DSN`.
 - [ ] **you** Cloudflare (free): add the domain, point it at the server, "Full (strict)" TLS.
 - [ ] **you** Hosting: an Oracle Cloud Always Free account (an ARM "Ampere A1" instance with 2+ vCPU and 12 GB is plenty), or any VPS with 2 vCPU / 2 GB+.

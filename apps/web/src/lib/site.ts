@@ -8,10 +8,9 @@ export const SITE = {
   operator: "Kartik Singh Bisht",
   country: "India",
   repoUrl: "https://github.com/kartik01a/TriageFox",
-  // TODO(owner): after buying triagefox.com, change this to support@triagefox.com (and SECURITY.md's
-  // security contact). Everything public reads it from here.
-  contactEmail: "kartiksinghbisht1@gmail.com",
-  securityEmail: "kartiksinghbisht1@gmail.com",
+  // Both forward to the owner's inbox through Cloudflare Email Routing. Everything public reads them from here.
+  contactEmail: "support@triagefox.com",
+  securityEmail: "security@triagefox.com",
 } as const;
 
 /** Last time the legal texts were meaningfully changed. Shown at the top of each. */
