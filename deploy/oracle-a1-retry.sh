@@ -36,13 +36,16 @@ TENANCY="$(awk -F= '/^\[DEFAULT\]/{d=1;next} /^\[/{d=0} d && $1~/^tenancy/{gsub(
 say "Looking up the availability domain, subnet and Ubuntu image..."
 AD="$(oci iam availability-domain list --compartment-id "$TENANCY" --query 'data[0].name' --raw-output)" \
   || fail "the CLI could not sign in. Check ~/.oci/config and that the API key is added in Oracle (My profile -> API keys)."
-SUBNET="$(oci network subnet list --compartment-id "$TENANCY" --display-name "$SUBNET_NAME" --query 'data[0].id' --raw-output)"
+# A newly added API key can work for one Oracle service minutes before another; just run again then.
+SUBNET="$(oci network subnet list --compartment-id "$TENANCY" --display-name "$SUBNET_NAME" --query 'data[0].id' --raw-output)" \
+  || fail "could not list subnets (a new API key can take ~10 minutes to work everywhere; try again)."
 [[ -n "$SUBNET" && "$SUBNET" != "null" ]] || fail "no subnet named '$SUBNET_NAME' (create the VCN with the wizard first)."
 IMAGE="$(oci compute image list --compartment-id "$TENANCY" --operating-system "Canonical Ubuntu" \
   --operating-system-version "24.04" --shape "$SHAPE" --sort-by TIMECREATED --sort-order DESC \
-  --limit 1 --query 'data[0].id' --raw-output)"
+  --limit 1 --query 'data[0].id' --raw-output 2>/dev/null)" || fail "could not list images; try again in a few minutes."
 [[ -n "$IMAGE" && "$IMAGE" != "null" ]] || fail "no Ubuntu 24.04 image found for $SHAPE."
-IMAGE_NAME="$(oci compute image get --image-id "$IMAGE" --query 'data."display-name"' --raw-output)"
+IMAGE_NAME="$(oci compute image get --image-id "$IMAGE" --query 'data."display-name"' --raw-output)" \
+  || fail "could not read the image details; try again in a few minutes."
 
 say "Region domain: $AD"
 say "Image:         $IMAGE_NAME"
