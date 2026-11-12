@@ -10,7 +10,7 @@ Everything between "the code works" and "customers can use it": running the host
 - [ ] **you** Sending mail: a Resend account, add the domain (its records live on the `send.` subdomain and `resend._domainkey`, so they don't clash with Email Routing), plus a `_dmarc` TXT record starting at `p=none`. The app uses Resend's SMTP (`smtp.resend.com`, port 465, `SMTP_SECURE=true`, user `resend`, an API key as the password) with `MAIL_FROM="TriageFox <support@triagefox.com>"`. To answer support mail as support@ from your personal inbox, add it in Gmail → Settings → Accounts → *Send mail as* with the same SMTP details and a **separate** API key.
 - [ ] **you** Sentry (free): one project for the web app and the worker, DSN in `SENTRY_DSN`.
 - [ ] **you** Cloudflare (free): add the domain, point it at the server, "Full (strict)" TLS.
-- [ ] **you** Hosting: an Oracle Cloud Always Free account (an ARM "Ampere A1" instance with 2+ vCPU and 12 GB is plenty), or any VPS with 2 vCPU / 2 GB+.
+- [ ] **you** Hosting: an Oracle Cloud Always Free account, or any VPS with 2 vCPU / 4 GB+. On a free (not Pay As You Go) Oracle account use an ARM A1 server with **1 OCPU / 6 GB**: Oracle stops free servers whose CPU, network *and* memory all stay low for 7 days, and on 6 GB the app's normal memory use stays above that line. Create the network first with the *VCN with Internet Connectivity* wizard. If the console says "Out of capacity", `caffeinate -i ./deploy/oracle-a1-retry.sh` (needs `brew install oci-cli` and `oci setup config`) retries every minute until a server is free.
 - [ ] **you** A free uptime monitor (UptimeRobot, Better Stack…) on `https://triagefox.com/api/health`, alerting your phone.
 
 ## 2. Run the hosted version
