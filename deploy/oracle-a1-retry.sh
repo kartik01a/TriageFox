@@ -57,12 +57,17 @@ existing() {
 }
 
 report() {
-  local id="$1" ip
-  say "Waiting for the server to start..."
-  oci compute instance get --instance-id "$id" --wait-for-state RUNNING --max-wait-seconds 900 >/dev/null || true
-  ip="$(oci compute instance list-vnics --instance-id "$id" --query 'data[0]."public-ip"' --raw-output 2>/dev/null || true)"
+  local id="$1" ip=""
+  say "Waiting for the server to start (a few minutes)..."
+  # Poll rather than trust --wait-for-state: the VNIC (and so the IP) appears a little after RUNNING.
+  for _ in $(seq 1 60); do
+    ip="$(oci compute instance list-vnics --instance-id "$id" --query 'data[0]."public-ip"' --raw-output 2>/dev/null || true)"
+    [[ -n "$ip" && "$ip" != "null" ]] && break
+    ip=""
+    sleep 15
+  done
   say "Done. Public IP: ${ip:-unknown (see the Oracle console)}"
-  say "Next: make this IP reserved in the console, then: ssh ubuntu@${ip:-<IP>}"
+  say "Next: ssh ubuntu@${ip:-<IP>} (the IP stays with the server through stops and restarts)"
   notify "Your server is ready: ${ip:-see console}"
 }
 
