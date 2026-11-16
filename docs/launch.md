@@ -18,7 +18,7 @@ Everything between "the code works" and "customers can use it": running the host
 Same stack as [self-hosting.md](self-hosting.md), with `APP_MODE=hosted` in `deploy/.env`. Differences:
 
 1. **Install:** follow the self-hosting guide on the server. Use the published images (`WEB_IMAGE`, `WORKER_IMAGE`, see "Releasing" below) so deploys are a `pull`, not a build.
-2. **Hosted-only settings** in `deploy/.env`: `APP_MODE=hosted`, `DODO_API_KEY`, `DODO_WEBHOOK_SECRET`, `DODO_ENV=live`, `PLATFORM_ADMIN_EMAILS`, `CRISP_IDENTITY_SECRET`, `ALERT_EMAIL`, `SLACK_ALERTS_WEBHOOK_URL`, your platform `OPENAI_API_KEY`, the Crisp production token, `SMTP_*`, `SENTRY_DSN`. The web container never receives the worker's private key (the compose file already enforces this).
+2. **Hosted-only settings** in `deploy/.env`: `APP_MODE=hosted`, `DODO_API_KEY`, `DODO_WEBHOOK_SECRET`, `DODO_ENV=live`, `PLATFORM_ADMIN_EMAILS`, `SUPPORT_CRISP_WEBSITE_ID`, `CRISP_IDENTITY_SECRET`, `ALERT_EMAIL`, `SLACK_ALERTS_WEBHOOK_URL`, your platform `OPENAI_API_KEY`, the Crisp production token, `SMTP_*`, `SENTRY_DSN`. The web container never receives the worker's private key (the compose file already enforces this).
 3. **Seed plans** once: `docker compose … run --rm migrate` runs migrations; plans come from the private seed file (`pnpm db:seed` from a checkout that has `docs/private/plans.seed.json`) or are created in `/admin/plans`.
 4. **Admin account:** sign up with the email in `PLATFORM_ADMIN_EMAILS`, turn on two-factor, then open `/admin`.
 5. **Your own support:** connect the *TriageFox Support* Crisp website to your own workspace, switch its automation on, then *Admin → Support inbox → Which workspace is our own support?*

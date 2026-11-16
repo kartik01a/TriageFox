@@ -147,7 +147,7 @@ How the containers are separated:
 
 ## Hosted-only settings
 
-`DODO_*`, `PLATFORM_ADMIN_EMAILS`, `CRISP_IDENTITY_SECRET`, `ALERT_EMAIL` and `SLACK_ALERTS_WEBHOOK_URL` in `.env.example` belong to the hosted version. A self-hosted install ignores them: there is no billing, trial, plan limit or admin area.
+`DODO_*`, `PLATFORM_ADMIN_EMAILS`, `SUPPORT_CRISP_WEBSITE_ID` and `CRISP_IDENTITY_SECRET` (the last block of `deploy/.env.example`) belong to the hosted version. A self-hosted install ignores them: there is no billing, trial, plan limit or admin area.
 
 ## Differences from the hosted version
 

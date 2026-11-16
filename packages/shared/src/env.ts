@@ -57,7 +57,11 @@ export const webEnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
-  NEXT_PUBLIC_CRISP_WEBSITE_ID: z.string().optional(),
+  /**
+   * Crisp website id of the TriageFox Support website (the help chat). Read at run time on the server, so the
+   * published image works for any install; a NEXT_PUBLIC_ variable would be frozen into the build instead.
+   */
+  SUPPORT_CRISP_WEBSITE_ID: z.string().optional(),
 });
 
 export const workerEnvSchema = z.object({

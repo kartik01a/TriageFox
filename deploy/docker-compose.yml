@@ -132,6 +132,13 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       SELFHOST_OPEN_SIGNUP: ${SELFHOST_OPEN_SIGNUP:-false}
+      # Hosted version only (ignored when APP_MODE=selfhost): billing, admin area, own support chat.
+      DODO_API_KEY: ${DODO_API_KEY:-}
+      DODO_WEBHOOK_SECRET: ${DODO_WEBHOOK_SECRET:-}
+      DODO_ENV: ${DODO_ENV:-test}
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      CRISP_IDENTITY_SECRET: ${CRISP_IDENTITY_SECRET:-}
+      SUPPORT_CRISP_WEBSITE_ID: ${SUPPORT_CRISP_WEBSITE_ID:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       migrate: { condition: service_completed_successfully }

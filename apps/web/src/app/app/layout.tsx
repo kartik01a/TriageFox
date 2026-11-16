@@ -9,6 +9,7 @@ import { Wordmark } from "@/components/fox-logo";
 import { reviewCount } from "@/lib/app-data";
 import { BLOCKED_NOTE, billingEnabled, workspaceBilling } from "@/lib/billing";
 import { db } from "@/lib/db";
+import { env } from "@/lib/env";
 import { requireSession } from "@/lib/session";
 import { resolveWorkspace } from "@/lib/workspace";
 import { SignOutButton } from "./sign-out-button";
@@ -74,7 +75,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span className="hidden max-w-48 truncate text-sm text-muted-foreground sm:inline">
               {user.email}
             </span>
-            {process.env.NEXT_PUBLIC_CRISP_WEBSITE_ID && <HelpButton />}
+            {env().SUPPORT_CRISP_WEBSITE_ID && <HelpButton />}
             <SignOutButton />
           </div>
         </div>

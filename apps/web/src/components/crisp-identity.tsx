@@ -19,8 +19,8 @@ export async function CrispIdentity({
   workspaceId: string;
   workspaceName: string;
 }) {
-  const secret = env().CRISP_IDENTITY_SECRET;
-  if (!secret || !process.env.NEXT_PUBLIC_CRISP_WEBSITE_ID) return null;
+  const { CRISP_IDENTITY_SECRET: secret, SUPPORT_CRISP_WEBSITE_ID } = env();
+  if (!secret || !SUPPORT_CRISP_WEBSITE_ID) return null;
   const signature = createHmac("sha256", secret).update(email).digest("hex");
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   const data = { email, signature, name, workspace_id: workspaceId, workspace: workspaceName };

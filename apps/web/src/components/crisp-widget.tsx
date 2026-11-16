@@ -1,12 +1,13 @@
 import { headers } from "next/headers";
 import Script from "next/script";
+import { env } from "@/lib/env";
 
 /**
- * Support chat widget (docs/own-support.md). Rendered only when NEXT_PUBLIC_CRISP_WEBSITE_ID is set.
+ * Support chat widget (docs/own-support.md). Rendered only when SUPPORT_CRISP_WEBSITE_ID is set.
  * Uses the per-request CSP nonce from src/proxy.ts.
  */
 export async function CrispWidget() {
-  const websiteId = process.env.NEXT_PUBLIC_CRISP_WEBSITE_ID;
+  const websiteId = env().SUPPORT_CRISP_WEBSITE_ID;
   if (!websiteId || !/^[0-9a-f-]{36}$/i.test(websiteId)) return null;
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
