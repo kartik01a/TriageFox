@@ -98,11 +98,27 @@ Migrations run automatically before the new version starts. Read the changelog f
 
 ```bash
 ./deploy/backup.sh                          # deploy/backups/triagefox-<date>.sql.gz
-BACKUP_PASSPHRASE=... ./deploy/backup.sh    # the same, encrypted
 ./deploy/restore.sh deploy/backups/<file>   # REPLACES current data
 ```
 
-Run `backup.sh` from cron (daily is a good start) and **copy the files off the server**. The database holds your connections, tickets and activity, but never chat transcripts. Remember `CRYPTO_PRIVATE_KEYS` is **not** in the dump (see above).
+`backup.sh` reads these optional settings from its environment:
+
+| Setting | What it does |
+|---|---|
+| `BACKUP_AGE_RECIPIENT` | Encrypts each backup with an [age](https://age-encryption.org) **public** key (`.age`). Recommended: make the key pair on your own computer (`age-keygen -o key.txt`), give the server only the `age1…` public key, keep `key.txt` in your password manager. A stolen server then cannot open old backups. Needs `apt install age`. |
+| `BACKUP_PASSPHRASE` | Or encrypt with a passphrase (`.enc`). Simpler, but the passphrase then lives on the server. |
+| `BACKUP_UPLOAD_URL` | Copies each backup **off the server** with an HTTP `PUT` to `<URL><file name>`. On Oracle: a bucket with versioning on, and a pre-authenticated request of type *Permit object writes* (the server can add files but cannot list, read or delete them). |
+| `BACKUP_KEEP_DAYS` | Deletes local copies older than this (default 14). Uploaded copies are not touched: give the bucket a lifecycle rule (for example, delete after 29 days, and previous versions after 1). |
+
+If a run fails and `SMTP_*` and `ALERT_EMAIL` are set in `deploy/.env`, it emails `ALERT_EMAIL`.
+
+Keep the settings in a file only you can read (`chmod 600 ~/.triagefox-backup.env`) and run it daily from cron (`crontab -e`):
+
+```
+45 21 * * * set -a; . "$HOME/.triagefox-backup.env"; "$HOME/triagefox/deploy/backup.sh" >>"$HOME/backup.log" 2>&1
+```
+
+To restore an `.age` backup, copy it and your key file to the machine, then `BACKUP_AGE_IDENTITY=key.txt ./deploy/restore.sh <file>` (it checks the key opens the file before touching any data). The database holds your connections, tickets and activity, but never chat transcripts. Remember `CRYPTO_PRIVATE_KEYS` is **not** in the dump (see above).
 
 Test a restore on a spare machine at least once. A backup you have never restored is a hope, not a backup.
 
@@ -125,7 +141,7 @@ How the containers are separated:
 - [ ] SSH: keys only, no password login, no root login.
 - [ ] Automatic security updates for the operating system (`unattended-upgrades` on Ubuntu).
 - [ ] `deploy/.env` is mode 600 and owned by the user who runs Docker. Never commit it.
-- [ ] Daily `backup.sh` with `BACKUP_PASSPHRASE`, copied off the server; one restore test done.
+- [ ] Daily `backup.sh`, encrypted (`BACKUP_AGE_RECIPIENT`) and copied off the server (`BACKUP_UPLOAD_URL`); one restore test done.
 - [ ] `CRYPTO_PRIVATE_KEYS` and `BETTER_AUTH_SECRET` stored in a password manager.
 - [ ] In the app: turn on two-factor for yourself, then *Security → Require two-factor for everyone*.
 - [ ] Keep `SELFHOST_OPEN_SIGNUP=false` unless you really want public sign-ups.

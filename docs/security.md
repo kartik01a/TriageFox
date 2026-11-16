@@ -120,6 +120,7 @@ Decisions agreed 2026-10-25: no transcript storage, Cloudflare in front, sealed 
   - Non-root containers, read-only filesystems where possible, no Docker socket mounts
 - **Backups:**
   - nightly `pg_dump`, **encrypted with `age`** (public key on the server, private key kept offline by you), uploaded to Oracle Object Storage
+  - as built (`deploy/backup.sh`): the server uploads through a write-only pre-authenticated request, so it cannot list, read or delete backups; the bucket is private and versioned, and a lifecycle rule deletes backups after 29 days (previous versions after 1), which keeps the "backups age out within 30 days" promise; a failed run emails `ALERT_EMAIL`
   - restore test monthly
 
 ## 10. Public repo & supply chain

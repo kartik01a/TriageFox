@@ -24,15 +24,15 @@ Same stack as [self-hosting.md](self-hosting.md), with `APP_MODE=hosted` in `dep
 5. **Your own support:** connect the *TriageFox Support* Crisp website to your own workspace, switch its automation on, then *Admin → Support inbox → Which workspace is our own support?*
 
 ### Lock the server down
-- [ ] Firewall: allow only SSH (22) and 80/443. On Oracle, edit both the VCN security list **and** the instance firewall.
-- [ ] **Origin lock:** only Cloudflare should reach 80/443. Allow Cloudflare's published address ranges (cloudflare.com/ips) and nothing else on those ports, or turn on *Authenticated Origin Pulls*. Refresh the list a few times a year.
+- [x] Firewall: allow only SSH (22) and 80/443. On Oracle, edit both the VCN security list **and** the instance firewall.
+- [x] **Origin lock:** only Cloudflare should reach 80/443. `./deploy/oracle-cloudflare-only.sh` (dry run; add `--apply`) sets the Oracle security list to Cloudflare's published ranges and keeps every other rule. Run it again a few times a year in case Cloudflare's list changes. DNS records must stay **proxied**: "DNS only" would make the site unreachable. Leave "Always Use HTTPS" **off**: Caddy already redirects to HTTPS, and its certificate renewal needs plain HTTP to reach it.
 - [ ] In Cloudflare: turn on "Always use HTTPS", a rate-limiting rule for `/api/auth/*` (the app has its own limits too), and Bot Fight Mode. Keep **Cache Level** at standard and never cache `/app`, `/admin` or `/api`.
 - [ ] SSH keys only; no root login; unattended security updates.
 - [ ] `deploy/.env` mode 600; `CRYPTO_PRIVATE_KEYS` and `BETTER_AUTH_SECRET` also in a password manager.
 
 ### Backups (the promise in the privacy policy depends on this)
-- [ ] Daily: `BACKUP_PASSPHRASE=… ./deploy/backup.sh` from cron, then copy the file **off the server** (Oracle Object Storage free tier, or Backblaze B2, with `rclone`). Keep 30 days.
-- [ ] **Restore test** before launch and every few months: restore the newest backup on a spare machine ([self-hosting.md](self-hosting.md) "Backups") and open the app. Write down how long it took.
+- [x] Daily at 03:15 India time from cron, `age`-encrypted, uploaded to the private Oracle bucket `triagefox-backups` through a write-only link that expires **2029-12-31** (make a new one before then). The bucket deletes backups after 29 days. Settings are in `~/.triagefox-backup.env` on the server; the private key is in `~/.config/triagefox/backup-age-key.txt` on your Mac **and in your password manager**. See [self-hosting.md](self-hosting.md) "Backups".
+- [ ] **Restore test** every few months: restore the newest backup on a spare machine ([self-hosting.md](self-hosting.md) "Backups") and open the app. Write down how long it took. (2026-11-17: downloaded from the bucket, decrypted on the Mac and loaded into a throwaway database in under a minute; repeat with real data before launch.)
 - [ ] Docker logs already rotate by size (10 MB × 5 files per container); they hold no message text. Keep it that way: the privacy policy says logs are kept for at most 90 days.
 
 ### Releasing a new version
