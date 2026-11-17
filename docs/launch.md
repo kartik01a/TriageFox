@@ -5,12 +5,13 @@ Everything between "the code works" and "customers can use it": running the host
 ## 1. Accounts and names (start these first: some take days)
 
 - [x] **you** Buy **triagefox.com** (Cloudflare Registrar). The public contact addresses are `support@triagefox.com` and `security@triagefox.com` (`apps/web/src/lib/site.ts`, `SECURITY.md`, `CODE_OF_CONDUCT.md`).
-- [ ] **you** Receiving mail: Cloudflare → Email → **Email Routing**: verify your personal inbox as the destination, then forward `support@` and `security@` to it (Cloudflare adds the MX and SPF records itself).
-- [ ] **you** Dodo Payments: create the account, submit KYC for **live** mode (can take days), keep working in test mode meanwhile ([setup/providers.md](setup/providers.md) "Dodo Payments").
-- [ ] **you** Sending mail: a Resend account, add the domain (its records live on the `send.` subdomain and `resend._domainkey`, so they don't clash with Email Routing), plus a `_dmarc` TXT record starting at `p=none`. The app uses Resend's SMTP (`smtp.resend.com`, port 465, `SMTP_SECURE=true`, user `resend`, an API key as the password) with `MAIL_FROM="TriageFox <support@triagefox.com>"`. To answer support mail as support@ from your personal inbox, add it in Gmail → Settings → Accounts → *Send mail as* with the same SMTP details and a **separate** API key.
+- [x] **you** Receiving mail: Cloudflare → Email → **Email Routing**: verify your personal inbox as the destination, then forward `support@` and `security@` to it (Cloudflare adds the MX and SPF records itself).
+- [x] **you** Dodo Payments: create the account, submit KYC for **live** mode (can take days), keep working in test mode meanwhile ([setup/providers.md](setup/providers.md) "Dodo Payments").
+- [x] **you** Sending mail: a Resend account, add the domain (its records live on the `send.` subdomain and `resend._domainkey`, so they don't clash with Email Routing), plus a `_dmarc` TXT record starting at `p=none`. The app uses Resend's SMTP (`smtp.resend.com`, port 465, `SMTP_SECURE=true`, user `resend`, an API key as the password) with `MAIL_FROM="TriageFox <support@triagefox.com>"`. To answer support mail as support@ from your personal inbox, add it in Gmail → Settings → Accounts → *Send mail as* with the same SMTP details and a **separate** API key.
 - [ ] **you** Sentry (free): one project for the web app and the worker, DSN in `SENTRY_DSN`.
-- [ ] **you** Cloudflare (free): add the domain, point it at the server, "Full (strict)" TLS.
-- [ ] **you** Hosting: an Oracle Cloud Always Free account, or any VPS with 2 vCPU / 4 GB+. On a free (not Pay As You Go) Oracle account use an ARM A1 server with **1 OCPU / 6 GB**: Oracle stops free servers whose CPU, network *and* memory all stay low for 7 days, and on 6 GB the app's normal memory use stays above that line. Create the network first with the *VCN with Internet Connectivity* wizard. If the console says "Out of capacity", `caffeinate -i ./deploy/oracle-a1-retry.sh` (needs `brew install oci-cli` and `oci setup config`) retries every minute until a server is free.
+- [x] **you** Cloudflare (free): add the domain, point it at the server, "Full (strict)" TLS.
+- [x] **you** Hosting: an Oracle Cloud Always Free account, or any VPS with 2 vCPU / 4 GB+. On a free (not Pay As You Go) Oracle account use an ARM A1 server with **1 OCPU / 6 GB**: Oracle stops free servers whose CPU, network *and* memory all stay low for 7 days, and on 6 GB the app's normal memory use stays above that line. Create the network first with the *VCN with Internet Connectivity* wizard. If the console says "Out of capacity", `caffeinate -i ./deploy/oracle-a1-retry.sh` (needs `brew install oci-cli` and `oci setup config`) retries every minute until a server is free.
+- [ ] **you** Google sign-in: Google Cloud → *APIs & Services* → *OAuth consent screen* (Audience) → **Publish app**. While it is "Testing", only the listed test users can use "Continue with Google". With only the basic scopes (email, profile, openid) no Google review is needed.
 - [ ] **you** A free uptime monitor (UptimeRobot, Better Stack…) on `https://triagefox.com/api/health`, alerting your phone.
 
 ## 2. Run the hosted version
@@ -26,9 +27,9 @@ Same stack as [self-hosting.md](self-hosting.md), with `APP_MODE=hosted` in `dep
 ### Lock the server down
 - [x] Firewall: allow only SSH (22) and 80/443. On Oracle, edit both the VCN security list **and** the instance firewall.
 - [x] **Origin lock:** only Cloudflare should reach 80/443. `./deploy/oracle-cloudflare-only.sh` (dry run; add `--apply`) sets the Oracle security list to Cloudflare's published ranges and keeps every other rule. Run it again a few times a year in case Cloudflare's list changes, and update the same list in `deploy/Caddyfile` (`trusted_proxies`), which decides when the visitor address from Cloudflare is believed. DNS records must stay **proxied**: "DNS only" would make the site unreachable. Leave "Always Use HTTPS" **off**: Caddy already redirects to HTTPS, and its certificate renewal needs plain HTTP to reach it.
-- [ ] In Cloudflare: turn on "Always use HTTPS", a rate-limiting rule for `/api/auth/*` (the app has its own limits too), and Bot Fight Mode. Keep **Cache Level** at standard and never cache `/app`, `/admin` or `/api`.
-- [ ] SSH keys only; no root login; unattended security updates.
-- [ ] `deploy/.env` mode 600; `CRYPTO_PRIVATE_KEYS` and `BETTER_AUTH_SECRET` also in a password manager.
+- [ ] In Cloudflare: a rate-limiting rule for `/api/auth/*` (the app has its own limits too). Leave **"Always Use HTTPS" off** (Caddy already redirects, and its certificate renewal needs plain HTTP) and **Bot Fight Mode off** (it can challenge the Crisp and Dodo webhooks, and the free plan cannot exempt them). Keep **Cache Level** at standard and never cache `/app`, `/admin` or `/api`.
+- [x] SSH keys only; no root login; unattended security updates.
+- [x] `deploy/.env` mode 600; `CRYPTO_PRIVATE_KEYS` and `BETTER_AUTH_SECRET` also in a password manager.
 
 ### Backups (the promise in the privacy policy depends on this)
 - [x] Daily at 03:15 India time from cron, `age`-encrypted, uploaded to the private Oracle bucket `triagefox-backups` through a write-only link that expires **2029-12-31** (make a new one before then). The bucket deletes backups after 29 days. Settings are in `~/.triagefox-backup.env` on the server; the private key is in `~/.config/triagefox/backup-age-key.txt` on your Mac **and in your password manager**. See [self-hosting.md](self-hosting.md) "Backups".
@@ -51,12 +52,12 @@ Same stack as [self-hosting.md](self-hosting.md), with `APP_MODE=hosted` in `dep
 - [ ] Submit for review. Expect questions; the answers are in [security.md](security.md) and [integrations/crisp.md](integrations/crisp.md).
 
 ### Atlassian (Jira)
-- [ ] Developer console → your OAuth 2.0 app → **Distribution**: change from "Not shared" to **Sharing**. Needs the privacy policy URL, the app's terms, a vendor name and contact, and a security contact.
+- [x] Developer console → your OAuth 2.0 app → **Distribution**: change from "Not shared" to **Sharing**. Needs the privacy policy URL, the app's terms, a vendor name and contact, and a security contact.
 - [ ] Complete the *data security and privacy* self-assessment honestly: we store tokens encrypted, tickets we create, no chat transcripts; data stays in our hosting; deletion on request within 7 days.
 - [ ] Scopes stay `read:jira-work`, `write:jira-work`, `read:jira-user` (+ `offline_access`). Callback `https://triagefox.com/api/connections/jira/callback`.
 
 ### Trello
-- [ ] Power-Up admin → your key → add `https://triagefox.com` as an **allowed origin**. Read Trello's current API terms for commercial use. No Marketplace listing is needed.
+- [x] Power-Up admin → your key → add `https://triagefox.com` as an **allowed origin**. Read Trello's current API terms for commercial use. No Marketplace listing is needed.
 
 ### Dodo (live)
 - [ ] Live products created for every plan, interval and currency; product ids entered in `/admin/plans` and the plans published.
@@ -79,7 +80,7 @@ The privacy policy and terms were drafted for you (sole proprietor in India, Ind
 
 Do this last, when the hosted version works end to end.
 
-- [ ] Hosted version deployed and tested with a real Crisp chat, Trello and Jira, and a test payment.
+- [x] Hosted version deployed and tested with a real Crisp chat, Trello and Jira, and a test payment.
 - [ ] `docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source /repo --redact --no-banner` finds **no leaks in the full history**. If it ever finds a real secret, rotate it (even if it was later deleted), then decide whether to rewrite history before going public.
 - [ ] No private material in pushed files: `docs/private/` and `marketing/` are git-ignored; skim `docs/` once as a stranger would.
 - [ ] README: add the demo GIF (`docs/assets/demo.gif`, see the comment at the top of `README.md`), check the self-host section, set the repository's description and topics (`customer-support`, `jira`, `trello`, `crisp`, `ai`, `self-hosted`).
