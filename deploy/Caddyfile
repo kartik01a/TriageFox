@@ -1,5 +1,16 @@
 # SITE_ADDRESS comes from deploy/.env: a domain name (Caddy gets a Let's Encrypt certificate for it
 # automatically) or, for a local trial, "localhost" (Caddy's own local certificate).
+{
+	servers {
+		# The visitor's real address. Behind Cloudflare, Caddy would otherwise see only Cloudflare's own
+		# servers, so every visitor would share one rate limit. The Cf-Connecting-Ip header is believed only
+		# on requests that come from Cloudflare's published ranges (https://www.cloudflare.com/ips/, keep in
+		# step with deploy/oracle-cloudflare-only.sh); from anywhere else it is ignored, so it cannot be faked.
+		trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+		client_ip_headers Cf-Connecting-Ip
+	}
+}
+
 {$SITE_ADDRESS} {
 	encode zstd gzip
 
@@ -8,7 +19,12 @@
 		max_size 5MB
 	}
 
-	reverse_proxy web:3000
+	reverse_proxy web:3000 {
+		# The app reads the visitor's address from these two headers (its rate limits and the sessions
+		# list), so both carry the one address worked out above, whatever the visitor sent.
+		header_up X-Forwarded-For {client_ip}
+		header_up Cf-Connecting-Ip {client_ip}
+	}
 
 	header {
 		-Server

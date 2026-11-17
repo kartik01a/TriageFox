@@ -25,7 +25,7 @@ Same stack as [self-hosting.md](self-hosting.md), with `APP_MODE=hosted` in `dep
 
 ### Lock the server down
 - [x] Firewall: allow only SSH (22) and 80/443. On Oracle, edit both the VCN security list **and** the instance firewall.
-- [x] **Origin lock:** only Cloudflare should reach 80/443. `./deploy/oracle-cloudflare-only.sh` (dry run; add `--apply`) sets the Oracle security list to Cloudflare's published ranges and keeps every other rule. Run it again a few times a year in case Cloudflare's list changes. DNS records must stay **proxied**: "DNS only" would make the site unreachable. Leave "Always Use HTTPS" **off**: Caddy already redirects to HTTPS, and its certificate renewal needs plain HTTP to reach it.
+- [x] **Origin lock:** only Cloudflare should reach 80/443. `./deploy/oracle-cloudflare-only.sh` (dry run; add `--apply`) sets the Oracle security list to Cloudflare's published ranges and keeps every other rule. Run it again a few times a year in case Cloudflare's list changes, and update the same list in `deploy/Caddyfile` (`trusted_proxies`), which decides when the visitor address from Cloudflare is believed. DNS records must stay **proxied**: "DNS only" would make the site unreachable. Leave "Always Use HTTPS" **off**: Caddy already redirects to HTTPS, and its certificate renewal needs plain HTTP to reach it.
 - [ ] In Cloudflare: turn on "Always use HTTPS", a rate-limiting rule for `/api/auth/*` (the app has its own limits too), and Bot Fight Mode. Keep **Cache Level** at standard and never cache `/app`, `/admin` or `/api`.
 - [ ] SSH keys only; no root login; unattended security updates.
 - [ ] `deploy/.env` mode 600; `CRYPTO_PRIVATE_KEYS` and `BETTER_AUTH_SECRET` also in a password manager.
