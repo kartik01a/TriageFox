@@ -43,9 +43,33 @@ function redis(): Redis {
   return g.__triagefoxLimitRedis;
 }
 
+/**
+ * Waits (briefly) for the connection to be ready. With the offline queue off, a command sent while the
+ * client is still connecting fails at once, so without this the first request after every start was
+ * let through as "limiter unavailable". A real outage still fails open after `ms`.
+ */
+export async function whenReady(
+  client: Pick<Redis, "status" | "once" | "off">,
+  ms = 1000,
+): Promise<void> {
+  if (client.status === "ready") return;
+  await new Promise<void>((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      client.off("ready", done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    client.once("ready", done);
+  });
+}
+
 /** `allowRequest("org:abc:write", 300, 60)`: at most 300 per minute for that key. */
-export const allowRequest = (key: string, limit: number, windowSec: number) =>
-  allow(redis(), key, limit, windowSec);
+export async function allowRequest(key: string, limit: number, windowSec: number) {
+  const client = redis();
+  await whenReady(client);
+  return allow(client, key, limit, windowSec);
+}
 
 export const tooMany = () =>
   new Response(JSON.stringify({ ok: false, error: "Too many requests. Please slow down." }), {
