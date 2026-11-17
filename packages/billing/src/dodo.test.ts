@@ -57,7 +57,24 @@ describe("webhook verification", () => {
     expect(type("subscription.cancelled")).toBe("subscription_cancelled");
     expect(type("subscription.expired")).toBe("subscription_ended");
     expect(type("payment.failed")).toBe("payment_failed");
+    expect(type("subscription.failed")).toBe("ignored");
     expect(type("refund.succeeded")).toBe("ignored");
+  });
+
+  it("a checkout that failed or is not paid yet never counts as active (seen in production)", () => {
+    const parse = (t: string, data: Record<string, unknown>) => {
+      const { body, headers } = fake.sign(event(t, data));
+      return dodo.parseWebhook(headers, body).type;
+    };
+    // Dodo sent subscription.failed, payment.failed and subscription.updated in the same second.
+    expect(parse("subscription.failed", { status: "failed" })).toBe("ignored");
+    expect(parse("subscription.updated", { status: "failed" })).toBe("ignored");
+    expect(parse("subscription.updated", { status: "pending" })).toBe("ignored");
+    expect(parse("subscription.updated", { status: "on_hold" })).toBe("subscription_past_due");
+    // A payment's own status is "failed" too; that event still counts as a failed payment.
+    expect(parse("payment.failed", { status: "failed", subscription_id: "s" })).toBe(
+      "payment_failed",
+    );
   });
 
   it("an 'updated' message sent right after a cancellation does not undo it", () => {

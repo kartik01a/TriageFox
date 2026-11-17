@@ -30,7 +30,9 @@ const TYPES: Record<string, NormalizedEventType> = {
   "subscription.unpaused": "subscription_active",
   "subscription.on_hold": "subscription_past_due",
   "subscription.past_due": "subscription_past_due",
-  "subscription.failed": "subscription_past_due",
+  // The first payment of a new checkout failed, so no subscription ever started: nothing changes (a
+  // workspace on trial stays on trial). A renewal that fails arrives as "on_hold" instead.
+  "subscription.failed": "ignored",
   "subscription.cancelled": "subscription_cancelled",
   "subscription.expired": "subscription_ended",
   "payment.succeeded": "payment_succeeded",
@@ -182,10 +184,15 @@ export class DodoProvider implements BillingProvider {
     const periodEnd = date(data.next_billing_date) ?? date(data.expires_at);
     // General messages ("updated", "renewed", "plan changed") carry the subscription as it is now. One sent
     // right after a cancellation must not undo it, so the subscription's own state decides.
+    // Dodo sends "updated" for every change, including a checkout that failed, so "updated" alone never
+    // means active.
     let type = TYPES[rawType] ?? "ignored";
     const status = str(data.status);
     if (type === "subscription_active") {
-      if (status === "expired") type = "subscription_ended";
+      if (status === "failed" || status === "pending")
+        type = "ignored"; // never paid, never started
+      else if (status === "on_hold") type = "subscription_past_due";
+      else if (status === "expired") type = "subscription_ended";
       else if (status === "cancelled" || data.cancel_at_next_billing_date === true)
         type = "subscription_cancelled";
     }

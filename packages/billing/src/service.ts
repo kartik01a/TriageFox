@@ -302,10 +302,16 @@ export async function applyBillingEvent(
         break;
       }
       case "subscription_past_due":
-      case "payment_failed":
-        if (cur?.status === "comped") break;
+      case "payment_failed": {
+        // Only the subscription the workspace is on can fall behind. A failed checkout (a payment for a
+        // subscription that never started) leaves the trial or the current plan exactly as it was.
+        const onIt =
+          (cur?.status === "active" || cur?.status === "past_due") &&
+          (!e.subscriptionId || e.subscriptionId === cur.providerSubscriptionId);
+        if (!onIt) break;
         patch = { status: "past_due", pastDueSince: cur?.pastDueSince ?? now };
         break;
+      }
       case "payment_succeeded":
         if (cur?.status === "past_due") patch = { status: "active", pastDueSince: null };
         break;

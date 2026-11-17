@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 import { createDb, type Db, eq, like, schema, withOrg } from "@triagefox/db";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { DodoProvider } from "./dodo";
 import { periodStartFor } from "./entitlement";
+import { FakeProvider } from "./fake";
 import {
   applyBillingEvent,
   billingSummary,
@@ -207,6 +209,62 @@ describe("webhooks", () => {
       ev({ type: "payment_succeeded", rawType: "payment.succeeded", subscriptionId: sub }),
     );
     expect(ok).toMatchObject({ status: "active" });
+    expect((await getSubscription(db, o)).subscription?.pastDueSince).toBeNull();
+  });
+
+  it("a checkout whose first payment failed leaves the trial as it was (seen in production)", async () => {
+    // The three messages Dodo sent in the same second, through the real Dodo parser, in every order.
+    const fake = new FakeProvider();
+    const dodo = new DodoProvider({ apiKey: "k", webhookKey: fake.secret, mode: "test" });
+    const orders = [
+      ["subscription.failed", "payment.failed", "subscription.updated"],
+      ["subscription.updated", "payment.failed", "subscription.failed"],
+      ["payment.failed", "subscription.updated", "subscription.failed"],
+    ];
+    for (const order of orders) {
+      const o = fresh();
+      await startTrial(db, o);
+      const sub = `sub_${tag}_${randomUUID().slice(0, 6)}`;
+      for (const type of order) {
+        const { body, headers } = fake.sign({
+          id: `evt_${randomUUID()}`,
+          type,
+          data: {
+            subscription_id: sub,
+            product_id: productMonthly,
+            status: "failed",
+            metadata: { org_id: o },
+            next_billing_date: new Date().toISOString(),
+          },
+        });
+        await applyBillingEvent(db, "dodo", dodo.parseWebhook(headers, body));
+      }
+      const got = await getSubscription(db, o);
+      expect(got.subscription).toMatchObject({ status: "trialing", pastDueSince: null });
+      expect(got.plan).toBeNull();
+    }
+  });
+
+  it("a failed payment for another subscription does not touch the plan the workspace is on", async () => {
+    const o = fresh();
+    await startTrial(db, o);
+    const sub = `sub_${tag}_${randomUUID().slice(0, 6)}`;
+    await applyBillingEvent(
+      db,
+      "dodo",
+      ev({ orgId: o, subscriptionId: sub, productId: productMonthly, periodStart: new Date() }),
+    );
+    const other = await applyBillingEvent(
+      db,
+      "dodo",
+      ev({
+        type: "payment_failed",
+        rawType: "payment.failed",
+        orgId: o,
+        subscriptionId: "sub_other",
+      }),
+    );
+    expect(other).toMatchObject({ handled: true, status: "active" });
     expect((await getSubscription(db, o)).subscription?.pastDueSince).toBeNull();
   });
 
