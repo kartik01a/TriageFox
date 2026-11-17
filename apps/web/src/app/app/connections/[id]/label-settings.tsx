@@ -9,7 +9,7 @@ import {
   type TicketType,
   TRELLO_LABEL_COLORS,
 } from "@triagefox/shared";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -166,7 +166,18 @@ export function LabelSettings({ id, provider }: { id: string; provider: "trello"
       </fieldset>
 
       {creating && (
-        <NewLabelForm provider={provider} onCancel={() => setCreating(null)} onCreate={create} />
+        <NewLabelForm
+          // A fresh form (and scroll) each time "New label" is chosen on another row.
+          key={`${creating.group}-${creating.key}`}
+          provider={provider}
+          forWhat={
+            creating.group === "p"
+              ? `Priority ${creating.key} · ${PRIORITY_NAMES[Number(creating.key) as Priority]}`
+              : TICKET_TYPE_LABELS[creating.key as TicketType]
+          }
+          onCancel={() => setCreating(null)}
+          onCreate={create}
+        />
       )}
       {error && (
         <p className="text-sm text-danger" role="alert">
@@ -187,64 +198,80 @@ export function LabelSettings({ id, provider }: { id: string; provider: "trello"
 
 function NewLabelForm({
   provider,
+  forWhat,
   onCreate,
   onCancel,
 }: {
   provider: "trello" | "jira";
+  forWhat: string;
   onCreate: (name: string, color: string) => Promise<void>;
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>("sky");
   const [busy, setBusy] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
+
+  // The form opens below both lists, often off screen: bring it into view and put the cursor in it,
+  // so choosing "New label" visibly does something.
+  useEffect(() => {
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    box.current?.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "center" });
+    nameInput.current?.focus({ preventScroll: true });
+  }, []);
+
   return (
-    <div className="space-y-3 rounded-lg border border-border p-4">
-      <p className="text-sm font-medium">New label</p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="new-label-name">Name</Label>
-          <Input
-            id="new-label-name"
-            className="h-9"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={provider === "jira" ? "e.g. customer-bug" : "e.g. High"}
-          />
-        </div>
-        {provider === "trello" && (
+    <div ref={box} className="rounded-lg border border-border p-4">
+      <fieldset className="space-y-3">
+        <legend className="mb-3 text-sm font-medium">New label for {forWhat}</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="new-label-color">Colour</Label>
-            <Select
-              id="new-label-color"
+            <Label htmlFor="new-label-name">Name</Label>
+            <Input
+              ref={nameInput}
+              id="new-label-name"
               className="h-9"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-            >
-              {TRELLO_LABEL_COLORS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Select>
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={provider === "jira" ? "e.g. customer-bug" : "e.g. High"}
+            />
           </div>
-        )}
-      </div>
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          disabled={busy || !name.trim()}
-          onClick={async () => {
-            setBusy(true);
-            await onCreate(name.trim(), color);
-            setBusy(false);
-          }}
-        >
-          {busy ? "Creating…" : provider === "trello" ? "Create on the board" : "Add"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
+          {provider === "trello" && (
+            <div>
+              <Label htmlFor="new-label-color">Colour</Label>
+              <Select
+                id="new-label-color"
+                className="h-9"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+              >
+                {TRELLO_LABEL_COLORS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            disabled={busy || !name.trim()}
+            onClick={async () => {
+              setBusy(true);
+              await onCreate(name.trim(), color);
+              setBusy(false);
+            }}
+          >
+            {busy ? "Creating…" : provider === "trello" ? "Create on the board" : "Add"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
+      </fieldset>
     </div>
   );
 }

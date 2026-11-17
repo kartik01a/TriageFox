@@ -1,7 +1,8 @@
-import type { InputHTMLAttributes } from "react";
+import type { ComponentProps } from "react";
 import { cn } from "@/lib/cn";
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+// ComponentProps (not InputHTMLAttributes) so a ref passes through to the input (React 19).
+export function Input({ className, ...props }: ComponentProps<"input">) {
   return (
     <input
       className={cn(
