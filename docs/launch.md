@@ -60,8 +60,8 @@ Same stack as [self-hosting.md](self-hosting.md), with `APP_MODE=hosted` in `dep
 - [x] Power-Up admin → your key → add `https://triagefox.com` as an **allowed origin**. Read Trello's current API terms for commercial use. No Marketplace listing is needed.
 
 ### Dodo (live)
-- [ ] Live products created for every plan, interval and currency; product ids entered in `/admin/plans` and the plans published.
-- [ ] Live webhook `https://triagefox.com/api/webhooks/billing`, `DODO_ENV=live`, live key and secret.
+- [x] Live products created for every plan, interval and currency; product ids entered in `/admin/plans` and the plans published.
+- [x] Live webhook `https://triagefox.com/api/webhooks/billing`, `DODO_ENV=live`, live key and secret.
 - [ ] One real purchase with your own card (or a single-use 1-day discount code created just for the test), check the Billing page, then cancel in the portal.
 - [ ] Ask Dodo to confirm in writing: no-refund policy allowed; Amex handled; payout fees and FX; that INR fixed prices work.
 
