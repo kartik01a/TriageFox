@@ -75,6 +75,8 @@ TriageFox never writes to Crisp. Ask for **read** access only, and only for thes
 
 No write, send, delete, people, campaign, or billing scopes.
 
+**What to tick in Crisp's scope list** (checked against Crisp's token-scopes guide and REST reference, 2026-11-19): `website:conversation:sessions` (read) and `website:conversation:messages` (read), nothing else. "Get A Website" lists no scope, and the plugin's own subscription settings route is not in the scope list. Development tokens ignore scopes, so this is only proven once the production token is live: if linking or the website name then fails with a permission error, add `website:settings` (read).
+
 ## 4. Answers to the usual review questions
 
 **What does the plugin do with conversation data?**
