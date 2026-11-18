@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { and, eq, schema } from "@triagefox/db";
+import { SITE } from "../src/lib/site";
 import { closeOwnerDb, ownerDb } from "./db";
 import { BASE, newUser, signUpWithWorkspace } from "./helpers";
 
@@ -150,12 +151,16 @@ test("a flood of changes from one workspace is slowed down, and other workspaces
   await b.close();
 });
 
-test("the top menu has one Docs link that opens in a new tab, and guide buttons show their text", async ({
+test("the top menu links to Support, shows Docs only once the repository is public, and guide buttons show their text", async ({
   page,
 }) => {
   await page.goto("/integrations/crisp-to-jira");
   const nav = page.getByRole("navigation", { name: "Main" });
-  await expect(nav.getByRole("link", { name: "Docs" })).toHaveAttribute("target", "_blank");
+  await expect(nav.getByRole("link", { name: "Support" })).toHaveAttribute("href", "/support");
+  if (SITE.repoPublic)
+    await expect(nav.getByRole("link", { name: "Docs" })).toHaveAttribute("target", "_blank");
+  // While the repository is private, no link anywhere on the page may lead to a GitHub 404.
+  else await expect(page.locator(`a[href^="${SITE.repoUrl}"]`)).toHaveCount(0);
   await expect(nav.getByRole("link", { name: /GitHub/ })).toHaveCount(0);
   const cta = page.getByRole("main").getByRole("link", { name: "Start free trial" });
   // Dark text on the orange button, not orange-on-orange.
@@ -250,4 +255,16 @@ test("visitors in India see rupee prices, everyone else dollars (Cloudflare's co
     expect(usd).toMatch(dollarPrice);
     expect(usd).not.toMatch(rupeePrice);
   }
+});
+
+test("the support page offers quick answers and a contact form, with the bot trap hidden", async ({
+  page,
+}) => {
+  await page.goto("/support");
+  await expect(page.getByRole("heading", { name: "Quick answers" })).toBeVisible();
+  await expect(page.getByLabel("Your name")).toBeVisible();
+  await expect(page.getByLabel("Email for our reply")).toBeVisible();
+  await expect(page.getByLabel("Message")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send message" })).toBeVisible();
+  await expect(page.locator('input[name="website"]')).not.toBeInViewport();
 });
