@@ -20,13 +20,15 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
+        # Both lists are real dimensions (4 jobs). With `arch` only under `include`, the second entry
+        # overwrote the first and everything was built for arm64 (found on the first release, v1.0.0).
         target: [web, worker]
+        arch: [amd64, arm64]
         include:
           - arch: amd64
             runner: ubuntu-latest
           - arch: arm64
             runner: ubuntu-24.04-arm
-        exclude: []
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
