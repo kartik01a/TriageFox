@@ -72,10 +72,11 @@ TriageFox never writes to Crisp. Ask for **read** access only, and only for thes
 | `GET /v1/website/{website_id}/conversations/{page}` | read | Catch up on conversations whose hooks were lost (Crisp can drop hooks after failed retries), every ~10 minutes. |
 | `GET /v1/website/{website_id}` | read | Show the website's name when linking it, so the user can confirm the right one. |
 | `GET /v1/plugins/subscription/{website_id}/{plugin_id}/settings` | read | Check the per-website token Crisp passes to the plugin page, so only a real operator of that website can link it, and notice when the plugin is uninstalled. |
+| Hook `session:set_state` (no API call) | read (`website:conversation:states`) | Evaluate a conversation as soon as it is resolved, and notice when it is reopened. |
 
 No write, send, delete, people, campaign, or billing scopes.
 
-**What to tick in Crisp's scope list** (checked against Crisp's token-scopes guide and REST reference, 2026-11-19): `website:conversation:sessions` (read) and `website:conversation:messages` (read), nothing else. "Get A Website" lists no scope, and the plugin's own subscription settings route is not in the scope list. Development tokens ignore scopes, so this is only proven once the production token is live: if linking or the website name then fails with a permission error, add `website:settings` (read).
+**What to tick in Crisp's scope list** (checked against Crisp's token-scopes guide and REST reference, 2026-11-19): `website:conversation:sessions` (read), `website:conversation:messages` (read) and `website:conversation:states` (read), nothing else. The states scope is needed only so Crisp sends the `session:set_state` hook (resolved / reopened); the Hooks page refuses that event without it. "Get A Website" lists no scope, and the plugin's own subscription settings route is not in the scope list. Development tokens ignore scopes, so this is only proven once the production token is live: if linking or the website name then fails with a permission error, add `website:settings` (read).
 
 ## 4. Answers to the usual review questions
 
