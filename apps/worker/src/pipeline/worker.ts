@@ -82,8 +82,17 @@ export function startPipelineWorker(deps: PipelineDeps, opts: PipelineWorkerOpti
 
   // A job that used up its retries leaves a visible trace on the thread (the job itself is removed).
   worker.on("failed", (job, err) => {
-    deps.log.error({ jobId: job?.id, name: job?.name, err: err.message }, "pipeline job failed");
     const finalAttempt = job && job.attemptsMade >= (job.opts.attempts ?? 1);
+    // A job that will try again is expected (e.g. a follow-up waiting for its ticket): a warning, not an error.
+    const fields = {
+      jobId: job?.id,
+      name: job?.name,
+      attempt: job?.attemptsMade,
+      err: err.message,
+    };
+    if (finalAttempt || err.name === "UnrecoverableError")
+      deps.log.error(fields, "pipeline job failed");
+    else deps.log.warn(fields, "pipeline job will retry");
     // A job that ran out of retries is a problem somebody should hear about, once an hour per kind of job.
     if (finalAttempt && job && err.name !== "UnrecoverableError")
       void deps
