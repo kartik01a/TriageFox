@@ -28,7 +28,7 @@ Running your own copy? The whole install is in [../self-hosting.md](../self-host
    *Status: our side is implemented and tested end to end with the real Crisp API (token fetched from Crisp, page opened with it). Placing the widget in Marketplace is a manual step; confirm the exact Marketplace labels when you do it and correct this guide.*
    *Before the plugin is activated:* Crisp only shows the widget for an **activated** plugin, and activation needs a production token (Crisp's review). For local testing, run `pnpm --filter @triagefox/worker dev:crisp-link` (uses `CRISP_WEBSITE_ID` and the development token). It prints the exact page address Crisp would open; open it in the browser where you are signed in and continue as above. The address works like a password: don't share it. Development only.
 5. **Hooks**: set the **Development Web Hook** URL to `<public URL>/api/webhooks/crisp` (locally your ngrok static domain; change any older `/crisp` URL) and put the signing secret Crisp shows in `CRISP_HOOK_SECRET` (web app). Subscribe to `message:send`, `message:received` and `session:set_state`.
-6. **Production**: "Ask a production token" and publish for review before customers can install (launch task).
+6. **Production**: "Ask a production token" and publish for review before customers can install (launch task). For the hosted version everything to fill in is in [crisp-marketplace.md](crisp-marketplace.md).
 
 ## Dodo Payments (hosted version only)
 1. https://app.dodopayments.com → start in **test mode**. Developer → API Keys: create a key → `DODO_API_KEY`. Keep `DODO_ENV=test`; switch to `live` (with the live key and webhook secret) only at launch.

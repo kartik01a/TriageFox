@@ -45,6 +45,8 @@ Same stack as [self-hosting.md](self-hosting.md), with `APP_MODE=hosted` in `dep
 ## 3. Marketplaces and provider reviews
 
 ### Crisp Marketplace (so customers can install the plugin)
+The listing text, scopes with reasons, review answers and post-approval steps are ready in [setup/crisp-marketplace.md](setup/crisp-marketplace.md).
+
 - [ ] Plugin page: name **TriageFox**, short description ("Turns customer chats into Jira and Trello tickets"), longer description, logo (square, from the fox mark), 3 to 5 screenshots (the activity log, a ticket in Jira, a card in Trello, the setup page), category *Productivity*/*Developer tools*, support email, **privacy policy URL** `https://triagefox.com/legal/privacy`, terms URL, website URL.
 - [ ] Settings: the iFrame widget `https://triagefox.com/crisp/link`; the web hook `https://triagefox.com/api/webhooks/crisp` for `message:send`, `message:received`, `session:set_state`; the signing secret into `CRISP_HOOK_SECRET`.
 - [ ] Scopes: request only what the code uses (read conversations and messages, read the website, read plugin subscription settings). Compare with `docs/integrations/crisp.md` before submitting; Crisp reviewers ask why each scope is needed.
