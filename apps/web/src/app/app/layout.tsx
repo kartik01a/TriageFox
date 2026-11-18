@@ -67,7 +67,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
   return (
     <div className="min-h-dvh">
-      <header className="border-b border-border bg-card">
+      {/* Stays at the top while scrolling, so the tabs are always one click away. */}
+      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href="/app" aria-label="TriageFox home">
             <Wordmark />
