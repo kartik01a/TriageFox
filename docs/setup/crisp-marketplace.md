@@ -34,7 +34,8 @@ Self-hosters do not need this page: a private plugin with a development token is
 | Field | Value |
 |---|---|
 | Website | `https://triagefox.com` |
-| Support / contact email | `support@triagefox.com` |
+| Support | `https://triagefox.com/support` (help page with a contact form; email `support@triagefox.com`) |
+| Documentation | `https://triagefox.com/integrations/crisp-to-jira` (the GitHub docs once the repository is public) |
 | Privacy policy | `https://triagefox.com/legal/privacy` |
 | Terms of service | `https://triagefox.com/legal/terms` |
 | Security | `https://triagefox.com/security` |
