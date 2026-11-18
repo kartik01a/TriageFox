@@ -14,6 +14,8 @@ export interface Mail {
   subject: string;
   text: string;
   html: string;
+  /** Where "Reply" goes (e.g. the person who wrote to support). Always a validated address. */
+  replyTo?: string;
 }
 
 /** SMTP sender shared by the web app and the worker. */

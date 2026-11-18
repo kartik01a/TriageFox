@@ -6,6 +6,7 @@ import { HelpButton } from "@/components/app/help-button";
 import { StepUpProvider } from "@/components/app/step-up";
 import { CrispIdentity } from "@/components/crisp-identity";
 import { Wordmark } from "@/components/fox-logo";
+import { buttonVariants } from "@/components/ui/button";
 import { reviewCount } from "@/lib/app-data";
 import { BLOCKED_NOTE, billingEnabled, workspaceBilling } from "@/lib/billing";
 import { db } from "@/lib/db";
@@ -75,7 +76,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span className="hidden max-w-48 truncate text-sm text-muted-foreground sm:inline">
               {user.email}
             </span>
-            {env().SUPPORT_CRISP_WEBSITE_ID && <HelpButton />}
+            {env().SUPPORT_CRISP_WEBSITE_ID ? (
+              <HelpButton />
+            ) : (
+              hosted && (
+                <Link
+                  href="/support"
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                >
+                  Help
+                </Link>
+              )
+            )}
             <SignOutButton />
           </div>
         </div>

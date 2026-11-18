@@ -84,3 +84,12 @@ Crisp free plan: ₹0. AI for our own support uses the platform key and is tiny 
 - **In-app help:** a *Help* button opens the chat; the app signs the user's email with `CRISP_IDENTITY_SECRET` (Crisp identity verification) and attaches the workspace id and name.
 - **Alerts:** a new urgent item sends an email to `ALERT_EMAIL` and a Slack message to `SLACK_ALERTS_WEBHOOK_URL` (both optional), once per item.
 - **Admin inbox:** `/admin/inbox` with status filters, private notes, identity shown as verified / "unverified: check before acting", an *Open in Crisp* link and a Testimonials tab with "approved to quote". Unanswered questions after 4 hours are not built yet (a later improvement).
+
+## Support page (`/support`, added 2026-11-19)
+A public page for when chat isn't the right fit (or before the support chat is set up): quick answers that point to the setup guides, Activity/Review, Billing and the security pages, and a **contact form**.
+- The form emails `SITE.contactEmail` with **Reply-To set to the sender**, so answering is just "Reply". Nothing is stored and the message is never logged.
+- Spam and abuse: same-origin only, zod validation (one-line fields refuse line breaks, so headers can't be reshaped), a hidden field that bots fill in (answered "ok", nothing sent), 5 messages an hour per visitor address and 200 a day in total. No confirmation email goes to the typed address, so the form can't be used to mail strangers.
+- Signed-in senders: the server adds the account email, user id and active workspace from the session (never from the form). Anyone else is marked **unverified**: check before acting on account or billing requests, as with unverified chats.
+- With `SUPPORT_CRISP_WEBSITE_ID` set the page also offers "Chat with us"; the in-app **Help** button opens the chat, otherwise it links to `/support`.
+- Hosted only: in self-host mode the page and the form answer 404, so a self-hosted copy never sends its users' messages to us.
+

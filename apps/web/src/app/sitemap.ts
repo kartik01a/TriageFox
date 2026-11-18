@@ -13,6 +13,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/integrations/crisp-to-jira",
     "/integrations/crisp-to-trello",
     "/security",
+    "/support",
     "/legal/privacy",
     "/legal/terms",
     "/legal/subprocessors",

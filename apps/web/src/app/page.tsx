@@ -144,14 +144,16 @@ export default async function Home() {
               <Link href="/signup" className={buttonVariants({ size: "lg" })}>
                 Start free trial <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
-              <a
-                href={SITE.repoUrl}
-                className={buttonVariants({ variant: "outline", size: "lg" })}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View on GitHub
-              </a>
+              {SITE.repoPublic && (
+                <a
+                  href={SITE.repoUrl}
+                  className={buttonVariants({ variant: "outline", size: "lg" })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View on GitHub
+                </a>
+              )}
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
               {trialDays}-day free trial, no card needed · Open source · Self-host free
@@ -277,7 +279,9 @@ export default async function Home() {
               {
                 icon: GitBranch,
                 title: "Open source",
-                body: "Read every line on GitHub. Self-host it for free, or let us run it.",
+                body: SITE.repoPublic
+                  ? "Read every line on GitHub. Self-host it for free, or let us run it."
+                  : "Licensed AGPL-3.0, with the code going public on GitHub. Self-host it for free, or let us run it.",
               },
             ].map((t, i) => (
               <Reveal key={t.title} index={i % 3}>
@@ -304,16 +308,18 @@ export default async function Home() {
           <div className="mt-8">
             <TerminalDemo />
           </div>
-          <p className="mt-4 text-center text-sm">
-            <a
-              href={`${SITE.repoUrl}/blob/main/docs/self-hosting.md`}
-              className="font-medium text-primary hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Read the self-hosting guide →
-            </a>
-          </p>
+          {SITE.repoPublic && (
+            <p className="mt-4 text-center text-sm">
+              <a
+                href={`${SITE.repoUrl}/blob/main/docs/self-hosting.md`}
+                className="font-medium text-primary hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Read the self-hosting guide →
+              </a>
+            </p>
+          )}
         </section>
 
         <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6" aria-labelledby="pricing-title">

@@ -7,7 +7,13 @@ export { emailLayout };
 
 let mailer: ReturnType<typeof createMailer> | undefined;
 
-export async function sendMail(input: { to: string; subject: string; text: string; html: string }) {
+export async function sendMail(input: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  replyTo?: string;
+}) {
   const e = env();
   mailer ??= createMailer(
     {

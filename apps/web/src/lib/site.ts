@@ -8,6 +8,12 @@ export const SITE = {
   operator: "Kartik Singh Bisht",
   country: "India",
   repoUrl: "https://github.com/kartik01a/TriageFox",
+  /**
+   * Whether the GitHub repository is public yet. While false, every link to it (Docs, GitHub, the
+   * self-host guide, SECURITY.md) is hidden, because visitors would get a 404. Set it to true in the
+   * same change that makes the repository public (docs/launch.md, "Make the repository public").
+   */
+  repoPublic: false as boolean,
   // Both forward to the owner's inbox through Cloudflare Email Routing. Everything public reads them from here.
   contactEmail: "support@triagefox.com",
   securityEmail: "security@triagefox.com",

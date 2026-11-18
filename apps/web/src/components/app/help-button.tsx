@@ -9,7 +9,7 @@ declare global {
 }
 
 /** Opens the support chat with the signed-in user's identity already attached (see CrispIdentity). */
-export function HelpButton() {
+export function HelpButton({ label = "Help" }: { label?: string }) {
   return (
     <Button
       variant="outline"
@@ -20,7 +20,7 @@ export function HelpButton() {
         window.$crisp.push(["do", "chat:open"]);
       }}
     >
-      Help
+      {label}
     </Button>
   );
 }

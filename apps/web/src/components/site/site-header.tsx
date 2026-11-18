@@ -25,14 +25,19 @@ export async function SiteHeader() {
           <Link href="/integrations" className="hover:text-foreground">
             Integrations
           </Link>
-          <a
-            href={`${SITE.repoUrl}/tree/main/docs`}
-            className="hover:text-foreground"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Docs
-          </a>
+          {SITE.repoPublic && (
+            <a
+              href={`${SITE.repoUrl}/tree/main/docs`}
+              className="hover:text-foreground"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Docs
+            </a>
+          )}
+          <Link href="/support" className="hover:text-foreground">
+            Support
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           {signedIn ? (
