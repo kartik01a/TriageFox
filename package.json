@@ -26,9 +26,9 @@
     "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.0",
-    "lighthouse": "13.5.0",
-    "turbo": "^2.11.10",
+    "@biomejs/biome": "^2.6.8",
+    "lighthouse": "13.6.0",
+    "turbo": "^2.11.11",
     "typescript": "^5.9.0"
   }
 }
