@@ -85,7 +85,7 @@ Do this last, when the hosted version works end to end.
 - [x] Hosted version deployed and tested with a real Crisp chat, Trello and Jira, and a test payment.
 - [x] `docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source /repo --redact --no-banner` finds **no leaks in the full history**. If it ever finds a real secret, rotate it (even if it was later deleted), then decide whether to rewrite history before going public.
 - [ ] No private material in pushed files: `docs/private/` and `marketing/` are git-ignored; skim `docs/` once as a stranger would.
-- [ ] README: add the demo GIF (`docs/assets/demo.gif`, see the comment at the top of `README.md`), check the self-host section, set the repository's description and topics (`customer-support`, `jira`, `trello`, `crisp`, `ai`, `self-hosted`).
+- [ ] README: rewritten (banner, features, privacy, hosted vs self-host, contributing, Built by), repository description, website and topics set. Still to do: add the demo GIF (`docs/assets/demo.gif`, see the comment at the top of `README.md`).
 - [x] `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `CLA.md`, `CODE_OF_CONDUCT.md`, issue and pull-request templates are in place (they are).
 - [x] GitHub → Settings → **Code security**: turn on Dependabot alerts and security updates, **secret scanning and push protection**, private vulnerability reporting, and check CodeQL is running.
 - [x] Turn on Discussions (the issue template links to it).
