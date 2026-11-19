@@ -57,18 +57,26 @@ function crispPlugin(ctx: Ctx) {
 }
 
 /**
- * Returns a valid Jira access token, refreshing it when it is about to expire. Atlassian rotates
- * refresh tokens, so concurrent refreshes would invalidate each other: one at a time per connection,
- * re-reading the stored tokens after taking the lock.
+ * Returns a valid Jira access token, refreshing it when it is about to expire, or (with `maxAgeMs`, used by
+ * the keep-alive job) when the last refresh is older than that. Atlassian rotates refresh tokens, so
+ * concurrent refreshes would invalidate each other: one at a time per connection, re-reading the stored
+ * tokens after taking the lock.
  */
-export async function jiraAccessToken(ctx: Ctx, c: Connection): Promise<string> {
+export async function jiraAccessToken(
+  ctx: Ctx,
+  c: Connection,
+  opts: { maxAgeMs?: number } = {},
+): Promise<string> {
+  const usable = (t: JiraTokens) =>
+    t.expiresAt - Date.now() > REFRESH_MARGIN_MS &&
+    (opts.maxAgeMs === undefined || (t.refreshedAt ?? 0) > Date.now() - opts.maxAgeMs);
   const current = await openCredentials<JiraTokens>(ctx, c);
-  if (current.expiresAt - Date.now() > REFRESH_MARGIN_MS) return current.accessToken;
+  if (usable(current)) return current.accessToken;
 
   return withLock(ctx.redis, `conn:${c.id}`, async () => {
     const fresh = await loadConnection(ctx, c.orgId, c.id, "jira");
     const tokens = await openCredentials<JiraTokens>(ctx, fresh);
-    if (tokens.expiresAt - Date.now() > REFRESH_MARGIN_MS) return tokens.accessToken; // someone else refreshed
+    if (usable(tokens)) return tokens.accessToken; // someone else refreshed
     const app = jiraApp(ctx);
     try {
       const next = await refreshJiraTokens({

@@ -8,6 +8,7 @@ import { Queue, UnrecoverableError, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { createBillingHooks } from "./billing";
 import { describeProviders, loadConfig, verifyKeyring } from "./config";
+import { keepConnectionsAlive } from "./keepalive";
 import { createNotifier, revokedNotice } from "./notify";
 import { createDeliver } from "./pipeline/deliver";
 import { createTriage } from "./pipeline/triage";
@@ -120,6 +121,7 @@ const pipeline = startPipelineWorker(
     }),
     reminders:
       config.APP_MODE === "hosted" ? () => sendBillingReminders({ db, notifier }) : undefined,
+    keepAlive: () => keepConnectionsAlive(ctx),
     applyUpdate: createUpdate({
       ctx,
       crisp,

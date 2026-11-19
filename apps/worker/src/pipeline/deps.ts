@@ -62,6 +62,8 @@ export interface PipelineDeps {
   alert?: (a: { key: string; subject: string; text: string }) => Promise<void>;
   /** Daily billing reminders (hosted only). */
   reminders?: () => Promise<unknown>;
+  /** Daily refresh of OAuth tokens that expire when unused. */
+  keepAlive?: () => Promise<unknown>;
   log: PipelineLogger;
   now?: () => Date;
 }

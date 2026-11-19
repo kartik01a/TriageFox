@@ -17,6 +17,8 @@ export const JOBS = {
   reminders: "billing.reminders",
   /** Delete expired records. Repeatable. */
   cleanup: "maintenance.cleanup",
+  /** Refresh OAuth tokens that expire when unused (Jira, Linear). Repeatable. */
+  keepalive: "connections.keepalive",
 } as const;
 
 export const evaluatePayload = z.object({ orgId: z.string().min(1), threadId: z.uuid() });

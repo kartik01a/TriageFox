@@ -30,6 +30,11 @@ export interface JiraTokens {
   refreshToken: string;
   /** Epoch ms when the access token expires. */
   expiresAt: number;
+  /**
+   * Epoch ms of the last token call. Atlassian drops a refresh token unused for 90 days, so the daily
+   * keep-alive refreshes old ones. Missing on tokens stored before 2026-11-19 (treated as old).
+   */
+  refreshedAt?: number;
 }
 
 interface TokenResponse {
@@ -55,6 +60,7 @@ async function tokenCall(
     accessToken: res.access_token,
     refreshToken,
     expiresAt: Date.now() + res.expires_in * 1000,
+    refreshedAt: Date.now(),
   };
 }
 

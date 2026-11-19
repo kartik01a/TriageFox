@@ -43,7 +43,7 @@ Anything that needs a customer's token runs in the worker, so `pnpm dev` (web + 
 ## Pipeline notes
 - `CRISP_HOOK_SECRET` (web) must equal the signing secret in the Crisp plugin; the worker needs `CRISP_PLUGIN_ID/KEY/UUID`. `RECONCILE_LOOKBACK_MIN` (worker, default 180) widens or narrows what the reconcile job re-checks.
 - To try the hook path by hand with the dev Crisp website: run `pnpm dev`, point the Crisp development web hook at your ngrok domain (`/api/webhooks/crisp`), create a linked Crisp connection and an enabled automation (the UI for automations arrives in Phase 7; tests create rows directly), then chat from the Crisp chat page.
-- Jobs: BullMQ queue `pipeline` (`thread.evaluate`, `crisp.reconcile`, `maintenance.cleanup`). Tests use their own random queue names so they never collide with a running worker.
+- Jobs: BullMQ queue `pipeline` (`thread.evaluate`, `crisp.reconcile`, `ticket.deliver`, `ticket.update`, `billing.reminders`, `maintenance.cleanup`, `connections.keepalive`). Tests use their own random queue names so they never collide with a running worker.
 
 ## AI notes
 - Set `OPENAI_API_KEY` in `.env` (platform key; a workspace's own key entered in the app takes priority).

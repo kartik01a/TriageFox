@@ -125,7 +125,7 @@ Deleting a source connection deletes its automations and, through them, their th
 
 Migration 0006 also adds `clear_old_ai_outputs(days)` (SECURITY DEFINER, runtime role may execute) used by the daily cleanup job.
 
-**Routing functions** (migration 0005, `SECURITY DEFINER`, executable only by the runtime role, identifiers only): a hook knows just the Crisp website id and the runtime role cannot read across workspaces, so `crisp_routes(website_id)` returns `(org_id, connection_id, automation_id, quiet_window_sec)` for active connections with enabled automations, `crisp_reconcile_targets()` lists the same for every website, and `purge_old_source_events(days)` applies retention.
+**Routing functions** (migration 0005, `SECURITY DEFINER`, executable only by the runtime role, identifiers only): a hook knows just the Crisp website id and the runtime role cannot read across workspaces, so `crisp_routes(website_id)` returns `(org_id, connection_id, automation_id, quiet_window_sec)` for active connections with enabled automations, `crisp_reconcile_targets()` lists the same for every website, and `purge_old_source_events(days)` applies retention. Migration 0013 adds `oauth_keepalive_targets()`: `(org_id, connection_id, provider)` of active Jira/Linear connections that hold credentials, for the daily keep-alive job.
 
 **`dedupe_key`:** each connector computes it. Crisp hooks have no event id, so we use `sha256(website_id | event | data.fingerprint ?? data.session_id | timestamp)`.
 
