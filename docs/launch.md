@@ -83,15 +83,15 @@ The privacy policy and terms were drafted for you (sole proprietor in India, Ind
 Do this last, when the hosted version works end to end.
 
 - [x] Hosted version deployed and tested with a real Crisp chat, Trello and Jira, and a test payment.
-- [ ] `docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source /repo --redact --no-banner` finds **no leaks in the full history**. If it ever finds a real secret, rotate it (even if it was later deleted), then decide whether to rewrite history before going public.
+- [x] `docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source /repo --redact --no-banner` finds **no leaks in the full history**. If it ever finds a real secret, rotate it (even if it was later deleted), then decide whether to rewrite history before going public.
 - [ ] No private material in pushed files: `docs/private/` and `marketing/` are git-ignored; skim `docs/` once as a stranger would.
 - [ ] README: add the demo GIF (`docs/assets/demo.gif`, see the comment at the top of `README.md`), check the self-host section, set the repository's description and topics (`customer-support`, `jira`, `trello`, `crisp`, `ai`, `self-hosted`).
-- [ ] `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `CLA.md`, `CODE_OF_CONDUCT.md`, issue and pull-request templates are in place (they are).
-- [ ] GitHub → Settings → **Code security**: turn on Dependabot alerts and security updates, **secret scanning and push protection**, private vulnerability reporting, and check CodeQL is running.
-- [ ] Turn on Discussions (the issue template links to it).
-- [ ] Publish the first release tag (section 2, "Releasing") so the Docker images exist before anyone reads the self-host guide.
-- [ ] Switch the repository to **public**.
-- [ ] **Straight after:** set `repoPublic: true` in `apps/web/src/lib/site.ts` and deploy the web app. Until then the website hides every link into the repository (the Docs menu item, "View on GitHub", the self-host guide, the footer's Open source column, SECURITY.md) because they would 404, and says the code "is going public". Then check each link opens.
+- [x] `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `CLA.md`, `CODE_OF_CONDUCT.md`, issue and pull-request templates are in place (they are).
+- [x] GitHub → Settings → **Code security**: turn on Dependabot alerts and security updates, **secret scanning and push protection**, private vulnerability reporting, and check CodeQL is running.
+- [x] Turn on Discussions (the issue template links to it).
+- [x] Publish the first release tag (section 2, "Releasing") so the Docker images exist before anyone reads the self-host guide.
+- [x] Switch the repository to **public**.
+- [x] **Straight after:** set `repoPublic: true` in `apps/web/src/lib/site.ts` and deploy the web app. Until then the website hides every link into the repository (the Docs menu item, "View on GitHub", the self-host guide, the footer's Open source column, SECURITY.md) because they would 404, and says the code "is going public". Then check each link opens.
 - [ ] Right after: GitHub → Settings → Rules → Rulesets → new branch ruleset for `main` (Enforcement **Active**): **Restrict deletions** and **Block force pushes**. Leave pull-request and status-check rules off while you push straight to `main` yourself. Free accounts can't enforce rulesets on private repositories, which is why this step comes after the switch to public.
 - [ ] Merge or close the open Dependabot pull requests after testing them (major jumps such as the Node base image need the self-host smoke test).
 
