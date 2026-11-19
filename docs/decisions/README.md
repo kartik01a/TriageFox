@@ -19,6 +19,7 @@ One file per significant decision: `NNNN-short-name.md`. Don't edit an accepted 
 | [0013](0013-customer-label-mapping.md) | Customers choose the labels on their tickets | Accepted |
 | [0014](0014-voice-message-transcription.md) | Voice messages are turned into text for the AI | Accepted |
 | [0015](0015-plan-changes.md) | Changing plans: upgrades now and prorated, downgrades at renewal | Accepted |
+| [0016](0016-linear-destination.md) | Linear: connected as the TriageFox app, P1 maps to Low, new issues go to Triage | Accepted |
 
 ## Template
 

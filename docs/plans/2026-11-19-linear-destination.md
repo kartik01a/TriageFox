@@ -1,6 +1,6 @@
 # Plan: Linear as a destination (and keeping OAuth connections alive)
 
-Status: **proposed**, waiting on the owner's choices in "Decisions" below.
+Status: **accepted** 2026-11-19. The owner chose the recommended option for all three decisions ([ADR 0016](../decisions/0016-linear-destination.md)).
 
 ## Why Linear next
 
