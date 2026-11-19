@@ -93,7 +93,7 @@ Do this last, when the hosted version works end to end.
 - [x] Switch the repository to **public**.
 - [x] **Straight after:** set `repoPublic: true` in `apps/web/src/lib/site.ts` and deploy the web app. Until then the website hides every link into the repository (the Docs menu item, "View on GitHub", the self-host guide, the footer's Open source column, SECURITY.md) because they would 404, and says the code "is going public". Then check each link opens.
 - [x] Right after: GitHub → Settings → Rules → Rulesets → new branch ruleset for `main` (Enforcement **Active**): **Restrict deletions** and **Block force pushes**. Leave pull-request and status-check rules off while you push straight to `main` yourself. Free accounts can't enforce rulesets on private repositories, which is why this step comes after the switch to public.
-- [ ] Merge or close the open Dependabot pull requests after testing them (major jumps such as the Node base image need the self-host smoke test).
+- [x] Merge or close the open Dependabot pull requests after testing them (major jumps such as the Node base image need the self-host smoke test).
 
 ## 6. Launch week
 
