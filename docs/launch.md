@@ -47,16 +47,16 @@ Same stack as [self-hosting.md](self-hosting.md), with `APP_MODE=hosted` in `dep
 ### Crisp Marketplace (so customers can install the plugin)
 The listing text, scopes with reasons, review answers and post-approval steps are ready in [setup/crisp-marketplace.md](setup/crisp-marketplace.md).
 
-- [ ] Plugin page: name **TriageFox**, short description ("Turns customer chats into Jira and Trello tickets"), longer description, logo (square, from the fox mark), 3 to 5 screenshots (the activity log, a ticket in Jira, a card in Trello, the setup page), category *Productivity*/*Developer tools*, support email, **privacy policy URL** `https://triagefox.com/legal/privacy`, terms URL, website URL.
-- [ ] Settings: the iFrame widget `https://triagefox.com/crisp/link`; the web hook `https://triagefox.com/api/webhooks/crisp` for `message:send`, `message:received`, `session:set_state`; the signing secret into `CRISP_HOOK_SECRET`.
-- [ ] Scopes: request only what the code uses (read conversations and messages, read the website, read plugin subscription settings). Compare with `docs/integrations/crisp.md` before submitting; Crisp reviewers ask why each scope is needed.
-- [ ] Ask for the **production token** and the **production hook** (the development token only works on websites you added as trusted), then put them in `CRISP_PLUGIN_ID/KEY`.
-- [ ] Submit for review. Expect questions; the answers are in [security.md](security.md) and [integrations/crisp.md](integrations/crisp.md).
+- [x] Plugin page: name **TriageFox**, short description ("Turns customer chats into Jira and Trello tickets"), longer description, logo (square, from the fox mark), 3 to 5 screenshots (the activity log, a ticket in Jira, a card in Trello, the setup page), category *Productivity*/*Developer tools*, support email, **privacy policy URL** `https://triagefox.com/legal/privacy`, terms URL, website URL.
+- [x] Settings: the iFrame widget `https://triagefox.com/crisp/link`; the web hook `https://triagefox.com/api/webhooks/crisp` for `message:send`, `message:received`, `session:set_state`; the signing secret into `CRISP_HOOK_SECRET`.
+- [x] Scopes: request only what the code uses (read conversations and messages, read the website, read plugin subscription settings). Compare with `docs/integrations/crisp.md` before submitting; Crisp reviewers ask why each scope is needed.
+- [x] Ask for the **production token** and the **production hook** (the development token only works on websites you added as trusted), then put them in `CRISP_PLUGIN_ID/KEY`.
+- [x] (2026-11-19: activated, production token and hooks live, visibility "Public" submitted and pending Crisp's review.) Submit for review. Expect questions; the answers are in [security.md](security.md) and [integrations/crisp.md](integrations/crisp.md).
 
 ### Atlassian (Jira)
 - [x] Developer console → your OAuth 2.0 app → **Distribution**: change from "Not shared" to **Sharing**. Needs the privacy policy URL, the app's terms, a vendor name and contact, and a security contact.
 - [ ] Complete the *data security and privacy* self-assessment honestly: we store tokens encrypted, tickets we create, no chat transcripts; data stays in our hosting; deletion on request within 7 days.
-- [ ] Scopes stay `read:jira-work`, `write:jira-work`, `read:jira-user` (+ `offline_access`). Callback `https://triagefox.com/api/connections/jira/callback`.
+- [x] Scopes stay `read:jira-work`, `write:jira-work`, `read:jira-user` (+ `offline_access`). Callback `https://triagefox.com/api/connections/jira/callback`.
 
 ### Trello
 - [x] Power-Up admin → your key → add `https://triagefox.com` as an **allowed origin**. Read Trello's current API terms for commercial use. No Marketplace listing is needed.
@@ -64,7 +64,7 @@ The listing text, scopes with reasons, review answers and post-approval steps ar
 ### Dodo (live)
 - [x] Live products created for every plan, interval and currency; product ids entered in `/admin/plans` and the plans published.
 - [x] Live webhook `https://triagefox.com/api/webhooks/billing`, `DODO_ENV=live`, live key and secret.
-- [ ] One real purchase with your own card (or a single-use 1-day discount code created just for the test), check the Billing page, then cancel in the portal.
+- [x] One real purchase with your own card (or a single-use 1-day discount code created just for the test), check the Billing page, then cancel in the portal.
 - [ ] Ask Dodo to confirm in writing: no-refund policy allowed; Amex handled; payout fees and FX; that INR fixed prices work.
 
 ## 4. Legal checks (you)
