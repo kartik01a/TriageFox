@@ -91,6 +91,11 @@ Not in v1. Add new ideas here.
 - **TriageFox Inbox for customers**: offer the internal inbox (built for our own support) as a destination for teams that don't use Jira or Trello.
 - **"Ask TriageFox"** docs-answering chat bot for our own support (or upgrade to Crisp Mini for its AI answers).
 
+## Maintenance plan
+
+- **Node.js 22 → 26 (early 2027, before Node 22's end of life in April 2027).** One change: `deploy/Dockerfile` base image, the Node version in CI and `package.json` `engines`, the README and `docs/development.md`, then the full test suite and the self-host smoke test. Dependabot's PR #6 (Nov 2026) was closed because its CI failed (browser tests and the self-host image build) and it needs that proper pass.
+- **Add "delete my workspace"** as a self-service button (today it is done on request by email, within 7 days).
+
 ## Business & launch track
 
 - Business analysis and pricing: `docs/private/` (not pushed).
