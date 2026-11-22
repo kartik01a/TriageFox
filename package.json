@@ -29,6 +29,6 @@
     "@biomejs/biome": "^2.6.8",
     "lighthouse": "13.6.0",
     "turbo": "^2.11.11",
-    "typescript": "^5.9.0"
+    "typescript": "^7.0.2"
   }
 }
