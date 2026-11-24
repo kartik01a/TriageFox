@@ -76,7 +76,10 @@ test("connections page shows each provider, empty at first", async () => {
   for (const name of ["Crisp", "Trello", "Jira Cloud"]) {
     await expect(page.getByRole("heading", { name: new RegExp(name) })).toBeVisible();
   }
-  await expect(page.getByText("Not connected yet.")).toHaveCount(3);
+  // Linear is listed only on servers that configured it (LINEAR_CLIENT_ID).
+  const linear = !!process.env.LINEAR_CLIENT_ID;
+  await expect(page.getByRole("heading", { name: /^Linear/ })).toHaveCount(linear ? 1 : 0);
+  await expect(page.getByText("Not connected yet.")).toHaveCount(linear ? 4 : 3);
   await expect(page.getByRole("link", { name: "AI key" })).toBeVisible();
 });
 
@@ -239,8 +242,12 @@ test("Trello (live): connect, choose a board and list, token never exposed", asy
   expect(JSON.stringify(row)).not.toContain(token);
   expect(row?.credentialsSealed).toMatch(/^v1:/);
 
-  await page.getByLabel("Board").selectOption({ label: "TriageFox" });
-  await page.getByLabel("List for new cards").selectOption({ label: "To Do" });
+  // Whatever board and list the test account has: names change (boards get renamed for demos).
+  await expect(page.getByLabel("Board").locator("option")).not.toHaveCount(1);
+  await page.getByLabel("Board").selectOption({ index: 1 });
+  await expect(page.getByLabel("List for new cards")).toBeEnabled();
+  await page.getByLabel("List for new cards").selectOption({ index: 1 });
+  const chosen = `${await page.getByLabel("Board").locator("option:checked").innerText()} › ${await page.getByLabel("List for new cards").locator("option:checked").innerText()}`;
   await page.getByRole("button", { name: "Save target" }).click();
   await expect(page.getByText("Saved. New cards will be created here.")).toBeVisible();
 
@@ -278,7 +285,7 @@ test("Trello (live): connect, choose a board and list, token never exposed", asy
   }
 
   await page.goto("/app/connections");
-  await expect(page.getByText("TriageFox › To Do")).toBeVisible();
+  await expect(page.getByText(chosen)).toBeVisible();
   // Cleanup without revoking: that token is also used by your other tests and scripts.
   await ownerDb().delete(schema.connections).where(eq(schema.connections.orgId, orgId));
 });

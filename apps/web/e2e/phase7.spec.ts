@@ -163,7 +163,7 @@ test("enabling needs a working destination", async () => {
   await page.goto("/app/automation");
   await page.getByRole("button", { name: "Turn on automation" }).click();
   await expect(
-    page.getByText(/Connect Trello or Jira and choose where tickets should go/),
+    page.getByText(/Connect Trello, Jira or Linear and choose where tickets should go/),
   ).toBeVisible();
   await db()
     .update(schema.automationDestinations)
