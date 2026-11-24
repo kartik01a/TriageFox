@@ -2,7 +2,7 @@ export type FetchLike = typeof fetch;
 
 export class ProviderError extends Error {
   constructor(
-    readonly provider: "trello" | "jira" | "crisp" | "openai",
+    readonly provider: "trello" | "jira" | "linear" | "crisp" | "openai",
     /** Our classification, independent of the provider's wording. */
     readonly kind: "auth" | "not_found" | "rate_limited" | "invalid" | "unavailable",
     message: string,

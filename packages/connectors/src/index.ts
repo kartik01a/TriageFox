@@ -4,6 +4,7 @@ export * from "./crisp-events";
 export * from "./http";
 export * from "./jira";
 export * from "./jira-mapping";
+export * from "./linear";
 export * from "./ssrf";
 export * from "./ticket-body";
 export * from "./trello";
