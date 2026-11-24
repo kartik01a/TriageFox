@@ -33,10 +33,11 @@ Open `deploy/.env` and fill in the values below. Each register-an-app step is de
 | **Crisp** | A plugin at marketplace.crisp.chat. Add your website under *trusted workspaces*. Token pair under *Tokens*. An iFrame widget pointing to `APP_URL/crisp/link`. A web hook to `APP_URL/api/webhooks/crisp` for `message:send`, `message:received`, `session:set_state` | `CRISP_PLUGIN_ID`, `CRISP_PLUGIN_KEY`, `CRISP_PLUGIN_UUID`, `CRISP_HOOK_SECRET` |
 | **Trello** (optional) | A Power-Up API key at trello.com/power-ups/admin; add `APP_URL` as an allowed origin | `TRELLO_API_KEY` |
 | **Jira Cloud** (optional) | An OAuth 2.0 (3LO) app at developer.atlassian.com with scopes `read:jira-work`, `write:jira-work`, `read:jira-user`; callback `APP_URL/api/connections/jira/callback` | `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET` |
+| **Linear** (optional) | An OAuth application in Linear (Settings → API → OAuth applications); callback `APP_URL/api/connections/linear/callback`. Connecting needs a Linear workspace admin | `LINEAR_CLIENT_ID`, `LINEAR_CLIENT_SECRET` |
 | **OpenAI** | An API key | `OPENAI_API_KEY` (or leave empty and let each workspace enter its own under *AI key*) |
 | **Email** | SMTP credentials | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` |
 
-Connect at least Crisp and one of Trello or Jira; leave the rest blank to turn them off.
+Connect at least Crisp and one of Trello, Jira or Linear; leave the rest blank to turn them off.
 
 A Crisp development token only works on websites you have added as trusted workspaces, which is exactly what a self-hosted install for your own website needs.
 

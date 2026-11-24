@@ -1,3 +1,4 @@
+import { PROVIDER_NAMES } from "@triagefox/shared";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -57,8 +58,8 @@ export default async function AutomationPage() {
       {automation.enabled && destinations.length > 0 && destinations.every((d) => !d.enabled) && (
         <p className="rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">
           No tool is receiving tickets. Chats are still read, but new tickets are not created in
-          Trello or Jira, and they are not sent later. Tick “Send tickets here” on at least one
-          below.
+          Trello, Jira or Linear, and they are not sent later. Tick “Send tickets here” on at least
+          one below.
         </p>
       )}
 
@@ -83,14 +84,14 @@ export default async function AutomationPage() {
                   href="/app/connections"
                   className="block font-medium text-primary hover:underline"
                 >
-                  Connect Trello or Jira
+                  Connect Trello, Jira or Linear
                 </Link>
               </Card>
             ) : (
               destinations.map((d) => (
                 <Card key={d.id} className="space-y-2 p-5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium">{d.provider === "trello" ? "Trello" : "Jira"}</p>
+                    <p className="font-medium">{PROVIDER_NAMES[d.provider]}</p>
                     <StatusBadge status={d.connectionStatus} />
                   </div>
                   <p className="text-sm text-muted-foreground">{d.target}</p>
@@ -110,7 +111,7 @@ export default async function AutomationPage() {
                       automationId={automation.id}
                       destinationId={d.id}
                       enabled={d.enabled}
-                      label={d.provider === "trello" ? "Trello" : "Jira"}
+                      label={PROVIDER_NAMES[d.provider]}
                     />
                   )}
                 </Card>

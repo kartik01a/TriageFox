@@ -50,6 +50,8 @@ function makeHandlers(fetchImpl: typeof fetch): RpcHandlers {
       TRELLO_API_KEY: "TRELLO_APP_KEY",
       ATLASSIAN_CLIENT_ID: "cid",
       ATLASSIAN_CLIENT_SECRET: "csecret",
+      LINEAR_CLIENT_ID: "lid",
+      LINEAR_CLIENT_SECRET: "lsecret",
       CRISP_PLUGIN_ID: "ident",
       CRISP_PLUGIN_KEY: "pkey",
       CRISP_PLUGIN_UUID: "plugin-uuid",
@@ -61,7 +63,7 @@ function makeHandlers(fetchImpl: typeof fetch): RpcHandlers {
 
 async function insertConnection(
   orgId: string,
-  provider: "trello" | "jira" | "crisp",
+  provider: "trello" | "jira" | "linear" | "crisp",
   creds: unknown | null,
   extra: Partial<typeof schema.connections.$inferInsert> = {},
 ) {
@@ -308,6 +310,73 @@ describe("jira", () => {
         cloudId: "someone-elses",
       }),
     ).rejects.toMatchObject({ code: "forbidden" });
+  });
+});
+
+describe("linear", () => {
+  const linear =
+    (calls: string[]): Routes =>
+    (url, init) => {
+      if (url.pathname === "/oauth/token")
+        return { body: { access_token: "LA-1", refresh_token: "LR-1", expires_in: 86399 } };
+      if (url.pathname === "/oauth/revoke") {
+        calls.push(String(init.body));
+        return { body: {} };
+      }
+      if (url.pathname === "/graphql") {
+        const q = String(init.body);
+        if (q.includes("organization"))
+          return { body: { data: { organization: { id: "O", name: "Acme", urlKey: "acme" } } } };
+        if (q.includes("viewer")) return { body: { data: { viewer: { id: "APPUSER" } } } };
+      }
+      return undefined;
+    };
+
+  it("exchanges the one-time code, seals the tokens and remembers its own app user", async () => {
+    const id = await insertConnection(orgA, "linear", { code: "ONE-TIME-CODE" });
+    const out = await makeHandlers(fakeFetch(linear([])).fn)["linear.complete"]({
+      orgId: orgA,
+      connectionId: id,
+    });
+    expect(out).toEqual({ workspaceName: "Acme", urlKey: "acme" });
+    const row = await getConn(orgA, id);
+    expect(row?.status).toBe("active");
+    expect(row?.metadata).toMatchObject({ workspaceName: "Acme", appUserId: "APPUSER" });
+    expect(JSON.stringify(row?.metadata)).not.toMatch(/LA-1|LR-1/);
+    const tokens = JSON.parse(
+      await openSecret(
+        row?.credentialsSealed ?? "",
+        { orgId: orgA, recordId: id, purpose: "connection.credentials" },
+        keyring,
+      ),
+    );
+    expect(tokens).toMatchObject({ accessToken: "LA-1", refreshToken: "LR-1" });
+  });
+
+  it("removes the connection when Linear refuses the code (e.g. not an admin)", async () => {
+    const id = await insertConnection(orgA, "linear", { code: "bad" });
+    const f = fakeFetch(() => ({ status: 400, body: { error: "invalid_grant" } }));
+    await expect(
+      makeHandlers(f.fn)["linear.complete"]({ orgId: orgA, connectionId: id }),
+    ).rejects.toBeInstanceOf(RpcError);
+    expect(await getConn(orgA, id)).toBeUndefined();
+  });
+
+  it("disconnect revokes the grant at Linear and deletes our copy", async () => {
+    const id = await insertConnection(
+      orgA,
+      "linear",
+      { accessToken: "LA", refreshToken: "LR-9", expiresAt: Date.now() + 60_000_000 },
+      { status: "active" },
+    );
+    const calls: string[] = [];
+    const out = await makeHandlers(fakeFetch(linear(calls)).fn)["connection.disconnect"]({
+      orgId: orgA,
+      connectionId: id,
+    });
+    expect(out.revoked).toBe(true);
+    expect(calls[0]).toContain("token=LR-9");
+    expect(await getConn(orgA, id)).toBeUndefined();
   });
 });
 

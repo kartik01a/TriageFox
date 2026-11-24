@@ -81,7 +81,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       destinations.length ? "review_approved" : "no_destination",
       destinations.length
         ? "A ticket was approved from the review queue."
-        : "A ticket was approved but not sent: no Trello or Jira destination is set up or switched on.",
+        : "A ticket was approved but not sent: no Trello, Jira or Linear destination is set up or switched on.",
     );
     return { deliveries: destinations.map((d) => d.id), issueId: issue.id };
   });

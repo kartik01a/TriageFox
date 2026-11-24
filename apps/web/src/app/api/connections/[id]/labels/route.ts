@@ -11,6 +11,7 @@ type Params = { params: Promise<{ id: string }> };
 type Defaults = Record<string, unknown> & {
   boardId?: string;
   cloudId?: string;
+  teamId?: string;
   labels?: unknown;
   typeLabels?: unknown;
 };
@@ -22,10 +23,18 @@ async function load(req: Request, params: Params["params"]) {
   if (!id.success) return { response: json({ ok: false, error: "Not found." }, 404) } as const;
   const orgId = guard.ctx.workspace.id;
   const conn = await getConnectionView(orgId, id.data);
-  if (!conn || (conn.provider !== "trello" && conn.provider !== "jira"))
+  if (
+    !conn ||
+    (conn.provider !== "trello" && conn.provider !== "jira" && conn.provider !== "linear")
+  )
     return { response: json({ ok: false, error: "Not found." }, 404) } as const;
   const defaults = (conn.metadata.defaults ?? {}) as Defaults;
-  const ready = conn.provider === "trello" ? !!defaults.boardId : !!defaults.cloudId;
+  const ready =
+    conn.provider === "trello"
+      ? !!defaults.boardId
+      : conn.provider === "linear"
+        ? !!defaults.teamId
+        : !!defaults.cloudId;
   if (!ready)
     return {
       response: json({ ok: false, error: "Choose where tickets go first, then the labels." }, 400),
@@ -45,6 +54,17 @@ export async function GET(req: Request, { params }: Params) {
         boardId: String(c.defaults.boardId),
       });
       return json({ ok: true, labels, choice: c.defaults.labels ?? {} });
+    }
+    if (c.conn.provider === "linear") {
+      const { labels } = await rpc().call("linear.teamSetup", {
+        ...c.base,
+        teamId: String(c.defaults.teamId),
+      });
+      return json({
+        ok: true,
+        labels: [...new Set(labels.map((l) => l.name))],
+        choice: { types: c.defaults.typeLabels ?? {} },
+      });
     }
     const { labels } = await rpc().call("jira.listLabels", {
       ...c.base,
@@ -66,7 +86,7 @@ export async function POST(req: Request, { params }: Params) {
   const c = await load(req, params);
   if ("response" in c) return c.response;
   if (c.conn.provider !== "trello")
-    return json({ ok: false, error: "Jira labels are created by typing a new name." }, 400);
+    return json({ ok: false, error: "New labels are created by typing a new name." }, 400);
   const body = newLabel.safeParse(await req.json().catch(() => null));
   if (!body.success) return json({ ok: false, error: "Give the label a name." }, 400);
   try {
@@ -94,6 +114,10 @@ const jiraLabel = z
   .trim()
   .regex(/^\S{1,255}$/, "Jira labels can't contain spaces.");
 const jiraBody = z.object({ types: choiceOf(TICKET_TYPES, jiraLabel).default({}) });
+// Linear labels are names (created on the team at delivery when missing).
+const linearBody = z.object({
+  types: choiceOf(TICKET_TYPES, z.string().trim().min(1).max(80)).default({}),
+});
 
 /** Saves the choice. A key that is left out keeps the default label; null means no label. */
 export async function PUT(req: Request, { params }: Params) {
@@ -117,7 +141,7 @@ export async function PUT(req: Request, { params }: Params) {
         return json({ ok: false, error: "One of those labels isn't on the board any more." }, 400);
       patch = { labels: body.data };
     } else {
-      const body = jiraBody.safeParse(raw);
+      const body = (c.conn.provider === "linear" ? linearBody : jiraBody).safeParse(raw);
       if (!body.success)
         return json(
           { ok: false, error: body.error.issues[0]?.message ?? "Those labels aren't valid." },

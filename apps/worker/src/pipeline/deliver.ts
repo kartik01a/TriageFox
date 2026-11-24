@@ -1,10 +1,16 @@
-import { JiraClient, markdownToAdf, type SafeDownloadOptions } from "@triagefox/connectors";
+import {
+  JiraClient,
+  linearFileMarkdown,
+  linearPriority,
+  markdownToAdf,
+  type SafeDownloadOptions,
+} from "@triagefox/connectors";
 import { and, eq, schema, withOrg } from "@triagefox/db";
 import { type DeliverPayload, withLock } from "@triagefox/pipeline";
 import { type Priority, TICKET_TYPE_LABELS, type TicketType } from "@triagefox/shared";
 import { UnrecoverableError } from "bullmq";
 import { type Ctx, openCredentials, updateConnection } from "../rpc/context";
-import { jiraAccessToken, trello } from "../rpc/handlers";
+import { jiraAccessToken, linearClient, trello } from "../rpc/handlers";
 import type { CrispSource } from "./deps";
 import {
   classify,
@@ -14,8 +20,16 @@ import {
   isLinkable,
   type JiraConfig,
   jiraLabels,
+  linearCreateSetup,
   type TrelloConfig,
 } from "./shared";
+
+const PROVIDER_LABEL = {
+  crisp: "Crisp",
+  trello: "Trello",
+  jira: "Jira",
+  linear: "Linear",
+} as const;
 
 type Issue = typeof schema.issues.$inferSelect;
 type Destination = typeof schema.automationDestinations.$inferSelect;
@@ -88,7 +102,7 @@ export function createDeliver(deps: DeliverDeps) {
     if (!thread || !automation || !connection || !source) return;
     const say = (kind: string, message: string, refs?: Record<string, unknown>) =>
       activity(p, automation.id, thread.id, kind, message, refs);
-    const where = connection.provider === "trello" ? "Trello" : "Jira";
+    const where = PROVIDER_LABEL[connection.provider];
 
     await withLock(
       ctx.redis,
@@ -170,6 +184,41 @@ export function createDeliver(deps: DeliverDeps) {
                   );
                 }
               }
+            };
+          } else if (dest.config.kind === "linear") {
+            const config = dest.config;
+            const client = await linearClient(ctx, connection);
+            const placement = await linearCreateSetup(client, config, issue.type as TicketType);
+            const made = await client.createIssue({
+              teamId: config.teamId,
+              title: issue.title.slice(0, 250),
+              description: issue.bodyMd.slice(0, 100_000),
+              priority: linearPriority(issue.priority),
+              labelIds: placement.labelIds,
+              ...(placement.stateId ? { stateId: placement.stateId } : {}),
+              ...(placement.projectId ? { projectId: placement.projectId } : {}),
+              ...(issue.dueDate ? { dueDate: issue.dueDate } : {}),
+            });
+            created = { id: made.id, key: made.identifier, url: made.url };
+            afterCreate = async () => {
+              const lines: string[] = [];
+              for (const f of await filesFor(issue.attachmentIds, source, thread.sourceId)) {
+                try {
+                  const blob = await download(f.url);
+                  const asset = await client.uploadFile(blob, f.name);
+                  lines.push(linearFileMarkdown(f.name, asset, blob.type));
+                } catch (err) {
+                  if (!isLinkable(err)) continue; // never link an unsafe address
+                  lines.push(
+                    `[${f.name.replace(/[[\]()]/g, " ")}](${f.url}) (too large to upload)`,
+                  );
+                }
+              }
+              if (lines.length)
+                await client.addComment(
+                  made.id,
+                  `**Files from the customer**\n\n${lines.join("\n\n")}`,
+                );
             };
           } else {
             const config = dest.config as JiraConfig;

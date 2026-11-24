@@ -28,5 +28,13 @@ export function destinationConfigFromDefaults(
       priorityMap: d.priorityMap as Record<string, string>,
       ...(d.typeLabels ? { typeLabels: d.typeLabels as Record<string, string | null> } : {}),
     };
+  if (c.provider === "linear" && d.teamId)
+    return {
+      kind: "linear",
+      teamId: String(d.teamId),
+      ...(d.stateId ? { stateId: String(d.stateId) } : {}),
+      ...(d.projectId ? { projectId: String(d.projectId) } : {}),
+      ...(d.typeLabels ? { typeLabels: d.typeLabels as Record<string, string | null> } : {}),
+    };
   return null;
 }

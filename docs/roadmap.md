@@ -64,7 +64,7 @@ We add integrations **one at a time** after the MVP. Each new integration widens
 |---|---|---|
 | 1 | **Trello** | **MVP** |
 | 1 | **Jira Cloud** | **MVP** |
-| 2 | Linear | Next (popular with startups, good API, OAuth) |
+| 2 | **Linear** | **Built** 2026-11-24 ([integrations/linear.md](integrations/linear.md)); live after the owner's end-to-end test |
 | 3 | GitHub Issues | Planned (GitHub App; great for open-source/dev audience) |
 | 4 | ClickUp | Planned |
 | 5 | Asana | Planned |

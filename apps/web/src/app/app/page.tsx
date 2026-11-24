@@ -15,7 +15,7 @@ import { requireWorkspace } from "@/lib/workspace";
 
 export const metadata: Metadata = { title: "Overview" };
 
-const NAMES = { crisp: "Crisp", trello: "Trello", jira: "Jira" } as const;
+const NAMES = { crisp: "Crisp", trello: "Trello", jira: "Jira", linear: "Linear" } as const;
 
 export default async function OverviewPage() {
   const { workspace } = await requireWorkspace();

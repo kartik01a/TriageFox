@@ -2,11 +2,14 @@ import { AiError } from "@triagefox/ai";
 import {
   CrispPluginClient,
   exchangeJiraCode,
+  exchangeLinearCode,
   JiraClient,
-  type JiraTokens,
+  LinearClient,
   listJiraSites,
   ProviderError,
   refreshJiraTokens,
+  refreshLinearTokens,
+  revokeLinearToken,
   TrelloClient,
 } from "@triagefox/connectors";
 import { openSecret } from "@triagefox/crypto";
@@ -26,6 +29,12 @@ import {
 import { dryRun } from "./dry-run";
 
 type Connection = Awaited<ReturnType<typeof loadConnection>>;
+const PROVIDER_LABEL = {
+  crisp: "Crisp",
+  trello: "Trello",
+  jira: "Jira",
+  linear: "Linear",
+} as const;
 const REFRESH_MARGIN_MS = 2 * 60 * 1000;
 
 export function trello(ctx: Ctx, token: string) {
@@ -56,34 +65,39 @@ function crispPlugin(ctx: Ctx) {
   return new CrispPluginClient({ identifier, key, pluginId, fetch: ctx.fetch });
 }
 
+type RotatingTokens = {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  refreshedAt?: number;
+};
+
 /**
- * Returns a valid Jira access token, refreshing it when it is about to expire, or (with `maxAgeMs`, used by
- * the keep-alive job) when the last refresh is older than that. Atlassian rotates refresh tokens, so
- * concurrent refreshes would invalidate each other: one at a time per connection, re-reading the stored
- * tokens after taking the lock.
+ * Returns a valid access token for an OAuth connection whose refresh tokens rotate (Jira, Linear),
+ * refreshing it when it is about to expire or (with `maxAgeMs`, used by the keep-alive job) when the last
+ * refresh is older than that. Concurrent refreshes would invalidate each other: one at a time per
+ * connection, re-reading the stored tokens after taking the lock.
  */
-export async function jiraAccessToken(
+async function rotatingAccessToken(
   ctx: Ctx,
   c: Connection,
-  opts: { maxAgeMs?: number } = {},
+  provider: "jira" | "linear",
+  name: string,
+  refresh: (refreshToken: string) => Promise<RotatingTokens>,
+  opts: { maxAgeMs?: number },
 ): Promise<string> {
-  const usable = (t: JiraTokens) =>
+  const usable = (t: RotatingTokens) =>
     t.expiresAt - Date.now() > REFRESH_MARGIN_MS &&
     (opts.maxAgeMs === undefined || (t.refreshedAt ?? 0) > Date.now() - opts.maxAgeMs);
-  const current = await openCredentials<JiraTokens>(ctx, c);
+  const current = await openCredentials<RotatingTokens>(ctx, c);
   if (usable(current)) return current.accessToken;
 
   return withLock(ctx.redis, `conn:${c.id}`, async () => {
-    const fresh = await loadConnection(ctx, c.orgId, c.id, "jira");
-    const tokens = await openCredentials<JiraTokens>(ctx, fresh);
+    const fresh = await loadConnection(ctx, c.orgId, c.id, provider);
+    const tokens = await openCredentials<RotatingTokens>(ctx, fresh);
     if (usable(tokens)) return tokens.accessToken; // someone else refreshed
-    const app = jiraApp(ctx);
     try {
-      const next = await refreshJiraTokens({
-        ...app,
-        refreshToken: tokens.refreshToken,
-        fetch: ctx.fetch,
-      });
+      const next = await refresh(tokens.refreshToken);
       await updateConnection(ctx, fresh, {
         credentialsSealed: await sealCredentials(ctx, fresh, next),
         lastVerifiedAt: new Date(),
@@ -92,9 +106,46 @@ export async function jiraAccessToken(
       });
       return next.accessToken;
     } catch (err) {
-      return failWith(ctx, fresh, "Jira", err);
+      return failWith(ctx, fresh, name, err);
     }
   });
+}
+
+export function jiraAccessToken(ctx: Ctx, c: Connection, opts: { maxAgeMs?: number } = {}) {
+  return rotatingAccessToken(
+    ctx,
+    c,
+    "jira",
+    "Jira",
+    (refreshToken) => refreshJiraTokens({ ...jiraApp(ctx), refreshToken, fetch: ctx.fetch }),
+    opts,
+  );
+}
+
+function linearApp(ctx: Ctx) {
+  const { LINEAR_CLIENT_ID: clientId, LINEAR_CLIENT_SECRET: clientSecret } = ctx.config;
+  if (!clientId || !clientSecret)
+    throw new RpcError("not_configured", "Linear is not configured on this server.");
+  return {
+    clientId,
+    clientSecret,
+    redirectUri: `${ctx.config.APP_URL}/api/connections/linear/callback`,
+  };
+}
+
+export function linearAccessToken(ctx: Ctx, c: Connection, opts: { maxAgeMs?: number } = {}) {
+  return rotatingAccessToken(
+    ctx,
+    c,
+    "linear",
+    "Linear",
+    (refreshToken) => refreshLinearTokens({ ...linearApp(ctx), refreshToken, fetch: ctx.fetch }),
+    opts,
+  );
+}
+
+export async function linearClient(ctx: Ctx, c: Connection) {
+  return new LinearClient({ accessToken: await linearAccessToken(ctx, c), fetch: ctx.fetch });
 }
 
 function checkJiraSite(c: Connection, cloudId: string) {
@@ -246,6 +297,59 @@ export function createHandlers(ctx: Ctx): RpcHandlers {
       }
     },
 
+    // ---- Linear --------------------------------------------------------------------------
+    async "linear.complete"({ orgId, connectionId }) {
+      const c = await loadConnection(ctx, orgId, connectionId, "linear");
+      if (c.status !== "pending")
+        throw new RpcError("invalid", "This connection is already set up.");
+      try {
+        const { code } = await openCredentials<{ code: string }>(ctx, c);
+        const tokens = await exchangeLinearCode({ ...linearApp(ctx), code, fetch: ctx.fetch });
+        const client = new LinearClient({ accessToken: tokens.accessToken, fetch: ctx.fetch });
+        const [org, appUserId] = await Promise.all([client.organization(), client.viewerId()]);
+        await updateConnection(ctx, c, {
+          credentialsSealed: await sealCredentials(ctx, c, tokens),
+          status: "active",
+          statusDetail: null,
+          lastVerifiedAt: new Date(),
+          metadata: {
+            ...c.metadata,
+            workspaceId: org.id,
+            workspaceName: org.name,
+            urlKey: org.urlKey,
+            // TriageFox's own app user: its description edits are not "human" edits.
+            appUserId,
+          },
+        });
+        return { workspaceName: org.name, urlKey: org.urlKey };
+      } catch (err) {
+        await deleteConnection(ctx, c); // the one-time code is spent either way
+        return failWith(ctx, c, "Linear", err);
+      }
+    },
+
+    async "linear.listTeams"({ orgId, connectionId }) {
+      const c = await loadConnection(ctx, orgId, connectionId, "linear");
+      try {
+        return { teams: await (await linearClient(ctx, c)).listTeams() };
+      } catch (err) {
+        return failWith(ctx, c, "Linear", err);
+      }
+    },
+
+    async "linear.teamSetup"({ orgId, connectionId, teamId }) {
+      const c = await loadConnection(ctx, orgId, connectionId, "linear");
+      try {
+        const setup = await (await linearClient(ctx, c)).teamSetup(teamId);
+        return {
+          ...setup,
+          states: setup.states.map((st) => ({ id: st.id, name: st.name, type: st.type })),
+        };
+      } catch (err) {
+        return failWith(ctx, c, "Linear", err);
+      }
+    },
+
     // ---- Crisp ---------------------------------------------------------------------------
     async "crisp.verifyWebsite"({ websiteId, token }) {
       const crisp = crispPlugin(ctx);
@@ -271,6 +375,8 @@ export function createHandlers(ctx: Ctx): RpcHandlers {
           await trello(ctx, (await openCredentials<{ token: string }>(ctx, c)).token).me();
         } else if (c.provider === "jira") {
           await listJiraSites(await jiraAccessToken(ctx, c), ctx.fetch);
+        } else if (c.provider === "linear") {
+          await (await linearClient(ctx, c)).organization();
         } else {
           try {
             await crispPlugin(ctx).getSubscriptionToken(String(c.metadata.websiteId));
@@ -293,12 +399,7 @@ export function createHandlers(ctx: Ctx): RpcHandlers {
         return { status: "active" as const };
       } catch (err) {
         try {
-          return await failWith(
-            ctx,
-            c,
-            c.provider === "crisp" ? "Crisp" : c.provider === "jira" ? "Jira" : "Trello",
-            err,
-          );
+          return await failWith(ctx, c, PROVIDER_LABEL[c.provider], err);
         } catch (e) {
           if (e instanceof RpcError && e.code === "auth_expired")
             return { status: "revoked" as const, detail: e.message };
@@ -368,6 +469,15 @@ export function createHandlers(ctx: Ctx): RpcHandlers {
           ctx.log.warn({ connectionId, err: (err as Error).message }, "trello token revoke failed");
         }
       }
+      if (c.provider === "linear" && c.credentialsSealed) {
+        try {
+          const t = await openCredentials<{ refreshToken: string }>(ctx, c);
+          await revokeLinearToken(t.refreshToken, ctx.fetch);
+          revoked = true;
+        } catch (err) {
+          ctx.log.warn({ connectionId, err: (err as Error).message }, "linear token revoke failed");
+        }
+      }
       await deleteConnection(ctx, c);
       return { revoked };
     },
@@ -376,7 +486,7 @@ export function createHandlers(ctx: Ctx): RpcHandlers {
 
 async function anyProvider(ctx: Ctx, orgId: string, connectionId: string) {
   // Provider is read from the row itself; loadConnection then re-checks it.
-  for (const p of ["trello", "jira", "crisp"] as const) {
+  for (const p of ["trello", "jira", "linear", "crisp"] as const) {
     try {
       await loadConnection(ctx, orgId, connectionId, p);
       return p;

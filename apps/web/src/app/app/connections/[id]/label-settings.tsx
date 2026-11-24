@@ -28,7 +28,9 @@ const toValue = (choice: Choice, key: string) =>
  * Which label a ticket gets for each priority level and type (ADR 0013). The AI keeps its fixed scale;
  * this only decides what appears on the card or issue. "Default" keeps TriageFox's own label.
  */
-export function LabelSettings({ id, provider }: { id: string; provider: "trello" | "jira" }) {
+type Provider = "trello" | "jira" | "linear";
+
+export function LabelSettings({ id, provider }: { id: string; provider: Provider }) {
   const [options, setOptions] = useState<Option[] | null>(null);
   const [priorities, setPriorities] = useState<Choice>({});
   const [types, setTypes] = useState<Choice>({});
@@ -73,8 +75,9 @@ export function LabelSettings({ id, provider }: { id: string; provider: "trello"
       if (!r.ok) return setError(r.error ?? "Could not create the label.");
       made = r.label;
     } else {
-      // Jira creates a label the first time it is used; it only needs a name without spaces.
-      if (/\s/.test(name)) return setError("Jira labels can't contain spaces.");
+      // Jira and Linear labels are created the first time they are used; Jira's can't contain spaces.
+      if (provider === "jira" && /\s/.test(name))
+        return setError("Jira labels can't contain spaces.");
       made = { id: name, name };
     }
     setOptions((prev) => [...(prev ?? []).filter((o) => o.id !== made.id), made]);
@@ -153,6 +156,12 @@ export function LabelSettings({ id, provider }: { id: string; provider: "trello"
           Jira priority is set with the mapping above. Below are the labels added for each type.
         </p>
       )}
+      {provider === "linear" && (
+        <p className="text-sm text-muted-foreground">
+          Linear's own priority is set for you (P5 Urgent, P4 High, P3 Medium, P2 and P1 Low). Below
+          are the labels added for each type; a missing label is created on the team.
+        </p>
+      )}
       <fieldset className="space-y-2">
         <legend className="mb-2 font-medium">Type</legend>
         {TICKET_TYPES.map((t) =>
@@ -160,7 +169,7 @@ export function LabelSettings({ id, provider }: { id: string; provider: "trello"
             "t",
             t,
             TICKET_TYPE_LABELS[t as TicketType],
-            provider === "trello" ? TICKET_TYPE_LABELS[t as TicketType] : t,
+            provider === "jira" ? t : TICKET_TYPE_LABELS[t as TicketType],
           ),
         )}
       </fieldset>
@@ -202,7 +211,7 @@ function NewLabelForm({
   onCreate,
   onCancel,
 }: {
-  provider: "trello" | "jira";
+  provider: Provider;
   forWhat: string;
   onCreate: (name: string, color: string) => Promise<void>;
   onCancel: () => void;
@@ -234,7 +243,13 @@ function NewLabelForm({
               className="h-9"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={provider === "jira" ? "e.g. customer-bug" : "e.g. High"}
+              placeholder={
+                provider === "jira"
+                  ? "e.g. customer-bug"
+                  : provider === "linear"
+                    ? "e.g. Customer bug"
+                    : "e.g. High"
+              }
             />
           </div>
           {provider === "trello" && (

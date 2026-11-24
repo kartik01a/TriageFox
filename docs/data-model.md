@@ -71,7 +71,7 @@ Seed data inserts the launch plans and settings, so a fresh install works immedi
 ### Connections (built in Phase 2)
 | Table | Key columns |
 |---|---|
-| `connections` | id (uuid), org_id, provider (`crisp` \| `trello` \| `jira`, check constraint), auth_type (`plugin_install` \| `oauth` \| `token`), **credentials_sealed** (text, sealed box `v1:…`, null for Crisp; write-only for the web app), metadata jsonb, status (`pending` \| `active` \| `error` \| `revoked`, check constraint), status_detail, last_verified_at, created_by, created_at, updated_at. **RLS on org_id.** |
+| `connections` | id (uuid), org_id, provider (`crisp` \| `trello` \| `jira` \| `linear`, check constraint; `linear` from migration 0014), auth_type (`plugin_install` \| `oauth` \| `token`), **credentials_sealed** (text, sealed box `v1:…`, null for Crisp; write-only for the web app), metadata jsonb, status (`pending` \| `active` \| `error` \| `revoked`, check constraint), status_detail, last_verified_at, created_by, created_at, updated_at. **RLS on org_id.** |
 | `ai_settings` | org_id (PK), provider, key_sealed, key_hint (`sk-…1234`), key_verified_at, updated_by, updated_at. **RLS.** No model fields. |
 | `crisp_link_tickets` | id, ticket_hash (UNIQUE, sha256), website_id, website_name, expires_at (15 min), used_at, created_at. Not tenant data (no workspace yet); only accessed by server code. |
 

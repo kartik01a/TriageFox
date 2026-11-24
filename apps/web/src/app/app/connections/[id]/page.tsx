@@ -9,6 +9,7 @@ import { requireWorkspace } from "@/lib/workspace";
 import { ConnectionActions } from "../connection-actions";
 import { JiraPicker } from "./jira-picker";
 import { LabelSettings } from "./label-settings";
+import { LinearPicker } from "./linear-picker";
 import { TrelloPicker } from "./trello-picker";
 
 export const metadata: Metadata = { title: "Connection" };
@@ -29,6 +30,7 @@ export default async function ConnectionPage({
   const meta = conn.metadata as {
     username?: string;
     siteName?: string;
+    workspaceName?: string;
     websiteName?: string;
     websiteId?: string;
     sites?: { id: string; name: string; url: string }[];
@@ -39,7 +41,9 @@ export default async function ConnectionPage({
       ? `Trello${meta.username ? ` · @${meta.username}` : ""}`
       : conn.provider === "jira"
         ? `Jira · ${meta.siteName ?? ""}`
-        : `Crisp · ${meta.websiteName ?? meta.websiteId ?? ""}`;
+        : conn.provider === "linear"
+          ? `Linear · ${meta.workspaceName ?? ""}`
+          : `Crisp · ${meta.websiteName ?? meta.websiteId ?? ""}`;
   const d = meta.defaults as
     | {
         boardId?: string;
@@ -48,6 +52,9 @@ export default async function ConnectionPage({
         projectKey?: string;
         issueTypeMap?: Record<string, string>;
         priorityMap?: Record<string, string>;
+        teamId?: string;
+        stateId?: string;
+        projectId?: string;
       }
     | undefined;
 
@@ -90,13 +97,21 @@ export default async function ConnectionPage({
         </Card>
       )}
 
+      {canManage && conn.status === "active" && conn.provider === "linear" && (
+        <Card>
+          <h2 className="mb-4 font-semibold">Where should new issues go?</h2>
+          <LinearPicker id={conn.id} current={d} />
+        </Card>
+      )}
+
       {canManage &&
         conn.status === "active" &&
         ((conn.provider === "trello" && d?.boardId) ||
-          (conn.provider === "jira" && d?.projectKey)) && (
+          (conn.provider === "jira" && d?.projectKey) ||
+          (conn.provider === "linear" && d?.teamId)) && (
           <Card>
             <h2 className="mb-1 font-semibold">Labels</h2>
-            <LabelSettings id={conn.id} provider={conn.provider as "trello" | "jira"} />
+            <LabelSettings id={conn.id} provider={conn.provider as "trello" | "jira" | "linear"} />
           </Card>
         )}
 

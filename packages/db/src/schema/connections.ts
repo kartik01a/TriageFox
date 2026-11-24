@@ -1,6 +1,6 @@
 import { index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-export const connectionProviders = ["crisp", "trello", "jira"] as const;
+export const connectionProviders = ["crisp", "trello", "jira", "linear"] as const;
 export type ConnectionProvider = (typeof connectionProviders)[number];
 export type ConnectionStatus = "pending" | "active" | "error" | "revoked";
 

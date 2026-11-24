@@ -17,6 +17,11 @@ const ERRORS: Record<string, string> = {
   jira_denied: "Jira access was not granted. Connect again and choose Accept.",
   jira_state: "That Jira connection attempt expired or was invalid. Please try again.",
   jira_failed: "We couldn't finish connecting Jira. Please try again.",
+  linear_not_configured: "Linear isn't set up on this server yet.",
+  linear_denied: "Linear access was not granted. Connect again and choose Authorize.",
+  linear_state: "That Linear connection attempt expired or was invalid. Please try again.",
+  linear_failed:
+    "We couldn't finish connecting Linear. Connecting needs a Linear workspace admin; please try again or ask an admin.",
   crisp_ticket: "That link expired. Open the TriageFox plugin in Crisp and continue again.",
   crisp_taken: "That Crisp website is already linked to another workspace.",
   forbidden: "Only workspace owners and admins can connect tools.",
@@ -28,6 +33,7 @@ function connectionLabel(c: ConnectionView) {
   const m = c.metadata as Record<string, string | undefined>;
   if (c.provider === "trello") return m.username ? `@${m.username}` : "Trello account";
   if (c.provider === "jira") return m.siteName ?? "Jira site";
+  if (c.provider === "linear") return m.workspaceName ?? "Linear workspace";
   return m.websiteName ?? m.websiteId ?? "Crisp website";
 }
 
@@ -36,6 +42,8 @@ function targetSummary(c: ConnectionView) {
   if (!d) return c.provider === "crisp" ? null : "No target chosen yet";
   if (c.provider === "trello") return `${d.boardName} › ${d.listName}`;
   if (c.provider === "jira") return `Project ${d.projectName} (${d.projectKey})`;
+  if (c.provider === "linear")
+    return `Team ${d.teamName}${d.projectName ? ` › ${d.projectName}` : ""}${d.stateName ? ` · starts in ${d.stateName}` : ""}`;
   return null;
 }
 
@@ -75,6 +83,15 @@ export default async function ConnectionsPage({
       connectHref: "/api/connections/jira/start",
       enabled: !!e.ATLASSIAN_CLIENT_ID,
     },
+    {
+      key: "linear" as const,
+      name: "Linear",
+      role: "Create issues",
+      blurb:
+        "A Linear workspace admin approves access; issues then appear as created by TriageFox. You'll choose the team, and optionally a project and starting state.",
+      connectHref: "/api/connections/linear/start",
+      enabled: !!e.LINEAR_CLIENT_ID,
+    },
   ];
 
   return (
@@ -102,84 +119,89 @@ export default async function ConnectionsPage({
         </p>
       )}
 
-      {providers.map((p) => {
-        const mine = all.filter((c) => c.provider === p.key);
-        return (
-          <section key={p.key} aria-labelledby={`${p.key}-title`} className="space-y-3">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 id={`${p.key}-title`} className="text-lg font-semibold">
-                  {p.name}{" "}
-                  <span className="text-sm font-normal text-muted-foreground">· {p.role}</span>
-                </h2>
-                <p className="max-w-xl text-sm text-muted-foreground">{p.blurb}</p>
+      {providers
+        // Linear is optional and newer: hide it entirely on servers that haven't set it up.
+        .filter((p) => p.key !== "linear" || p.enabled)
+        .map((p) => {
+          const mine = all.filter((c) => c.provider === p.key);
+          return (
+            <section key={p.key} aria-labelledby={`${p.key}-title`} className="space-y-3">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 id={`${p.key}-title`} className="text-lg font-semibold">
+                    {p.name}{" "}
+                    <span className="text-sm font-normal text-muted-foreground">· {p.role}</span>
+                  </h2>
+                  <p className="max-w-xl text-sm text-muted-foreground">{p.blurb}</p>
+                </div>
+                {canManage && p.connectHref && (
+                  // A full page navigation (not client routing): it leaves for the provider's consent screen.
+                  <a
+                    href={p.enabled ? p.connectHref : undefined}
+                    aria-disabled={!p.enabled}
+                    className={cn(
+                      buttonVariants({ variant: mine.length ? "outline" : "primary", size: "sm" }),
+                      !p.enabled && "pointer-events-none opacity-50",
+                    )}
+                  >
+                    {mine.length ? `Connect another ${p.name}` : `Connect ${p.name}`}
+                  </a>
+                )}
               </div>
-              {canManage && p.connectHref && (
-                // A full page navigation (not client routing): it leaves for the provider's consent screen.
-                <a
-                  href={p.enabled ? p.connectHref : undefined}
-                  aria-disabled={!p.enabled}
-                  className={cn(
-                    buttonVariants({ variant: mine.length ? "outline" : "primary", size: "sm" }),
-                    !p.enabled && "pointer-events-none opacity-50",
-                  )}
-                >
-                  {mine.length ? `Connect another ${p.name}` : `Connect ${p.name}`}
-                </a>
+              {!p.enabled && (
+                <p className="text-sm text-muted-foreground">
+                  Not configured on this server. See the setup guide.
+                </p>
               )}
-            </div>
-            {!p.enabled && (
-              <p className="text-sm text-muted-foreground">
-                Not configured on this server. See the setup guide.
-              </p>
-            )}
-            {mine.length === 0 ? (
-              <Card className="text-sm text-muted-foreground">Not connected yet.</Card>
-            ) : (
-              mine.map((c) => (
-                <Card key={c.id} className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{connectionLabel(c)}</p>
-                      <p className="text-sm text-muted-foreground">{targetSummary(c)}</p>
+              {mine.length === 0 ? (
+                <Card className="text-sm text-muted-foreground">Not connected yet.</Card>
+              ) : (
+                mine.map((c) => (
+                  <Card key={c.id} className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{connectionLabel(c)}</p>
+                        <p className="text-sm text-muted-foreground">{targetSummary(c)}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <StatusBadge status={c.status} />
+                        {c.status === "active" && p.key !== "crisp" && (
+                          <Link
+                            href={`/app/connections/${c.id}`}
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            {c.metadata.defaults
+                              ? p.key === "trello"
+                                ? "Board, list & labels"
+                                : p.key === "linear"
+                                  ? "Team & labels"
+                                  : "Project, mappings & labels"
+                              : "Choose target"}
+                          </Link>
+                        )}
+                        {c.status !== "active" && canManage && p.connectHref && p.enabled && (
+                          // Same consent flow as connecting; the old, broken connection can be removed afterwards.
+                          <a
+                            href={p.connectHref}
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            Reconnect
+                          </a>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <StatusBadge status={c.status} />
-                      {c.status === "active" && p.key !== "crisp" && (
-                        <Link
-                          href={`/app/connections/${c.id}`}
-                          className="text-sm font-medium text-primary hover:underline"
-                        >
-                          {c.metadata.defaults
-                            ? p.key === "trello"
-                              ? "Board, list & labels"
-                              : "Project, mappings & labels"
-                            : "Choose target"}
-                        </Link>
-                      )}
-                      {c.status !== "active" && canManage && p.connectHref && p.enabled && (
-                        // Same consent flow as connecting; the old, broken connection can be removed afterwards.
-                        <a
-                          href={p.connectHref}
-                          className="text-sm font-medium text-primary hover:underline"
-                        >
-                          Reconnect
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                  {c.statusDetail && c.status !== "active" && (
-                    <p className="text-sm text-danger" role="alert">
-                      {c.statusDetail}
-                    </p>
-                  )}
-                  {canManage && <ConnectionActions id={c.id} label={connectionLabel(c)} />}
-                </Card>
-              ))
-            )}
-          </section>
-        );
-      })}
+                    {c.statusDetail && c.status !== "active" && (
+                      <p className="text-sm text-danger" role="alert">
+                        {c.statusDetail}
+                      </p>
+                    )}
+                    {canManage && <ConnectionActions id={c.id} label={connectionLabel(c)} />}
+                  </Card>
+                ))
+              )}
+            </section>
+          );
+        })}
     </div>
   );
 }

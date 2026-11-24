@@ -134,7 +134,7 @@ export function SettingsForm({
             onChange={(e) => setS({ ...s, minConfidence: Number(e.target.value) / 100 })}
           />
           <p className="text-xs text-muted-foreground">
-            Those tickets wait in Review instead of going straight to Trello or Jira.
+            Those tickets wait in Review instead of going straight to Trello, Jira or Linear.
           </p>
         </div>
         <div className="space-y-1 text-sm">

@@ -47,7 +47,7 @@ type Kind = "update" | "duplicate" | "resolved_in_chat";
 
 /** An issue that already exists in Trello or Jira, plus an update waiting to be applied. */
 async function world(
-  tool: "trello" | "jira",
+  tool: "trello" | "jira" | "linear",
   o: {
     kind?: Kind;
     text?: string;
@@ -113,14 +113,21 @@ async function world(
         metadata:
           tool === "trello"
             ? { memberId: "ME" }
-            : { sites: [{ id: "CLOUD", name: "x", url: "https://x.atlassian.net" }] },
+            : tool === "linear"
+              ? { appUserId: "APP" }
+              : { sites: [{ id: "CLOUD", name: "x", url: "https://x.atlassian.net" }] },
       })
       .returning(),
   );
   const creds =
     tool === "trello"
       ? { token: "TOK" }
-      : { accessToken: "A", refreshToken: "R", expiresAt: Date.now() + 3_600_000 };
+      : {
+          accessToken: "A",
+          refreshToken: "R",
+          expiresAt: Date.now() + 3_600_000,
+          refreshedAt: Date.now(),
+        };
   const sealed = await sealCredentials(ctx, { orgId, id: conn?.id ?? "" }, creds);
   await ins((tx) =>
     tx
@@ -136,20 +143,22 @@ async function world(
         automationId: automation?.id ?? "",
         connectionId: conn?.id ?? "",
         config:
-          tool === "trello"
-            ? {
-                kind: "trello",
-                boardId: "B",
-                listId: "L",
-                labelIds: { priorities: { "3": "p3", "5": "p5" }, types: { bug: "tb" } },
-              }
-            : {
-                kind: "jira",
-                cloudId: "CLOUD",
-                projectKey: "TF",
-                issueTypeMap: { bug: "10001" },
-                priorityMap: { "5": "1", "3": "3" },
-              },
+          tool === "linear"
+            ? { kind: "linear", teamId: "TEAM" }
+            : tool === "trello"
+              ? {
+                  kind: "trello",
+                  boardId: "B",
+                  listId: "L",
+                  labelIds: { priorities: { "3": "p3", "5": "p5" }, types: { bug: "tb" } },
+                }
+              : {
+                  kind: "jira",
+                  cloudId: "CLOUD",
+                  projectKey: "TF",
+                  issueTypeMap: { bug: "10001" },
+                  priorityMap: { "5": "1", "3": "3" },
+                },
       })
       .returning(),
   );
@@ -161,10 +170,14 @@ async function world(
         issueId: issue?.id ?? "",
         destinationId: dest?.id ?? "",
         status: o.ticketStatus ?? "ok",
-        externalId: tool === "trello" ? "card1" : "10",
-        externalKey: tool === "jira" ? "TF-10" : null,
+        externalId: tool === "trello" ? "card1" : tool === "linear" ? "ISS" : "10",
+        externalKey: tool === "jira" ? "TF-10" : tool === "linear" ? "ACME-12" : null,
         url:
-          tool === "trello" ? "https://trello.com/c/abc" : "https://x.atlassian.net/browse/TF-10",
+          tool === "trello"
+            ? "https://trello.com/c/abc"
+            : tool === "linear"
+              ? "https://linear.app/acme/issue/ACME-12"
+              : "https://x.atlassian.net/browse/TF-10",
         lastPushedAt: o.lastPushedAt ?? new Date(Date.now() - 60_000),
       })
       .returning(),
@@ -223,6 +236,52 @@ const jiraBase: Route = ({ method, url }) => {
   return { body: {} };
 };
 
+const linearOps = () =>
+  net.calls
+    .filter((c) => c.url.hostname === "api.linear.app")
+    .map(
+      (c) => JSON.parse(String(c.body)) as { query: string; variables: Record<string, unknown> },
+    );
+const linearBase =
+  (o: { state?: string; edits?: { actorId: string | null; bot?: boolean }[] } = {}): Route =>
+  ({ url, body }) => {
+    if (url.hostname !== "api.linear.app") return;
+    const { query } = JSON.parse(String(body)) as { query: string };
+    if (query.includes("history"))
+      return {
+        body: {
+          data: {
+            issue: {
+              history: {
+                nodes: (o.edits ?? []).map((e) => ({
+                  createdAt: new Date().toISOString(),
+                  actorId: e.actorId,
+                  updatedDescription: true,
+                  botActor: e.bot ? { id: "b" } : null,
+                })),
+              },
+            },
+          },
+        },
+      };
+    if (query.includes("issue(id"))
+      return {
+        body: {
+          data: {
+            issue: {
+              id: "ISS",
+              description: "",
+              updatedAt: new Date().toISOString(),
+              archivedAt: null,
+              trashed: false,
+              state: { type: o.state ?? "started" },
+            },
+          },
+        },
+      };
+    return { body: { data: { ok: { success: true } } } };
+  };
+
 beforeAll(async () => {
   const kp = await generateKeyPair();
   keyring = {
@@ -240,6 +299,8 @@ beforeAll(async () => {
       TRELLO_API_KEY: "KEY",
       ATLASSIAN_CLIENT_ID: "id",
       ATLASSIAN_CLIENT_SECRET: "secret",
+      LINEAR_CLIENT_ID: "lid",
+      LINEAR_CLIENT_SECRET: "lsecret",
       APP_URL: "http://localhost:3000",
     } as Ctx["config"],
   };
@@ -437,5 +498,66 @@ describe("Jira follow-ups", () => {
     expect(bodies("POST", /comment$/)).toHaveLength(0);
     expect(delivered).toHaveLength(1);
     expect(await kinds(w.threadId)).toContain("regression");
+  });
+});
+
+describe("Linear follow-ups", () => {
+  it("comments, updates priority and due date, and refreshes the description", async () => {
+    net.reset();
+    net.routes.push(linearBase({ edits: [{ actorId: "APP" }] })); // our own earlier edit
+    const w = await world("linear", { newPriority: 5, newDueDate: "2026-12-01" });
+    await run()(w.p);
+    const ops = linearOps();
+    const comment = ops.find((o) => o.query.includes("commentCreate"));
+    expect(comment?.variables.input).toMatchObject({ issueId: "ISS" });
+    expect(String((comment?.variables.input as { body?: string } | undefined)?.body)).toContain(
+      "It also fails on iPad.",
+    );
+    const updates = ops
+      .filter((o) => o.query.includes("issueUpdate"))
+      .map((o) => o.variables.input);
+    expect(updates).toContainEqual({ priority: 1, dueDate: "2026-12-01" });
+    expect(
+      updates.some((u) => typeof (u as { description?: string }).description === "string"),
+    ).toBe(true);
+  });
+
+  it("keeps a teammate's description edit", async () => {
+    net.reset();
+    net.routes.push(linearBase({ edits: [{ actorId: "DEV" }] }));
+    const w = await world("linear");
+    await run()(w.p);
+    const updates = linearOps().filter((o) => o.query.includes("issueUpdate"));
+    expect(updates.some((u) => (u.variables.input as { description?: string }).description)).toBe(
+      false,
+    );
+    expect(await kinds(w.threadId)).toContain("description_kept");
+  });
+
+  it("a duplicate of a completed issue opens a new ticket; a deleted issue is reported", async () => {
+    net.reset();
+    net.routes.push(linearBase({ state: "completed" }));
+    delivered.length = 0;
+    const w = await world("linear", { kind: "duplicate" });
+    await run()(w.p);
+    expect(linearOps().some((o) => o.query.includes("commentCreate"))).toBe(false);
+    expect(delivered).toHaveLength(1);
+    expect(await kinds(w.threadId)).toContain("regression");
+
+    net.reset();
+    net.routes.push(({ url }) =>
+      url.hostname === "api.linear.app"
+        ? {
+            body: {
+              errors: [
+                { message: "Entity not found: Issue", extensions: { code: "INVALID_INPUT" } },
+              ],
+            },
+          }
+        : undefined,
+    );
+    const w2 = await world("linear");
+    await run()(w2.p);
+    expect(await kinds(w2.threadId)).toContain("update_failed");
   });
 });

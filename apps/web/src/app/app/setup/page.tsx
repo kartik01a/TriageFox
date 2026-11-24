@@ -1,4 +1,5 @@
 import { eq, schema, withOrg } from "@triagefox/db";
+import { PROVIDER_NAMES } from "@triagefox/shared";
 import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -160,10 +161,10 @@ export default async function SetupPage() {
           n={2}
           title="Connect where tickets go"
           state={state("tool")}
-          summary={`${tools.length} connected: ${tools.map((c) => (c.provider === "trello" ? "Trello" : "Jira")).join(", ")}.`}
+          summary={`${tools.length} connected: ${tools.map((c) => PROVIDER_NAMES[c.provider]).join(", ")}.`}
         >
           <p className="text-sm text-muted-foreground">
-            Choose Trello, Jira, or both. Each ticket goes to every tool you connect.
+            Choose Trello, Jira, Linear, or several. Each ticket goes to every tool you connect.
           </p>
           <div className="mt-3 flex flex-wrap gap-3">
             <a
@@ -186,19 +187,24 @@ export default async function SetupPage() {
             >
               Connect Jira
             </a>
+            {e.LINEAR_CLIENT_ID && (
+              <a href="/api/connections/linear/start" className={buttonVariants({ size: "md" })}>
+                Connect Linear
+              </a>
+            )}
           </div>
         </Step>
 
         <Step
           n={3}
-          title="Choose the board or project"
+          title="Choose the board, project or team"
           state={state("target")}
           summary="Targets chosen."
         >
           <ul className="space-y-2 text-sm">
             {needTarget.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center justify-between gap-2">
-                <span>{c.provider === "trello" ? "Trello" : "Jira"}: no target chosen yet</span>
+                <span>{PROVIDER_NAMES[c.provider]}: no target chosen yet</span>
                 <Link href={`/app/connections/${c.id}`} className={buttonVariants({ size: "sm" })}>
                   Choose
                 </Link>

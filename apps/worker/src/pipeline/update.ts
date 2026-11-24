@@ -1,11 +1,17 @@
-import { JiraClient, markdownToAdf } from "@triagefox/connectors";
+import {
+  JiraClient,
+  linearFileMarkdown,
+  linearPriority,
+  markdownToAdf,
+  ProviderError,
+} from "@triagefox/connectors";
 import { openSecret } from "@triagefox/crypto";
 import { and, eq, schema, withOrg } from "@triagefox/db";
 import { type DeliverPayload, type UpdatePayload, withLock } from "@triagefox/pipeline";
 import type { Priority, TicketType } from "@triagefox/shared";
 import { UnrecoverableError } from "bullmq";
 import { openCredentials, updateConnection } from "../rpc/context";
-import { jiraAccessToken, trello } from "../rpc/handlers";
+import { jiraAccessToken, linearClient, trello } from "../rpc/handlers";
 import type { DeliverDeps } from "./deliver";
 import {
   classify,
@@ -84,7 +90,9 @@ export function createUpdate(deps: UpdateDeps) {
         ),
     );
     if (!connection || !thread || !automation || !source) return;
-    const where = connection.provider === "trello" ? "Trello" : "Jira";
+    const where = ({ crisp: "Crisp", trello: "Trello", jira: "Jira", linear: "Linear" } as const)[
+      connection.provider
+    ];
     const say = (kind: string, message: string, refs: Record<string, unknown> = {}) =>
       withOrg(ctx.db, p.orgId, (tx) =>
         tx.insert(schema.activityLog).values({
@@ -203,6 +211,69 @@ export function createUpdate(deps: UpdateDeps) {
                 await say(
                   "description_kept",
                   "Someone edited the Trello card description, so it was left as it is.",
+                );
+              }
+            };
+          } else if (dest.config.kind === "linear") {
+            const client = await linearClient(ctx, connection);
+            const id = ticket.externalId as string;
+            const current = await client.getIssue(id);
+            if (!current || current.trashed)
+              throw new ProviderError("linear", "not_found", "linear issue is gone");
+            const done = ["completed", "canceled"].includes(current.state?.type ?? "");
+            if (update.kind === "duplicate" && done) {
+              await regression(issue, ticket.url, update, comment, "Linear");
+              await markApplied();
+              return;
+            }
+            await client.addComment(id, comment);
+            await markApplied();
+            await say(
+              "ticket_updated",
+              `Added a comment to ${ticket.externalKey ?? "the Linear issue"}.`,
+              {
+                url: ticket.url,
+              },
+            );
+
+            extras = async () => {
+              const patch: { priority?: number; dueDate?: string } = {};
+              if (update.newPriority) patch.priority = linearPriority(update.newPriority);
+              if (update.newDueDate) patch.dueDate = update.newDueDate;
+              if (patch.priority !== undefined || patch.dueDate)
+                await client.updateIssue(id, patch);
+              const lines: string[] = [];
+              for (const f of await filesFor(update.attachmentIds, source, thread.sourceId)) {
+                try {
+                  const blob = await download(f.url);
+                  lines.push(
+                    linearFileMarkdown(f.name, await client.uploadFile(blob, f.name), blob.type),
+                  );
+                } catch (err) {
+                  if (isLinkable(err)) lines.push(`[${f.name.replace(/[[\]()]/g, " ")}](${f.url})`);
+                }
+              }
+              if (lines.length)
+                await client.addComment(
+                  id,
+                  `**New files from the customer**\n\n${lines.join("\n\n")}`,
+                );
+              if (update.kind === "resolved_in_chat") return;
+              // TriageFox's own app user may rewrite; anyone else's edit is kept.
+              const me = String(connection.metadata.appUserId ?? "");
+              if (
+                !(await humanEdited(
+                  () => client.descriptionEdits(id),
+                  (e) => !e.bot && (!me || e.byUserId !== me),
+                  ticket.lastPushedAt,
+                ))
+              ) {
+                await client.updateIssue(id, { description: issue.bodyMd.slice(0, 100_000) });
+                await touch(ticket.id);
+              } else {
+                await say(
+                  "description_kept",
+                  "Someone edited the Linear description, so it was left as it is.",
                 );
               }
             };

@@ -36,6 +36,8 @@ export function describeProviders(c: {
   TRELLO_API_KEY?: string;
   ATLASSIAN_CLIENT_ID?: string;
   ATLASSIAN_CLIENT_SECRET?: string;
+  LINEAR_CLIENT_ID?: string;
+  LINEAR_CLIENT_SECRET?: string;
   CRISP_PLUGIN_ID?: string;
   CRISP_PLUGIN_KEY?: string;
   CRISP_PLUGIN_UUID?: string;
@@ -44,17 +46,18 @@ export function describeProviders(c: {
   const crisp = !!(c.CRISP_PLUGIN_ID && c.CRISP_PLUGIN_KEY && c.CRISP_PLUGIN_UUID);
   const trello = !!c.TRELLO_API_KEY;
   const jira = !!(c.ATLASSIAN_CLIENT_ID && c.ATLASSIAN_CLIENT_SECRET);
+  const linear = !!(c.LINEAR_CLIENT_ID && c.LINEAR_CLIENT_SECRET);
   if (!crisp)
     warnings.push(
       "Crisp is not configured (CRISP_PLUGIN_ID, CRISP_PLUGIN_KEY, CRISP_PLUGIN_UUID): no chats can be read.",
     );
-  if (!trello && !jira)
+  if (!trello && !jira && !linear)
     warnings.push(
-      "Neither Trello (TRELLO_API_KEY) nor Jira (ATLASSIAN_CLIENT_ID/SECRET) is configured: there is nowhere to send tickets.",
+      "None of Trello (TRELLO_API_KEY), Jira (ATLASSIAN_CLIENT_ID/SECRET) or Linear (LINEAR_CLIENT_ID/SECRET) is configured: there is nowhere to send tickets.",
     );
   if (c.APP_MODE === "selfhost" && !c.OPENAI_API_KEY)
     warnings.push(
       "OPENAI_API_KEY is not set: every workspace must enter its own OpenAI key under AI key.",
     );
-  return { crisp, trello, jira, openai: !!c.OPENAI_API_KEY, warnings };
+  return { crisp, trello, jira, linear, openai: !!c.OPENAI_API_KEY, warnings };
 }

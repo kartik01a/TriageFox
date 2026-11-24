@@ -46,3 +46,11 @@ export const TRELLO_LABEL_COLORS = [
   "pink",
   "black",
 ] as const;
+
+/** Display names of the connected tools. */
+export const PROVIDER_NAMES = {
+  crisp: "Crisp",
+  trello: "Trello",
+  jira: "Jira",
+  linear: "Linear",
+} as const;

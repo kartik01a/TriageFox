@@ -35,6 +35,7 @@ export const webEnvSchema = z.object({
   /** Public identifiers only. Secrets for these providers live in the worker (docs/security.md §3). */
   TRELLO_API_KEY: z.string().optional(),
   ATLASSIAN_CLIENT_ID: z.string().optional(),
+  LINEAR_CLIENT_ID: z.string().optional(),
   /** Crisp plugin hook signing secret: lets the hook route verify that a delivery really came from Crisp. */
   CRISP_HOOK_SECRET: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().min(32),
@@ -87,6 +88,9 @@ export const workerEnvSchema = z.object({
   TRELLO_API_KEY: z.string().optional(),
   ATLASSIAN_CLIENT_ID: z.string().optional(),
   ATLASSIAN_CLIENT_SECRET: z.string().optional(),
+  /** Linear OAuth app (ADR 0016). The secret is worker only. */
+  LINEAR_CLIENT_ID: z.string().optional(),
+  LINEAR_CLIENT_SECRET: z.string().optional(),
   /** Crisp plugin: token identifier + key (Marketplace → Tokens) and the plugin's own UUID. */
   CRISP_PLUGIN_ID: z.string().optional(),
   CRISP_PLUGIN_KEY: z.string().optional(),

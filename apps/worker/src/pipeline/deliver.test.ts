@@ -51,6 +51,7 @@ async function world(
       types?: Record<string, string | null>;
     };
     typeLabels?: Record<string, string | null>;
+    linear?: { stateId?: string; projectId?: string; typeLabels?: Record<string, string | null> };
   } = {},
 ) {
   const ins = <T>(fn: (tx: Parameters<Parameters<typeof withOrg>[2]>[0]) => Promise<T>) =>
@@ -103,6 +104,7 @@ async function world(
     thread: typeof thread;
     trello?: { dest: string; conn: string };
     jira?: { dest: string; conn: string };
+    linear?: { dest: string; conn: string };
   } = { issue, thread };
   if (opts.trello) {
     const [conn] = await ins((tx) =>
@@ -180,6 +182,48 @@ async function world(
     );
     out.jira = { dest: dest?.id ?? "", conn: conn?.id ?? "" };
   }
+  if (opts.linear) {
+    const [conn] = await ins((tx) =>
+      tx
+        .insert(schema.connections)
+        .values({
+          orgId,
+          provider: "linear",
+          authType: "oauth",
+          status: "active",
+          metadata: { workspaceName: "Acme", appUserId: "APP" },
+        })
+        .returning(),
+    );
+    const sealed = await sealCredentials(
+      ctx,
+      { orgId, id: conn?.id ?? "" },
+      {
+        accessToken: "LA",
+        refreshToken: "LR",
+        expiresAt: Date.now() + 3_600_000,
+        refreshedAt: Date.now(),
+      },
+    );
+    await ins((tx) =>
+      tx
+        .update(schema.connections)
+        .set({ credentialsSealed: sealed })
+        .where(eq(schema.connections.id, conn?.id ?? "")),
+    );
+    const [dest] = await ins((tx) =>
+      tx
+        .insert(schema.automationDestinations)
+        .values({
+          orgId,
+          automationId: automation?.id ?? "",
+          connectionId: conn?.id ?? "",
+          config: { kind: "linear", teamId: "TEAM", ...opts.linear },
+        })
+        .returning(),
+    );
+    out.linear = { dest: dest?.id ?? "", conn: conn?.id ?? "" };
+  }
   return out;
 }
 
@@ -211,6 +255,97 @@ const jiraOk: Route = ({ method, url }) => {
   return { body: {} };
 };
 
+/** Fake Linear GraphQL API: a team with triage on, one existing workspace label "from-chat". */
+const gql = (r: { body: unknown }) =>
+  JSON.parse(String(r.body)) as { query: string; variables: Record<string, unknown> };
+const linearOk =
+  (opts: { triage?: boolean } = {}): Route =>
+  (r) => {
+    if (r.url.hostname === "uploads.example") return { body: {} };
+    if (r.url.hostname !== "api.linear.app") return;
+    const { query } = gql(r);
+    if (query.includes("team(id"))
+      return {
+        body: {
+          data: {
+            team: {
+              id: "TEAM",
+              triageEnabled: opts.triage ?? true,
+              states: {
+                nodes: [
+                  { id: "S-backlog", name: "Backlog", type: "backlog", position: 1 },
+                  { id: "S-triage", name: "Triage", type: "triage", position: 0 },
+                ],
+              },
+              projects: { nodes: [{ id: "P1", name: "Web", status: { type: "started" } }] },
+            },
+          },
+        },
+      };
+    if (query.includes("issueLabels"))
+      return {
+        body: {
+          data: {
+            issueLabels: {
+              nodes: [{ id: "L-chat", name: "from-chat", color: null, isGroup: false, team: null }],
+            },
+          },
+        },
+      };
+    if (query.includes("issueLabelCreate"))
+      return {
+        body: {
+          data: {
+            issueLabelCreate: {
+              success: true,
+              issueLabel: {
+                id: `L-${gql(r).variables.input && (gql(r).variables.input as { name: string }).name}`,
+                name: "x",
+                color: null,
+              },
+            },
+          },
+        },
+      };
+    if (query.includes("issueCreate"))
+      return {
+        body: {
+          data: {
+            issueCreate: {
+              success: true,
+              issue: {
+                id: "ISS",
+                identifier: "ACME-12",
+                url: "https://linear.app/acme/issue/ACME-12",
+              },
+            },
+          },
+        },
+      };
+    if (query.includes("fileUpload"))
+      return {
+        body: {
+          data: {
+            fileUpload: {
+              success: true,
+              uploadFile: {
+                uploadUrl: "https://uploads.example/put",
+                assetUrl: "https://uploads.linear.app/asset-1",
+                headers: [],
+              },
+            },
+          },
+        },
+      };
+    return { body: { data: { commentCreate: { success: true } } } };
+  };
+const linearCreate = () =>
+  gql(
+    net.calls.find(
+      (c) => c.url.hostname === "api.linear.app" && String(c.body).includes("issueCreate"),
+    ) as { body: unknown },
+  ).variables.input as Record<string, unknown>;
+
 beforeAll(async () => {
   const kp = await generateKeyPair();
   keyring = {
@@ -229,6 +364,8 @@ beforeAll(async () => {
       TRELLO_API_KEY: "KEY",
       ATLASSIAN_CLIENT_ID: "id",
       ATLASSIAN_CLIENT_SECRET: "secret",
+      LINEAR_CLIENT_ID: "lid",
+      LINEAR_CLIENT_SECRET: "lsecret",
       APP_URL: "http://localhost:3000",
     } as Ctx["config"],
   };
@@ -512,6 +649,105 @@ describe("Jira delivery", () => {
     await deliver()(p);
     expect((await ticket(p.issueId, p.destinationId))?.status).toBe("failed");
     expect(net.calls.some((c) => c.url.pathname.endsWith("/issue"))).toBe(false);
+  });
+});
+
+describe("Linear delivery", () => {
+  it("creates one issue in the Triage inbox with priority, due date and labels (ADR 0016)", async () => {
+    net.reset();
+    net.routes.push(linearOk());
+    const w = await world({ linear: {}, dueDate: "2026-12-04" });
+    const p = { orgId, issueId: w.issue?.id ?? "", destinationId: w.linear?.dest ?? "" };
+    await deliver()(p);
+    await deliver()(p); // a retried job never creates a second issue
+
+    expect(net.calls.filter((c) => String(c.body).includes("issueCreate"))).toHaveLength(1);
+    const input = linearCreate();
+    expect(input).toMatchObject({
+      teamId: "TEAM",
+      title: "Checkout fails on Safari",
+      priority: 2, // P4 -> High
+      dueDate: "2026-12-04",
+      stateId: "S-triage",
+    });
+    // "from-chat" already existed; the "Bug" type label was created on the team.
+    expect(input.labelIds).toEqual(["L-chat", "L-Bug"]);
+    expect(input).not.toHaveProperty("projectId");
+    expect(await ticket(p.issueId, p.destinationId)).toMatchObject({
+      status: "ok",
+      externalId: "ISS",
+      externalKey: "ACME-12",
+      url: "https://linear.app/acme/issue/ACME-12",
+    });
+  });
+
+  it("uses the chosen state, project and type label; no triage means Linear's default", async () => {
+    net.reset();
+    net.routes.push(linearOk());
+    const w = await world({
+      linear: { stateId: "S-backlog", projectId: "P1", typeLabels: { bug: "from-chat" } },
+    });
+    await deliver()({ orgId, issueId: w.issue?.id ?? "", destinationId: w.linear?.dest ?? "" });
+    expect(linearCreate()).toMatchObject({
+      stateId: "S-backlog",
+      projectId: "P1",
+      labelIds: ["L-chat"],
+    });
+
+    net.reset();
+    net.routes.push(linearOk({ triage: false }));
+    const w2 = await world({ linear: { projectId: "gone", typeLabels: { bug: null } } });
+    await deliver()({ orgId, issueId: w2.issue?.id ?? "", destinationId: w2.linear?.dest ?? "" });
+    const input = linearCreate();
+    expect(input).not.toHaveProperty("stateId");
+    expect(input).not.toHaveProperty("projectId"); // a project that no longer exists is skipped
+    expect(input.labelIds).toEqual(["L-chat"]);
+  });
+
+  it("uploads the customer's screenshot server side and posts it in one comment", async () => {
+    net.reset();
+    net.routes.push(linearOk());
+    net.files.set("/shot.png", new Uint8Array([1, 2, 3]));
+    conversation = conv([
+      {
+        fingerprint: "s1",
+        timestamp: 1,
+        role: "customer",
+        kind: "file",
+        file: { name: "shot.png", url: "https://storage.crisp.chat/shot.png", mime: "image/png" },
+      },
+    ]);
+    const w = await world({ linear: {}, attachmentIds: ["s1"] });
+    await deliver()({ orgId, issueId: w.issue?.id ?? "", destinationId: w.linear?.dest ?? "" });
+    conversation = conv();
+    const put = net.calls.find((c) => c.url.hostname === "uploads.example");
+    expect(put?.method).toBe("PUT");
+    const comment = net.calls.find((c) => String(c.body).includes("commentCreate"));
+    expect(String(comment?.body)).toContain("![shot.png](https://uploads.linear.app/asset-1)");
+  });
+
+  it("a refused token pauses the Linear connection and tells the owner", async () => {
+    net.reset();
+    net.routes.push((r) =>
+      r.url.hostname === "api.linear.app"
+        ? {
+            status: 400,
+            body: { errors: [{ message: "auth", extensions: { code: "AUTHENTICATION_ERROR" } }] },
+          }
+        : undefined,
+    );
+    const w = await world({ linear: {} });
+    const p = { orgId, issueId: w.issue?.id ?? "", destinationId: w.linear?.dest ?? "" };
+    await deliver()(p);
+    expect((await ticket(p.issueId, p.destinationId))?.status).toBe("failed");
+    const [conn] = await withOrg(db, orgId, (tx) =>
+      tx
+        .select()
+        .from(schema.connections)
+        .where(eq(schema.connections.id, w.linear?.conn ?? "")),
+    );
+    expect(conn?.status).toBe("revoked");
+    expect(revoked.some((r) => r.id === w.linear?.conn)).toBe(true);
   });
 });
 

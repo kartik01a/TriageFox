@@ -252,6 +252,38 @@ export class LinearClient {
     return d.organization;
   }
 
+  /** The user this token acts as: with `actor=app`, TriageFox's own app user in the workspace. */
+  async viewerId(): Promise<string> {
+    const d = await this.gql<{ viewer: { id: string } }>("query { viewer { id } }");
+    return d.viewer.id;
+  }
+
+  /** Who changed the description and when (newest 100 history entries), for the human-edit check. */
+  async descriptionEdits(
+    issueId: string,
+  ): Promise<{ byUserId: string; bot: boolean; at: string }[]> {
+    const d = await this.gql<{
+      issue: {
+        history: {
+          nodes: {
+            createdAt: string;
+            actorId: string | null;
+            updatedDescription: boolean | null;
+            botActor: { id: string } | null;
+          }[];
+        };
+      } | null;
+    }>(
+      `query($id: String!) { issue(id: $id) {
+        history(first: 100) { nodes { createdAt actorId updatedDescription botActor { id } } }
+      } }`,
+      { id: issueId },
+    );
+    return (d.issue?.history.nodes ?? [])
+      .filter((h) => h.updatedDescription)
+      .map((h) => ({ byUserId: h.actorId ?? "", bot: !!h.botActor, at: h.createdAt }));
+  }
+
   async listTeams(): Promise<LinearTeam[]> {
     const d = await this.gql<{ teams: { nodes: LinearTeam[] } }>(
       "query { teams(first: 100) { nodes { id key name triageEnabled } } }",

@@ -16,6 +16,11 @@ Running your own copy? The whole install is in [../self-hosting.md](../self-host
 4. Copy the client id to `ATLASSIAN_CLIENT_ID` (web and worker) and the secret to `ATLASSIAN_CLIENT_SECRET` (**worker only**).
 5. **Distribution**: while "Not shared" only your own Atlassian account can authorize. Before opening to customers, set distribution to **Sharing** (requires the app's privacy policy URL and vendor details).
 
+## Linear (OAuth 2.0, optional)
+1. In Linear: **Settings → API → OAuth applications → New**. Name **TriageFox**, the fox icon, redirect URI **`APP_URL/api/connections/linear/callback`** (plus `http://localhost:3000/api/connections/linear/callback` for development).
+2. Copy the client id to `LINEAR_CLIENT_ID` (web and worker) and the secret to `LINEAR_CLIENT_SECRET` (**worker only**).
+3. Customers connect as a Linear **workspace admin** (TriageFox installs as an app, ADR 0016). Details: [integrations/linear.md](../integrations/linear.md).
+
 ## Crisp (Marketplace plugin)
 1. https://marketplace.crisp.chat → create a plugin (private while developing).
 2. **Tokens**: create the token pair: `CRISP_PLUGIN_ID` = token *identifier*, `CRISP_PLUGIN_KEY` = key (**worker only**). `CRISP_PLUGIN_UUID` = the plugin's own id shown at the top of the plugin page (a UUID).

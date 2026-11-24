@@ -18,5 +18,5 @@ Linear is the next destination after Trello and Jira ([plan](../plans/2026-11-19
 
 ## Consequences
 - Non-admins see a clear message instead of a failed Linear consent screen.
-- The human-edit check compares the description with a hash of what we last wrote, so it does not depend on telling our edits apart in Linear's history.
+- The human-edit check reads Linear's issue history: a description change by anyone other than TriageFox's own app user (stored as `appUserId` when connecting) keeps the person's text. (The plan first proposed a stored hash; the history turned out to name the actor, which matches how Jira and Trello work.)
 - Linear refresh tokens expire 30 days after issue, so the connection keep-alive job (same plan) is required before Linear ships.

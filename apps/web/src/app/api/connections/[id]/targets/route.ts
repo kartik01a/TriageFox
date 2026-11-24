@@ -56,6 +56,13 @@ export async function GET(req: Request, { params }: Params) {
           },
         });
       }
+      case "linear:teams":
+        return json({ ok: true, ...(await rpc().call("linear.listTeams", base)) });
+      case "linear:setup":
+        return json({
+          ok: true,
+          ...(await rpc().call("linear.teamSetup", { ...base, teamId: q.get("teamId") ?? "" })),
+        });
       default:
         return json({ ok: false, error: "Unknown request." }, 400);
     }
@@ -70,6 +77,12 @@ const jiraBody = z.object({
   projectKey: z.string().min(1),
   issueTypeMap: z.record(z.enum(TICKET_TYPES), z.string().min(1)),
   priorityMap: z.record(z.enum(PRIORITIES.map(String) as [string, ...string[]]), z.string().min(1)),
+});
+
+const linearBody = z.object({
+  teamId: z.string().min(1).max(100),
+  stateId: z.string().min(1).max(100).nullish(),
+  projectId: z.string().min(1).max(100).nullish(),
 });
 
 /** Saves the chosen target as this connection's defaults, after re-checking it with the provider. */
@@ -137,6 +150,33 @@ export async function PUT(req: Request, { params }: Params) {
         // Priority and due date aren't always on the create screen; the worker adapts (set after creating).
         setupOk: true,
       };
+    } else if (c.conn.provider === "linear") {
+      const body = linearBody.safeParse(raw);
+      if (!body.success) return json({ ok: false, error: "Choose a team." }, 400);
+      // Never trust names or ids from the browser: confirm with Linear.
+      const [{ teams }, setup] = await Promise.all([
+        rpc().call("linear.listTeams", base),
+        rpc().call("linear.teamSetup", { ...base, teamId: body.data.teamId }),
+      ]);
+      const team = teams.find((t) => t.id === body.data.teamId);
+      const state = body.data.stateId
+        ? setup.states.find((s) => s.id === body.data.stateId)
+        : undefined;
+      const project = body.data.projectId
+        ? setup.projects.find((p) => p.id === body.data.projectId)
+        : undefined;
+      if (!team || (body.data.stateId && !state) || (body.data.projectId && !project))
+        return json(
+          { ok: false, error: "That team, state or project isn't available any more." },
+          400,
+        );
+      defaults = {
+        teamId: team.id,
+        teamName: team.name,
+        teamKey: team.key,
+        ...(state ? { stateId: state.id, stateName: state.name } : {}),
+        ...(project ? { projectId: project.id, projectName: project.name } : {}),
+      };
     } else {
       return json({ ok: false, error: "This connection has no target to choose." }, 400);
     }
@@ -151,7 +191,8 @@ export async function PUT(req: Request, { params }: Params) {
       .where(and(eq(schema.connections.id, c.conn.id), eq(schema.connections.orgId, c.orgId)));
     // Keep the label choice (ADR 0013): Jira labels are site-wide; Trello label ids belong to one board.
     const prev = (row?.metadata?.defaults ?? {}) as Record<string, unknown>;
-    if (c.conn.provider === "jira" && prev.typeLabels) defaults.typeLabels = prev.typeLabels;
+    if ((c.conn.provider === "jira" || c.conn.provider === "linear") && prev.typeLabels)
+      defaults.typeLabels = prev.typeLabels;
     if (c.conn.provider === "trello" && prev.labels && prev.boardId === defaults.boardId)
       defaults.labels = prev.labels;
     await tx

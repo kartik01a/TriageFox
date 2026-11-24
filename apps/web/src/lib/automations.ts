@@ -74,7 +74,7 @@ function stripCache(config: typeof schema.automationDestinations.$inferSelect.co
 export interface DestinationView {
   id: string;
   enabled: boolean;
-  provider: "trello" | "jira";
+  provider: "trello" | "jira" | "linear";
   connectionStatus: string;
   target: string;
   ok: number;
@@ -135,7 +135,9 @@ export async function automationOverview(orgId: string) {
         target:
           d.config.kind === "trello"
             ? `${m.defaults?.boardName ?? "Board"} › ${m.defaults?.listName ?? "List"}`
-            : `Project ${m.defaults?.projectName ?? d.config.projectKey} (${d.config.projectKey})`,
+            : d.config.kind === "jira"
+              ? `Project ${m.defaults?.projectName ?? d.config.projectKey} (${d.config.projectKey})`
+              : `Team ${m.defaults?.teamName ?? "Linear"}${m.defaults?.projectName ? ` › ${m.defaults.projectName}` : ""}`,
         ok: counts.find((c) => c.destinationId === d.id && c.status === "ok")?.n ?? 0,
         failed: counts.find((c) => c.destinationId === d.id && c.status === "failed")?.n ?? 0,
       };
@@ -171,9 +173,9 @@ export async function enableBlocker(orgId: string, automationId: string): Promis
         ),
       );
     if (dests.length === 0)
-      return "Connect Trello or Jira and choose where tickets should go first.";
+      return "Connect Trello, Jira or Linear and choose where tickets should go first.";
     if (!dests.some((d) => d.status === "active"))
-      return "Your Trello or Jira connection needs to be reconnected first.";
+      return "Your Trello, Jira or Linear connection needs to be reconnected first.";
     return null;
   });
 }

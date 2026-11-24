@@ -1,9 +1,9 @@
 import { type Db, sql } from "@triagefox/db";
 import { RpcError } from "@triagefox/rpc";
 import { type Ctx, loadConnection } from "./rpc/context";
-import { jiraAccessToken } from "./rpc/handlers";
+import { jiraAccessToken, linearAccessToken } from "./rpc/handlers";
 
-/** Refresh tokens older than this. Atlassian drops refresh tokens unused for 90 days. */
+/** Refresh tokens older than this. Atlassian drops refresh tokens unused for 90 days; Linear's expire 30 days after issue. */
 export const KEEPALIVE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Active OAuth connections whose refresh tokens expire when unused (ids only, across workspaces). */
@@ -23,12 +23,13 @@ export async function keepConnectionsAlive(ctx: Ctx, opts: { maxAgeMs?: number }
   let checked = 0;
   let failed = 0;
   for (const t of await keepAliveTargets(ctx.db)) {
-    if (t.provider !== "jira") continue;
+    if (t.provider !== "jira" && t.provider !== "linear") continue;
     checked++;
     try {
-      const c = await loadConnection(ctx, t.org_id, t.connection_id, "jira");
+      const c = await loadConnection(ctx, t.org_id, t.connection_id, t.provider);
       if (c.status !== "active") continue;
-      await jiraAccessToken(ctx, c, { maxAgeMs });
+      if (t.provider === "jira") await jiraAccessToken(ctx, c, { maxAgeMs });
+      else await linearAccessToken(ctx, c, { maxAgeMs });
     } catch (err) {
       failed++;
       const code = err instanceof RpcError ? err.code : "internal";

@@ -70,6 +70,27 @@ export const rpcMethods = {
       priorities: z.array(z.object({ id: z.string(), name: z.string() })),
     }),
   },
+  "linear.complete": {
+    input: z.object(orgConn),
+    output: z.object({ workspaceName: z.string(), urlKey: z.string() }),
+  },
+  "linear.listTeams": {
+    input: z.object(orgConn),
+    output: z.object({
+      teams: z.array(
+        z.object({ id: z.string(), key: z.string(), name: z.string(), triageEnabled: z.boolean() }),
+      ),
+    }),
+  },
+  "linear.teamSetup": {
+    input: z.object({ ...orgConn, teamId: z.string().min(1).max(100) }),
+    output: z.object({
+      triageEnabled: z.boolean(),
+      states: z.array(z.object({ id: z.string(), name: z.string(), type: z.string() })),
+      projects: z.array(z.object({ id: z.string(), name: z.string() })),
+      labels: z.array(z.object({ id: z.string(), name: z.string(), color: z.string().nullable() })),
+    }),
+  },
   "crisp.verifyWebsite": {
     input: z.object({ websiteId: z.string().min(1), token: z.string().min(1).max(200) }),
     output: z.object({ valid: z.boolean(), websiteName: z.string().optional() }),

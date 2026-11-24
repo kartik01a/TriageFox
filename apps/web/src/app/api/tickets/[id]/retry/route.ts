@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { json, managerGuard } from "@/lib/guards";
 import { pipelineQueue } from "@/lib/pipeline-queue";
 
-/** Sends a ticket that failed to reach Trello or Jira again. Only failed tickets can be retried. */
+/** Sends a ticket that failed to reach Trello, Jira or Linear again. Only failed tickets can be retried. */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const guard = await managerGuard(req);
   if (!guard.ok) return guard.response;

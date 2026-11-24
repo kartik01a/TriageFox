@@ -1,6 +1,7 @@
 import {
   CRISP_FILE_HOSTS,
   type CrispMessage,
+  type LinearClient,
   ProviderError,
   type SafeDownloadOptions,
   safeDownload,
@@ -146,6 +147,42 @@ export async function ensureTrelloLabels(
 }
 
 /** Jira labels for a new issue: "from-chat", the type's label (the customer's choice, ADR 0013), extras. */
+export type LinearConfig = Extract<Destination["config"], { kind: "linear" }>;
+
+/** Label names for a Linear issue: same rule as Jira (ADR 0013), "from-chat" plus the type's label. */
+export function linearLabelNames(config: LinearConfig, type: TicketType) {
+  const chosen = config.typeLabels && Object.hasOwn(config.typeLabels, type);
+  const typeLabel = chosen ? config.typeLabels?.[type] : TICKET_TYPE_LABELS[type];
+  return [...new Set(["from-chat", ...(typeLabel ? [typeLabel] : [])])];
+}
+
+/**
+ * Where a new Linear issue starts and which labels it gets: the chosen state, else the team's Triage
+ * inbox when triage is on, else Linear's default (ADR 0016). Missing labels are created on the team.
+ */
+export async function linearCreateSetup(
+  client: LinearClient,
+  config: LinearConfig,
+  type: TicketType,
+) {
+  const setup = await client.teamSetup(config.teamId);
+  const stateId =
+    (config.stateId && setup.states.some((s) => s.id === config.stateId)
+      ? config.stateId
+      : undefined) ??
+    (setup.triageEnabled ? setup.states.find((s) => s.type === "triage")?.id : undefined);
+  const labelIds: string[] = [];
+  for (const name of linearLabelNames(config, type)) {
+    const found = setup.labels.find((l) => l.name.toLowerCase() === name.toLowerCase());
+    labelIds.push(found ? found.id : (await client.createLabel(config.teamId, name)).id);
+  }
+  const projectId =
+    config.projectId && setup.projects.some((p) => p.id === config.projectId)
+      ? config.projectId
+      : undefined;
+  return { stateId, labelIds, projectId };
+}
+
 export function jiraLabels(config: JiraConfig, type: TicketType) {
   const chosen = config.typeLabels && Object.hasOwn(config.typeLabels, type);
   const typeLabel = chosen ? config.typeLabels?.[type] : type;

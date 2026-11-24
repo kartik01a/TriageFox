@@ -38,6 +38,15 @@ export type DestinationConfig =
       extraLabels?: string[];
       /** Jira label per ticket type (ADR 0013): text, or null for none. Missing = the type's own name. */
       typeLabels?: Record<string, string | null>;
+    }
+  | {
+      kind: "linear";
+      teamId: string;
+      /** Starting state; missing = the team's Triage inbox when on, else its default state (ADR 0016). */
+      stateId?: string;
+      projectId?: string;
+      /** Label per ticket type, by name (ADR 0013): text, or null for none. Missing = the type's own name. */
+      typeLabels?: Record<string, string | null>;
     };
 
 export interface LabelMap {

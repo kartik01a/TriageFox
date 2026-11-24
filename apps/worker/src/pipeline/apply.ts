@@ -151,7 +151,7 @@ export async function applyResult(args: {
           entries.push({
             kind: "no_destination",
             message:
-              "A ticket was prepared but not sent: no Trello or Jira destination is set up or switched on.",
+              "A ticket was prepared but not sent: no Trello, Jira or Linear destination is set up or switched on.",
             refs: { issueId: issue.id },
           });
         for (const d of destinations)

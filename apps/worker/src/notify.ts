@@ -117,7 +117,12 @@ export function createNotifier(deps: {
   };
 }
 
-const PROVIDER_NAMES: Record<string, string> = { crisp: "Crisp", trello: "Trello", jira: "Jira" };
+const PROVIDER_NAMES: Record<string, string> = {
+  crisp: "Crisp",
+  trello: "Trello",
+  jira: "Jira",
+  linear: "Linear",
+};
 
 /** The email a workspace owner gets when a connection stops working, with what to do about it. */
 export function revokedNotice(provider: string) {
